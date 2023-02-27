@@ -1,5 +1,33 @@
--Q theories/ ModalK
+-Q theories/ Cyclic_PA
 -arg -w -arg -notation-overridden
 
+theories/Casteran/AccP.v
+theories/Casteran/closure.v
+theories/Casteran/decidable_set.v
+theories/Casteran/more_list.v
+theories/Casteran/list_permut.v
+theories/Casteran/list_set.v
+theories/Casteran/term.v
+theories/Casteran/dickson.v
+theories/Casteran/rpo.v
+
+theories/Logic/definitions.v
+
 theories/Maths/naturals.v
-theories/modalteporallogic.v
+theories/Maths/lists.v
+theories/Maths/ordinals.v
+
+theories/Logic/fol.v
+theories/Logic/PA_omega.v
+theories/Logic/proof_trees.v
+theories/Logic/substitute.v
+theories/Logic/inverse_neg.v
+theories/Logic/inverse_dem_1.v
+theories/Logic/inverse_dem_2.v
+theories/Logic/inverse_omega.v
+theories/Logic/inverse_quantif.v
+theories/Logic/formula_sub.v
+theories/Logic/Peano.v
+theories/Logic/cut_elim.v
+
+theories/gentzen.v
