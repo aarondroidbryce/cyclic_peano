@@ -1,0 +1,5 @@
+-Q theories/ ModalK
+-arg -w -arg -notation-overridden
+
+theories/Maths/naturals.v
+theories/modalteporallogic.v
