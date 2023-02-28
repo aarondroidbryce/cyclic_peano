@@ -4,8 +4,13 @@ From Cyclic_PA.Logic Require Import definitions.
 
 Require Import Lia.
 Require Import Nat.
+Require Import List.
+Require Import Coq.Arith.Wf_nat.
 
-Open Scope bool.
+Open Scope bool_scope.
+Open Scope list_scope.
+
+Import ListNotations.
 
 (*Language*)
 Inductive term : Type :=
@@ -122,22 +127,22 @@ Fixpoint free_list_t (t : term) : list nat :=
 match t with
 | zero => nil
 | succ t1 => free_list_t t1
-| plus t1 t2 => remove_dups (concat (free_list_t t1) (free_list_t t2))
-| times t1 t2 => remove_dups (concat (free_list_t t1) (free_list_t t2))
+| plus t1 t2 => nodup nat_eq_dec ((free_list_t t1) ++ (free_list_t t2))
+| times t1 t2 => nodup nat_eq_dec ((free_list_t t1) ++ (free_list_t t2))
 | var n => [n]
 end.
 
 Definition free_list_a (a : atomic_formula) : list nat :=
 match a with
-| equ t1 t2 => remove_dups (concat (free_list_t t1) (free_list_t t2))
+| equ t1 t2 => nodup nat_eq_dec ((free_list_t t1) ++ (free_list_t t2))
 end.
 
 Fixpoint free_list (A : formula) : list nat :=
 match A with
 | atom a => free_list_a a
 | neg B => free_list B
-| lor B D => remove_dups (concat (free_list B) (free_list D))
-| univ n B => remove n (free_list B)
+| lor B D => nodup nat_eq_dec ((free_list B) ++ (free_list D))
+| univ n B => remove nat_eq_dec n (free_list B)
 end.
 
 (*Closedness*)
@@ -557,7 +562,7 @@ Qed.
 (*Results about lists of free variables*)
 Lemma free_list_remove_dups_idem_t :
     forall (t : term),
-        free_list_t t = remove_dups (free_list_t t).
+        free_list_t t = nodup nat_eq_dec (free_list_t t).
 Proof.
 induction t;
 unfold free_list_t;
@@ -569,7 +574,7 @@ Qed.
 
 Lemma free_list_remove_dups_idem_a :
     forall (a : atomic_formula),
-        free_list_a a = remove_dups (free_list_a a).
+        free_list_a a = nodup nat_eq_dec (free_list_a a).
 Proof.
 intros [t1 t2].
 unfold free_list_a.
@@ -579,7 +584,7 @@ Qed.
 
 Lemma free_list_remove_dups_idem :
     forall (A : formula),
-        free_list A = remove_dups (free_list A).
+        free_list A = nodup nat_eq_dec (free_list A).
 Proof.
 induction A.
 - apply free_list_remove_dups_idem_a.
@@ -630,11 +635,11 @@ unfold free_list_t in FREE; fold free_list_t in FREE.
 - apply IHt.
   apply FREE.
 - apply remove_dups_empty in FREE.
-  destruct (empty_concat_split_empty _ _ _ FREE) as [L1 L2].
+  destruct (app_eq_nil _ _ FREE) as [L1 L2].
   rewrite (IHt1 L1).
   apply (IHt2 L2).
 - apply remove_dups_empty in FREE.
-  destruct (empty_concat_split_empty _ _ _ FREE) as [L1 L2].
+  destruct (app_eq_nil _ _ FREE) as [L1 L2].
   rewrite (IHt1 L1).
   apply (IHt2 L2).
 - inversion FREE.
@@ -648,7 +653,7 @@ Proof.
 intros [t1 t2] FREE.
 unfold closed_a.
 apply remove_dups_empty in FREE.
-destruct (empty_concat_split_empty _ _ _ FREE) as [L1 L2].
+destruct (app_eq_nil _ _ FREE) as [L1 L2].
 rewrite (free_list_closed_t _ L1).
 apply (free_list_closed_t _ L2).
 Qed.
@@ -664,7 +669,7 @@ unfold closed; fold closed;
 unfold free_list in FREE; fold free_list in FREE.
 - apply free_list_closed_a, FREE.
 - apply IHA, FREE.
-- destruct (empty_concat_split_empty _ _ _ (remove_dups_empty _ FREE)) as [L1 L2].
+- destruct (app_eq_nil _ _ (remove_dups_empty _ FREE)) as [L1 L2].
   rewrite (IHA1 L1).
   apply (IHA2 L2).
 - rewrite free_list_remove_dups_idem in FREE.
@@ -733,12 +738,16 @@ unfold free_list; fold free_list.
     reflexivity.
   + destruct (free_list A).
     * inversion CA.
-    * destruct (and_bool_prop _ _ CA) as [EQ1 EQ2].
+    * apply and_bool_prop in CA as [EQ1 EQ2].
       apply list_eqb_eq in EQ2.
       rewrite EQ2.
       unfold remove.
-      rewrite EQ1.
-      reflexivity.
+      apply nat_eqb_eq in EQ1.
+      destruct EQ1.
+      case (nat_eq_dec n0 n0) as [_ | FAL].
+      --  reflexivity.
+      --  contradict FAL.
+          reflexivity.
 Qed.
 
 Lemma closed_univ :
@@ -800,37 +809,47 @@ Qed.
 (*Substitution Lemmas*)
 Lemma subst_remove_t : forall (T t : term) (n : nat),
   closed_t t = true ->
-  free_list_t (substitution_t T n t) = remove n (free_list_t T).
+  free_list_t (substitution_t T n t) = remove nat_eq_dec n (free_list_t T).
 Proof.
 intros. induction T; auto.
 - simpl. rewrite IHT1, IHT2.
-  rewrite remove_dups_order. rewrite remove_concat. auto.
+  rewrite remove_dups_order. rewrite remove_app. auto.
 - simpl. rewrite IHT1, IHT2.
-  rewrite remove_dups_order. rewrite remove_concat. auto.
+  rewrite remove_dups_order. rewrite remove_app. auto.
 - simpl. case_eq (nat_eqb n0 n); intros; auto.
-  apply closed_free_list_t, H.
+  + apply nat_eqb_eq in H0.
+    destruct H0.
+    case (nat_eq_dec n0 n0) as [_ | FAL].
+    * apply closed_free_list_t, H.
+    * contradict FAL.
+      reflexivity.
+  + case (nat_eq_dec n n0) as [FAL | _].
+    * destruct FAL.
+      rewrite nat_eqb_refl in H0.
+      inversion H0.
+    * reflexivity.
 Qed.
 
 Lemma subst_remove_a : forall (a : atomic_formula) (n : nat) (t : term),
   closed_t t = true ->
-  free_list_a (substitution_a a n t) = remove n (free_list_a a).
+  free_list_a (substitution_a a n t) = remove nat_eq_dec n (free_list_a a).
 Proof.
 intros. destruct a as [t1 t2]. simpl.
 rewrite (subst_remove_t t1 _ _ H). rewrite (subst_remove_t t2 _ _ H).
-rewrite remove_dups_order. rewrite remove_concat. auto.
+rewrite remove_dups_order. rewrite remove_app. auto.
 Qed.
 
 Lemma subst_remove : forall (A : formula) (n : nat) (t : term),
   closed_t t = true ->
-  free_list (substitution A n t) = remove n (free_list A).
+  free_list (substitution A n t) = remove nat_eq_dec n (free_list A).
 Proof.
 intros. induction A; auto; simpl.
 - rewrite (subst_remove_a _ _ _ H). auto.
 - rewrite IHA1, IHA2.
-  rewrite remove_dups_order. rewrite remove_concat. auto.
+  rewrite remove_dups_order. rewrite remove_app. auto.
 - destruct (nat_eqb n0 n) eqn:Hn.
-  + rewrite (nat_eqb_eq _ _ Hn). rewrite remove_idem. auto.
-  + simpl. rewrite IHA. apply remove_comm.
+  + rewrite (nat_eqb_eq _ _ Hn). rewrite remove_remove_eq. auto.
+  + simpl. rewrite IHA. apply remove_remove_comm.
 Qed.
 
 Lemma one_var_free_lemma_a : forall (a : atomic_formula) (n : nat) (t : term),
@@ -841,7 +860,9 @@ Proof.
 intros.
 apply free_list_closed_a. 
 rewrite (subst_remove_a _ _ _ H).
-rewrite H0. simpl. rewrite nat_eqb_refl. auto.
+rewrite H0. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+contradict FAL.
+reflexivity.
 Qed.
 
 Lemma one_var_free_lemma : forall (A : formula) (n : nat) (t : term),
@@ -852,7 +873,9 @@ Proof.
 intros.
 apply free_list_closed.
 rewrite (subst_remove _ _ _ H).
-rewrite H0. simpl. rewrite nat_eqb_refl. auto.
+rewrite H0. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+contradict FAL.
+reflexivity.
 Qed.
 
 Lemma subst_one_var_free : forall (A : formula) (n : nat) (t : term),
@@ -1002,7 +1025,9 @@ intros.
 destruct (closed_univ B n H).
 - rewrite (closed_subst_eq _ _ _ H1). apply H1.
 - apply free_list_closed. rewrite (subst_remove B n t H0).
-  rewrite H1. simpl. rewrite nat_eqb_refl. auto.
+  rewrite H1. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+  contradict FAL.
+  reflexivity.
 Qed.
 
 
@@ -1090,8 +1115,10 @@ Proof.
 intros. simpl in H.
 destruct (nat_eqb m n) eqn:Hm; auto.
 apply nat_eqb_eq in Hm. rewrite Hm in H.
-pose proof (remove_idem (free_list B) n).
-rewrite H in H0. simpl in H0. rewrite nat_eqb_refl in H0. inversion H0.
+pose proof (remove_remove_eq nat_eq_dec (free_list B) n).
+rewrite H in H0. simpl in H0. case (nat_eq_dec n n) as [_ | FAL]. inversion H0.
+contradict FAL.
+reflexivity.
 Qed.
 
 Lemma free_list_univ_sub :
@@ -1123,20 +1150,24 @@ intros n t. induction t; intros.
 - inversion H.
 - simpl in *. apply IHt. auto.
 - simpl in *. case (free_list_t t1) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto.
   + case (free_list_t t2) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto.
     * destruct X,X1. destruct (remove_dup_single_left _ _ _ H); destruct (remove_dup_single_right _ _ _ H). 
-      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1,IHt2; auto. simpl. rewrite nat_eqb_refl. auto.
+      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1,IHt2; auto. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+          contradict FAL.
+          reflexivity.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1; auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H1)). rewrite H1. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt2; auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H0)). rewrite H0. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite H0,H1 in H. inversion H.
 - simpl in *. case (free_list_t t1) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto.
   + case (free_list_t t2) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto.
     * destruct X,X1. destruct (remove_dup_single_left _ _ _ H); destruct (remove_dup_single_right _ _ _ H). 
-      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1,IHt2; auto. simpl. rewrite nat_eqb_refl. auto.
+      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1,IHt2; auto. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+          contradict FAL.
+          reflexivity.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt1; auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H1)). rewrite H1. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite IHt2; auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H0)). rewrite H0. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite H0,H1 in H. inversion H.
@@ -1149,18 +1180,18 @@ intros n t. induction t; intros.
 - inversion H.
 - simpl in *. apply IHt. auto.
 - simpl in *. case (free_list_t t1) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto. rewrite <- free_list_remove_dups_idem_t. auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto. rewrite <- free_list_remove_dups_idem_t. auto.
   + case (free_list_t t2) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto. rewrite concat_empty_right. rewrite <- free_list_remove_dups_idem_t. auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto. rewrite app_nil_r. rewrite <- free_list_remove_dups_idem_t. auto.
     * destruct X,X1. case (member n (free_list_t t1)) eqn:X; destruct (member n (free_list_t t2)) eqn:X1. 
       --  rewrite IHt1,IHt2; auto.
       --  rewrite IHt1; auto. rewrite closed_subst_eq_aux_t; auto.
       --  rewrite IHt2; auto. rewrite closed_subst_eq_aux_t; auto.
       --  apply member_remove_dups_true in H. destruct (member_concat' _ _ _ H). rewrite H0 in X. inversion X. rewrite H0 in X1. inversion X1.
 - simpl in *. case (free_list_t t1) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto. rewrite <- free_list_remove_dups_idem_t. auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. simpl. case (free_list_t t2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt2; auto. rewrite <- free_list_remove_dups_idem_t. auto.
   + case (free_list_t t2) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto. rewrite concat_empty_right. rewrite <- free_list_remove_dups_idem_t. auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. rewrite IHt1; auto. rewrite app_nil_r. rewrite <- free_list_remove_dups_idem_t. auto.
     * destruct X,X1. case (member n (free_list_t t1)) eqn:X; destruct (member n (free_list_t t2)) eqn:X1. 
       --  rewrite IHt1,IHt2; auto.
       --  rewrite IHt1; auto. rewrite closed_subst_eq_aux_t; auto.
@@ -1173,9 +1204,9 @@ Lemma free_list_sub_self : forall (A : formula) (n : nat) (t : term), member n (
 Proof.
 intros. induction A.
 - destruct a. simpl in *. case (free_list_t t0) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. case (free_list_t t1) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. simpl. repeat rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t. auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. case (free_list_t t1) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. simpl. repeat rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t. auto.
   + case (free_list_t t1) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite concat_empty_right. repeat rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t. auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite app_nil_r. repeat rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t. auto.
     * destruct X,X1. case (member n (free_list_t t0)) eqn:X; destruct (member n (free_list_t t1)) eqn:X1. 
       --  rewrite free_list_sub_sef_t,free_list_sub_sef_t; auto.
       --  rewrite free_list_sub_sef_t; auto. rewrite closed_subst_eq_aux_t; auto.
@@ -1183,9 +1214,9 @@ intros. induction A.
       --  apply member_remove_dups_true in H. destruct (member_concat' _ _ _ H). rewrite H0 in X. inversion X. rewrite H0 in X1. inversion X1.
 - simpl. apply IHA. auto.
 - simpl in *. case (free_list A1) eqn:X.
-+ rewrite (closed_subst_eq _ _ _ (free_list_closed _ X)). rewrite X. case (free_list A2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem in H. simpl. repeat rewrite <- free_list_remove_dups_idem. apply IHA2. auto.
++ rewrite (closed_subst_eq _ _ _ (free_list_closed _ X)). rewrite X. case (free_list A2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem in H. simpl. repeat rewrite <- free_list_remove_dups_idem. apply IHA2. auto.
 + case (free_list A2) eqn:X1.
-  * rewrite (closed_subst_eq _ _ _ (free_list_closed _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem in H. rewrite concat_empty_right. repeat rewrite <- free_list_remove_dups_idem. apply IHA1. auto.
+  * rewrite (closed_subst_eq _ _ _ (free_list_closed _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem in H. rewrite app_nil_r. repeat rewrite <- free_list_remove_dups_idem. apply IHA1. auto.
   * destruct X,X1. case (member n (free_list A1)) eqn:X; destruct (member n (free_list A2)) eqn:X1. 
       --  rewrite IHA1,IHA2; auto.
       --  rewrite IHA1; auto. rewrite closed_subst_eq_aux; auto.
@@ -1198,21 +1229,25 @@ Lemma free_list_sub_self_eq : forall (A : formula) (n : nat) (t : term), free_li
 Proof.
 intros. induction A.
 - destruct a. simpl in *. case (free_list_t t0) eqn:X.
-  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. case (free_list_t t1) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. simpl. rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t_eq. auto.
+  + rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X)). rewrite X. case (free_list_t t1) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem_t in H. simpl. rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t_eq. auto.
   + case (free_list_t t1) eqn:X1.
-    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t_eq. auto.
+    * rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem_t in H. rewrite <- free_list_remove_dups_idem_t. apply free_list_sub_sef_t_eq. auto.
     * destruct X,X1. destruct (remove_dup_single_left _ _ _ H); destruct (remove_dup_single_right _ _ _ H). 
-      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. repeat rewrite free_list_sub_sef_t_eq; auto. simpl. rewrite nat_eqb_refl. auto.
+      --  rewrite <- free_list_remove_dups_idem_t in H0,H1. repeat rewrite free_list_sub_sef_t_eq; auto. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+          contradict FAL.
+          reflexivity.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite free_list_sub_sef_t_eq; auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H1)). rewrite H1. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite (free_list_sub_sef_t_eq _ t1); auto. rewrite (closed_subst_eq_t _ _ _ (free_list_closed_t _ H0)). rewrite H0. auto.
       --  rewrite <- free_list_remove_dups_idem_t in H0,H1. rewrite H0,H1 in H. inversion H.
 - simpl. apply IHA. auto.
 - simpl in *. case (free_list A1) eqn:X.
-+ rewrite (closed_subst_eq _ _ _ (free_list_closed _ X)). rewrite X. case (free_list A2) eqn:X1. inversion H. unfold concat in H. destruct X1. rewrite <- free_list_remove_dups_idem in H. simpl. rewrite <- free_list_remove_dups_idem. apply IHA2. auto.
++ rewrite (closed_subst_eq _ _ _ (free_list_closed _ X)). rewrite X. case (free_list A2) eqn:X1. inversion H. rewrite app_nil_l in H. destruct X1. rewrite <- free_list_remove_dups_idem in H. simpl. rewrite <- free_list_remove_dups_idem. apply IHA2. auto.
 + case (free_list A2) eqn:X1.
-  * rewrite (closed_subst_eq _ _ _ (free_list_closed _ X1)). rewrite X1. destruct X. rewrite concat_empty_right in *. rewrite <- free_list_remove_dups_idem in H. rewrite <- free_list_remove_dups_idem. apply IHA1. auto.
+  * rewrite (closed_subst_eq _ _ _ (free_list_closed _ X1)). rewrite X1. destruct X. rewrite app_nil_r in *. rewrite <- free_list_remove_dups_idem in H. rewrite <- free_list_remove_dups_idem. apply IHA1. auto.
   * destruct X,X1. destruct (remove_dup_single_left _ _ _ H); destruct (remove_dup_single_right _ _ _ H). 
-    --  rewrite <- free_list_remove_dups_idem in H0,H1. rewrite IHA1,IHA2; auto. simpl. rewrite nat_eqb_refl. auto.
+    --  rewrite <- free_list_remove_dups_idem in H0,H1. rewrite IHA1,IHA2; auto. simpl. case (nat_eq_dec n n) as [_ | FAL]. auto.
+        contradict FAL.
+        reflexivity.
     --  rewrite <- free_list_remove_dups_idem in H0,H1. rewrite IHA1; auto. rewrite (closed_subst_eq _ _ _ (free_list_closed _ H1)). rewrite H1. auto.
     --  rewrite <- free_list_remove_dups_idem in H0,H1. rewrite IHA2; auto. rewrite (closed_subst_eq _ _ _ (free_list_closed _ H0)). rewrite H0. auto.
     --  rewrite <- free_list_remove_dups_idem in H0,H1. rewrite H0,H1 in H. inversion H.
@@ -1272,18 +1307,19 @@ intros A [c Hc] n m L. case (nat_eqb m n) eqn:X.
 - simpl. rewrite substitution_order; auto.
 Qed.
 
-Lemma closure_type_concat_symm : forall (L1 L2 : list nat) (A : formula) (c : c_term), closure_type A c (concat L1 L2) = closure_type A c (concat L2 L1).
+Lemma closure_type_concat_symm : forall (L1 L2 : list nat) (A : formula) (c : c_term), closure_type A c (L1 ++ L2) = closure_type A c (L2 ++ L1).
 Proof.
 induction L1.
-- intros. simpl. rewrite concat_empty_right. auto.
+- intros. simpl. rewrite app_nil_r. auto.
 - intros L2. simpl. induction L2; intros A [c Hc].
-  + simpl. rewrite concat_empty_right. auto.
-  + rewrite IHL1; auto. simpl. rewrite <- IHL2; auto. rewrite IHL1; auto. case (nat_eqb x0 x) eqn:X.
+  + simpl. rewrite app_nil_r. auto.
+  + rewrite IHL1; auto. simpl. rewrite <- IHL2; auto. rewrite IHL1; auto. simpl.
+    case (nat_eqb a0 a) eqn:X.
    * apply nat_eqb_eq in X. destruct X. auto.
    * rewrite substitution_order; auto.
 Qed.
 
-Lemma closure_type_concat : forall (L1 L2 : list nat) (A : formula) (c : c_term), closure_type A c (concat L1 L2) = closure_type (closure_type A c L1) c L2.
+Lemma closure_type_concat : forall (L1 L2 : list nat) (A : formula) (c : c_term), closure_type A c (L1 ++ L2) = closure_type (closure_type A c L1) c L2.
 Proof.
 intros L1. induction L1. auto. intros. simpl. rewrite IHL1; auto.
 Qed.
@@ -1293,26 +1329,77 @@ Lemma closure_type_not_used : forall (L : list nat) (A : formula) (c : c_term) (
 Proof.
 intros L. induction L.
 - intros. simpl. apply closed_subst_eq_aux. auto.
-- intros A [ Hc] n LIST. simpl. case (nat_eqb x n) eqn:X.
+- intros A [ Hc] n LIST. simpl. case (nat_eqb a n) eqn:X.
   + apply nat_eqb_eq in X. destruct X. repeat rewrite (closed_subst_eq_aux _ _ _ LIST). auto.
   + rewrite substitution_order; auto. rewrite closed_subst_eq_aux. auto. rewrite subst_remove; auto. apply remove_member_false. auto.
 Qed.
 
-Lemma closure_type_not_used_any : forall (L1 L2 : list nat) (A : formula) (c : c_term) (n : nat), member n (free_list A) = false -> closure_type A c (concat L1 (n :: L2)) = closure_type A c (concat L1 L2).
+Lemma closure_type_not_used_any : forall (L1 L2 : list nat) (A : formula) (c : c_term) (n : nat), member n (free_list A) = false -> closure_type A c (L1 ++ (n :: L2)) = closure_type A c (L1 ++ L2).
 Proof.
 intros. rewrite (closure_type_concat_symm _ L2); auto. rewrite closure_type_concat_symm; auto. apply closure_type_not_used; auto.
 Qed.
 
-Lemma closure_type_not_used_remove : forall (L : list nat) (A : formula) (c : c_term) (n : nat), member n (free_list A) = false -> closure_type A c (remove n L) = closure_type A c L.
+Lemma closure_type_not_used_remove : forall (L : list nat) (A : formula) (c : c_term) (n : nat), member n (free_list A) = false -> closure_type A c (remove nat_eq_dec n L) = closure_type A c L.
 Proof.
-intros L. induction L. auto. intros A [c Hc] n LIST. simpl. case (nat_eqb x n) eqn:X.
-- apply nat_eqb_eq in X. destruct X. rewrite IHL; auto. rewrite closed_subst_eq_aux; auto.
+intros L. induction L. auto. intros A [c Hc] n LIST. simpl. case (nat_eq_dec n a) as [EQ | NE].
+- destruct EQ. rewrite IHL; auto. rewrite closed_subst_eq_aux; auto.
 - simpl. rewrite IHL; auto. rewrite subst_remove; auto. apply remove_member_false. auto.
 Qed.
 
-Lemma closure_type_dupes : forall (L : list nat) (A : formula) (c : c_term), closure_type A c L = closure_type A c (remove_dups L).
+
+Lemma closure_type_sets : forall (L1 L2 : list nat) (A : formula) (c : c_term), (forall (m : nat), In m L1 <-> In m L2) -> closure_type A c L1 = closure_type A c L2.
 Proof.
-intros L. induction L. auto. intros A [c Hc]. simpl. rewrite IHL; auto. rewrite closure_type_not_used_remove; auto. rewrite subst_remove; auto. apply remove_not_member.
+induction L1 as [L1 IND] using (induction_ltof1 _ (@length _)); unfold ltof in IND.
+intros L2 A c SETEQ.
+destruct L1.
+- destruct L2.
+  + reflexivity.
+  + destruct (proj2 (SETEQ n)).
+    left.
+    reflexivity.
+- pose proof (in_split _ _ ((proj1 (SETEQ _)) (or_introl (eq_refl _)))) as [L1' [L2' EQ]].
+  rewrite EQ.
+  rewrite closure_type_concat_symm.
+  rewrite <- app_comm_cons.
+  unfold closure_type; fold closure_type.
+  rewrite <- (closure_type_not_used_remove _ _ _ n).
+  rewrite <- (closure_type_not_used_remove (L2' ++ L1') _ _ n).
+  apply IND.
+  + pose proof (remove_length_le nat_eq_dec L1 n) as IE.
+    unfold length; fold (@length nat).
+    lia.
+  + intros m.
+    split;
+    intros IN;
+    apply in_remove in IN as [IN NE];
+    apply (in_in_remove _ _ NE).
+    * pose proof (proj1 (SETEQ m) (or_intror IN)) as IN'.
+      rewrite EQ, in_app_iff, or_comm, <- in_app_iff, <- app_comm_cons in IN'.
+      destruct IN' as [EQ' | IN'].
+      --  destruct EQ'.
+          contradict NE.
+          reflexivity.
+      --  apply IN'.          
+    * pose proof (in_cons n _ _ IN) as IN'.
+      rewrite app_comm_cons, in_app_iff, or_comm, <- in_app_iff, <- EQ in IN'.
+      destruct (proj2 (SETEQ m) IN') as [EQ' | IN''].
+      --  destruct EQ'.
+          contradict NE.
+          reflexivity.
+      --  apply IN''.
+  + destruct c as [c Hc].
+    rewrite subst_remove; auto.
+    apply remove_not_member.
+  + destruct c as [c Hc].
+    rewrite subst_remove; auto.
+    apply remove_not_member.
+Qed.
+
+Lemma closure_type_dupes : forall (L : list nat) (A : formula) (c : c_term), closure_type A c L = closure_type A c (nodup nat_eq_dec L).
+Proof.
+intros.
+symmetry.
+apply closure_type_sets, nodup_In.
 Qed.
 
 Lemma closure_lor : forall A B c, closure (lor A B) c = lor (closure A c) (closure B c).
@@ -1328,11 +1415,20 @@ Proof.
 intros L. induction L. auto. intros. simpl. rewrite IHL; auto.
 Qed.
 
-Lemma closure_univ_list : forall L A c n, closure_type (univ n A) c L = univ n (closure_type A c (remove n L)).
+Lemma closure_univ_list : forall L A c n, closure_type (univ n A) c L = univ n (closure_type A c (remove nat_eq_dec n L)).
 Proof.
-intros L. induction L. auto. intros. simpl. case (nat_eqb n x) eqn:X.
-- rewrite nat_eqb_symm. rewrite X. auto.
-- rewrite IHL; auto. rewrite nat_eqb_symm. rewrite X. auto.
+intros L. induction L. auto. intros. simpl. case (nat_eqb n a) eqn:X.
+- case nat_eq_dec as [EQ | NE].
+  + auto.
+  + apply nat_eqb_eq in X.
+    destruct X.
+    contradict NE.
+    reflexivity.
+- case nat_eq_dec as [EQ | NE].
+  + destruct EQ.
+    rewrite nat_eqb_refl in X.
+    inversion X.
+  + rewrite IHL; auto.
 Qed.
 
 Lemma closure_neg : forall A c, closure (neg A) c = neg (closure A c).
@@ -1342,7 +1438,7 @@ Qed.
 
 Lemma closure_univ : forall A c n, closure (univ n A) c = univ n (closure_type A c (free_list (univ n A))).
 Proof.
-intros. unfold closure. simpl. rewrite <- remove_idem at 2. apply closure_univ_list.
+intros. unfold closure. simpl. rewrite <- remove_remove_eq at 2. apply closure_univ_list.
 Qed.
 
 Lemma num_conn_closure_eq_list : forall (L : list nat) (A : formula) (c : c_term), num_conn A = num_conn (closure_type A c L).
@@ -1355,11 +1451,17 @@ Proof.
 intros. apply num_conn_closure_eq_list.
 Qed.
 
-Lemma closure_subst_list :  forall (L : list nat) (A : formula) (c1 c2 : c_term) (n : nat), (substitution (closure_type A c1 (remove n L)) n (projT1 c2)) = (closure_type (substitution A n (projT1 c2)) c1 L).
+Lemma closure_subst_list :  forall (L : list nat) (A : formula) (c1 c2 : c_term) (n : nat), (substitution (closure_type A c1 (remove nat_eq_dec n L)) n (projT1 c2)) = (closure_type (substitution A n (projT1 c2)) c1 L).
 Proof.
-intros L. induction L. auto. intros A c1 c2 n. simpl. case (nat_eqb x n) eqn:X.
-- apply nat_eqb_eq in X. destruct X. rewrite IHL; auto. rewrite (closed_subst_eq_aux (substitution A x (projT1 c2))). auto. rewrite subst_remove; auto. apply remove_not_member. destruct c2 as [c2 Hc2]. auto.
-- simpl. rewrite IHL; auto. rewrite nat_eqb_symm in X. rewrite substitution_order; destruct c1 as [c1 Hc1]; destruct c2 as [c2 Hc2]; auto. 
+intros L. induction L. auto. intros A c1 c2 n. simpl. case (nat_eq_dec n a) as [EQ | NE].
+- destruct EQ. rewrite IHL; auto. rewrite (closed_subst_eq_aux (substitution A n (projT1 c2))). auto. rewrite subst_remove; auto. apply remove_not_member. destruct c2 as [c2 Hc2]. auto.
+- simpl. rewrite IHL; auto. rewrite substitution_order; destruct c1 as [c1 Hc1]; destruct c2 as [c2 Hc2]; auto.
+  case (nat_eqb n a) eqn:EQ.
+  + apply nat_eqb_eq in EQ.
+    destruct EQ.
+    contradict NE.
+    reflexivity.
+  + reflexivity.
 Qed.
 
 Lemma closure_subst :  forall (A : formula) (c1 c2 : c_term) (n : nat), (substitution (closure_type A c1 (free_list (univ n A))) n (projT1 c2)) = (closure (substitution A n (projT1 c2)) c1).
@@ -1386,18 +1488,18 @@ Proof.
 intros L. induction L; simpl; auto.
 Qed.
 
-Lemma closure_type_concat_t : forall (L1 L2 : list nat) (t : term) (c : c_term), closure_type_t t c (concat L1 L2) = closure_type_t (closure_type_t t c L1) c L2.
+Lemma closure_type_concat_t : forall (L1 L2 : list nat) (t : term) (c : c_term), closure_type_t t c (L1 ++ L2) = closure_type_t (closure_type_t t c L1) c L2.
 Proof.
 intros L1. induction L1. auto. intros. simpl. rewrite IHL1; auto.
 Qed.
 
-Lemma closure_type_concat_symm_t : forall (L1 L2 : list nat) (t : term) (c : c_term), closure_type_t t c (concat L1 L2) = closure_type_t t c (concat L2 L1).
+Lemma closure_type_concat_symm_t : forall (L1 L2 : list nat) (t : term) (c : c_term), closure_type_t t c (L1 ++ L2) = closure_type_t t c (L2 ++ L1).
 Proof.
 intros L1. induction L1.
-- intros. simpl. rewrite concat_empty_right. auto.
+- intros. simpl. rewrite app_nil_r. auto.
 - intros L2. simpl. induction L2; intros.
-  + simpl. rewrite concat_empty_right. auto.
-  + rewrite IHL1; auto. simpl. rewrite <- IHL2; auto. rewrite IHL1; auto. case (nat_eqb x0 x) eqn:X.
+  + simpl. rewrite app_nil_r. auto.
+  + rewrite IHL1; auto. simpl. rewrite <- IHL2; auto. rewrite IHL1; auto. case (nat_eqb a0 a) eqn:X.
    * apply nat_eqb_eq in X. destruct X. auto.
    * rewrite substitution_order_t; destruct c; auto.
 Qed.
@@ -1410,16 +1512,66 @@ Lemma closure_closed_list_id_t : forall (L : list nat) (t : term) (c : c_term), 
 intros L. induction L; auto. intros. simpl. rewrite closed_subst_eq_t; auto. 
 Qed.
 
-Lemma closure_type_not_used_remove_t : forall (L : list nat) (t : term) (c : c_term) (n : nat), member n (free_list_t t) = false -> closure_type_t t c (remove n L) = closure_type_t t c L.
+Lemma closure_type_not_used_remove_t : forall (L : list nat) (t : term) (c : c_term) (n : nat), member n (free_list_t t) = false -> closure_type_t t c (remove nat_eq_dec n L) = closure_type_t t c L.
 Proof.
-intros L. induction L. auto. intros. simpl. case (nat_eqb x n) eqn:X.
-- apply nat_eqb_eq in X. destruct X. rewrite IHL; auto. rewrite closed_subst_eq_aux_t; auto.
+intros L. induction L. auto. intros. simpl. case (nat_eq_dec n a) as [EQ | NE].
+- destruct EQ. rewrite IHL; auto. rewrite closed_subst_eq_aux_t; auto.
 - simpl. rewrite IHL; auto. rewrite subst_remove_t; auto. apply remove_member_false. auto. destruct c; auto.
 Qed.
 
-Lemma closure_type_dupes_t : forall (L : list nat) (t : term) (c : c_term), closure_type_t t c L = closure_type_t t c (remove_dups L).
+Lemma closure_type_sets_t : forall (L1 L2 : list nat) (t : term) (c : c_term), (forall (m : nat), In m L1 <-> In m L2) -> closure_type_t t c L1 = closure_type_t t c L2.
 Proof.
-intros L. induction L. auto. intros. simpl. rewrite IHL; auto. rewrite closure_type_not_used_remove_t; auto. rewrite subst_remove_t; auto. apply remove_not_member. destruct c; auto.
+induction L1 as [L1 IND] using (induction_ltof1 _ (@length _)); unfold ltof in IND.
+intros L2 t c SETEQ.
+destruct L1.
+- destruct L2.
+  + reflexivity.
+  + destruct (proj2 (SETEQ n)).
+    left.
+    reflexivity.
+- pose proof (in_split _ _ ((proj1 (SETEQ _)) (or_introl (eq_refl _)))) as [L1' [L2' EQ]].
+  rewrite EQ.
+  rewrite closure_type_concat_symm_t.
+  rewrite <- app_comm_cons.
+  unfold closure_type_t; fold closure_type_t.
+  rewrite <- (closure_type_not_used_remove_t _ _ _ n).
+  rewrite <- (closure_type_not_used_remove_t (L2' ++ L1') _ _ n).
+  apply IND.
+  + pose proof (remove_length_le nat_eq_dec L1 n) as IE.
+    unfold length; fold (@length nat).
+    lia.
+  + intros m.
+    split;
+    intros IN;
+    apply in_remove in IN as [IN NE];
+    apply (in_in_remove _ _ NE).
+    * pose proof (proj1 (SETEQ m) (or_intror IN)) as IN'.
+      rewrite EQ, in_app_iff, or_comm, <- in_app_iff, <- app_comm_cons in IN'.
+      destruct IN' as [EQ' | IN'].
+      --  destruct EQ'.
+          contradict NE.
+          reflexivity.
+      --  apply IN'.          
+    * pose proof (in_cons n _ _ IN) as IN'.
+      rewrite app_comm_cons, in_app_iff, or_comm, <- in_app_iff, <- EQ in IN'.
+      destruct (proj2 (SETEQ m) IN') as [EQ' | IN''].
+      --  destruct EQ'.
+          contradict NE.
+          reflexivity.
+      --  apply IN''.
+  + destruct c as [c Hc].
+    rewrite subst_remove_t; auto.
+    apply remove_not_member.
+  + destruct c as [c Hc].
+    rewrite subst_remove_t; auto.
+    apply remove_not_member.
+Qed.
+
+Lemma closure_type_dupes_t : forall (L : list nat) (t : term) (c : c_term), closure_type_t t c L = closure_type_t t c (nodup nat_eq_dec L).
+Proof.
+intros.
+symmetry.
+apply closure_type_sets_t, nodup_In.
 Qed.
 
 Lemma closure_type_equiv : forall t1 t2 c, closure (atom (equ t1 t2)) c = atom (equ (closure_t t1 c) (closure_t t2 c)).
@@ -1514,9 +1666,24 @@ intros B m n s t Hs Ht Hmn. induction B; simpl.
     rewrite IHB. auto.
 Qed.
 
-Lemma closure_type_sub_remove_list : forall (L : list nat) (A : formula) (c : c_term) (n : nat), (closure_type (substitution A n (succ (var n))) c (remove n L)) = substitution (closure_type A c (remove n L)) n (succ (var n)).
+Lemma closure_type_sub_remove_list : forall (L : list nat) (A : formula) (c : c_term) (n : nat), (closure_type (substitution A n (succ (var n))) c (remove nat_eq_dec n L)) = substitution (closure_type A c (remove nat_eq_dec n L)) n (succ (var n)).
 Proof.
-intros L. induction L. auto. intros. simpl. case (nat_eqb x n) eqn:X. rewrite IHL; auto. simpl. rewrite <- IHL; auto. rewrite weak_substitution_order; simpl; auto. rewrite nat_eqb_symm in X. rewrite X. auto. rewrite closed_free_list_t; auto. destruct c. auto.
+intros L. induction L. auto. intros. simpl. case (nat_eq_dec n a) as [EQ | NE].
+- destruct EQ. rewrite IHL; auto.
+- simpl. rewrite <- IHL; auto. rewrite weak_substitution_order; simpl; auto.
+  + case (nat_eqb n a) eqn:EQ.
+    * apply nat_eqb_eq in EQ.
+      destruct EQ.
+      contradict NE.
+      reflexivity.
+    * reflexivity.
+  + rewrite closed_free_list_t; auto. destruct c. auto.
+  + case (nat_eqb a n) eqn:EQ.
+    * apply nat_eqb_eq in EQ.
+      destruct EQ.
+      contradict NE.
+      reflexivity.
+    * reflexivity.
 Qed.
 
 Lemma closure_type_sub_remove : forall (A : formula) (c : c_term) (n : nat), (closure_type (substitution A n (succ (var n))) c (free_list (univ n (lor (neg A) (substitution A n (succ (var n))))))) = substitution (closure_type A c (free_list (univ n A))) n (succ (var n)).
@@ -1526,14 +1693,14 @@ intros A [c Hc] n. case (member n (free_list A)) eqn:X.
 - simpl. rewrite closed_subst_eq_aux; auto. rewrite remove_dups_concat_self. rewrite <- free_list_remove_dups_idem. rewrite <- closure_type_sub_remove_list; auto. rewrite closed_subst_eq_aux; auto.
 Qed.
 
-Lemma closure_type_list_remove : forall (L : list nat) (A : formula) (c : c_term) (n : nat), L = free_list A -> free_list (closure_type A c (remove n L)) = [n] \/ free_list (closure_type A c (remove n L)) = [].
+Lemma closure_type_list_remove : forall (L : list nat) (A : formula) (c : c_term) (n : nat), L = free_list A -> free_list (closure_type A c (remove nat_eq_dec n L)) = [n] \/ free_list (closure_type A c (remove nat_eq_dec n L)) = [].
 Proof.
-intros L. induction L. auto. intros. simpl. assert (L = free_list (substitution A x (projT1 c))) as Y. rewrite subst_remove; auto. rewrite <- H. rewrite remove_dups_idem_remove_triv; auto. rewrite H. rewrite <- free_list_remove_dups_idem. auto. destruct c. auto. case (nat_eqb x n) eqn:X. 
-- apply nat_eqb_eq in X. destruct X. destruct (IHL (substitution A x (projT1 c)) c x Y).
+intros L. induction L. auto. intros. simpl. assert (L = free_list (substitution A a (projT1 c))) as Y. rewrite subst_remove; auto. rewrite <- H. rewrite remove_dups_idem_remove_triv; auto. rewrite H. rewrite <- free_list_remove_dups_idem. auto. destruct c. auto. case (nat_eq_dec n a) as [EQ | NE]. 
+- destruct EQ. destruct (IHL (substitution A n (projT1 c)) c n Y).
   + rewrite closure_type_not_used_remove in H0; auto.
-    * rewrite <- closure_subst_list in H0; auto. rewrite subst_remove in H0; auto. pose proof (remove_not_member (free_list (closure_type A c (remove x L))) x). rewrite H0 in H1. simpl in H1. rewrite nat_eqb_refl in H1. inversion H1. destruct c. auto.
+    * rewrite <- closure_subst_list in H0; auto. rewrite subst_remove in H0; auto. pose proof (remove_not_member (free_list (closure_type A c (remove nat_eq_dec n L))) n). rewrite H0 in H1. simpl in H1. rewrite nat_eqb_refl in H1. inversion H1. destruct c. auto.
     * rewrite subst_remove; auto. apply remove_not_member. destruct c. auto.
-  + rewrite <- closure_subst_list in H0; auto. rewrite subst_remove in H0; auto. rewrite remove_idem in H0. rewrite free_list_remove_dups_idem in H0. rewrite free_list_remove_dups_idem. destruct (remove_n_dups_empty _ _ H0); auto. destruct c; auto.
+  + rewrite <- closure_subst_list in H0; auto. rewrite subst_remove in H0; auto. rewrite remove_remove_eq in H0. rewrite free_list_remove_dups_idem in H0. rewrite free_list_remove_dups_idem. destruct (remove_n_dups_empty _ _ H0); auto. destruct c; auto.
 - simpl. apply IHL; auto. 
 Qed.
 
