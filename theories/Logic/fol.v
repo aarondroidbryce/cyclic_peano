@@ -317,6 +317,16 @@ try destruct (and_bool_prop _ _ EQ') as [EQ1 EQ2].
   reflexivity.
 Qed.
 
+Definition form_eq_dec : forall (a b : formula), {a = b} + {a <> b}.
+intros a b.
+case (form_eqb a b) eqn:EQ.
+- left. apply form_eqb_eq, EQ.
+- right. intros FAL.
+  destruct FAL.
+  rewrite form_eqb_refl in EQ.
+  inversion EQ.
+Qed.
+
 (*Properties of the evaluation function*)
 Lemma eval_succ_lemma :
     forall (t : term),

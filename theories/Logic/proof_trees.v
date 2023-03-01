@@ -3,8 +3,10 @@ From Cyclic_PA.Maths Require Import ordinals.
 From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
-From Cyclic_PA.Logic Require Import PA_omega.
+From Cyclic_PA.Logic Require Import PA_cyclic.
 Require Import Lia.
+Require Import List.
+Import ListNotations.
 
 Inductive ptree : Type :=
 | deg_up : nat -> ptree -> ptree
@@ -45,10 +47,10 @@ Inductive ptree : Type :=
 | quantification_ad :
     formula -> formula -> nat -> c_term -> nat -> ord -> ptree -> ptree
 
-| w_rule_a : formula -> nat -> nat -> ord -> (c_term -> ptree) -> ptree
+| loop_a : formula -> nat -> nat -> ord -> ptree -> ptree
 
-| w_rule_ad :
-    formula -> formula -> nat -> nat -> ord -> (c_term -> ptree) -> ptree
+| loop_ad :
+    formula -> formula -> nat -> nat -> ord -> ptree -> ptree
 
 | cut_ca :
     formula -> formula ->  nat -> nat -> ord -> ord ->
@@ -96,9 +98,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => lor (neg (univ n A)) D
 
-| w_rule_a A n d alpha g => univ n A
+| loop_a A n d alpha g => univ n A
 
-| w_rule_ad A D n d alpha g => lor (univ n A) D
+| loop_ad A D n d alpha g => lor (univ n A) D
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => C
 
@@ -142,9 +144,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => d
 
-| w_rule_a A n d alpha g => d
+| loop_a A n d alpha g => d
 
-| w_rule_ad A D n d alpha g => d
+| loop_ad A D n d alpha g => d
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => max (max d1 d2) (num_conn (neg A))
 
@@ -187,9 +189,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => ord_succ alpha
 
-| w_rule_a A n d alpha g => ord_succ alpha
+| loop_a A n d alpha g => (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero))
 
-| w_rule_ad A D n d alpha g => ord_succ alpha
+| loop_ad A D n d alpha g => (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 
@@ -198,101 +200,152 @@ match P with
 | cut_cad E A D d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 end.
 
-Fixpoint valid (P : ptree) : Type :=
+Fixpoint node_extract (P : ptree) : list formula :=
 match P with
-| deg_up d P' => (d > ptree_deg P') * (valid P')
+| deg_up d P' => node_extract P'
 
-| ord_up alpha P' => (ord_lt (ptree_ord P') alpha) * (valid P') * (nf alpha)
+| ord_up alpha P' => node_extract P'
 
-| node A => PA_omega_axiom A = true
+| node A => [A]
 
+| exchange_ab A B d alpha P' => node_extract P'
+
+| exchange_cab C A B d alpha P' => node_extract P'
+
+| exchange_abd A B D d alpha P' => node_extract P'
+
+| exchange_cabd C A B D d alpha P' => node_extract P'
+
+| contraction_a A d alpha P' => node_extract P'
+
+| contraction_ad A D d alpha P' => node_extract P'
+
+| weakening_ad A D d alpha P' => node_extract P'
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| negation_a A d alpha P' => node_extract P'
+
+| negation_ad A D d alpha P' => node_extract P'
+
+| quantification_a A n t d alpha P' => node_extract P'
+
+| quantification_ad A D n t d alpha P' => node_extract P'
+
+| loop_a A n d alpha P' => match in_dec form_eq_dec A (node_extract P'), count_occ form_eq_dec (node_extract P') A with
+    | left _, 0 => node_extract P'
+    | left _, (S n) => (repeat A n) ++ (remove form_eq_dec A (node_extract P'))
+    | right _, _ => node_extract P'
+    end
+
+| loop_ad A D n d alpha P' => match in_dec form_eq_dec A (node_extract P'), count_occ form_eq_dec (node_extract P') A with
+    | left _, 0 => node_extract P'
+    | left _, (S n) => (repeat A n) ++ (remove form_eq_dec A (node_extract P'))
+    | right _, _ => node_extract P'
+    end
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+end.
+
+Fixpoint struct_valid (P : ptree) : Type :=
+match P with
+| deg_up d P' => (d > ptree_deg P') * (struct_valid P')
+
+| ord_up alpha P' => (ord_lt (ptree_ord P') alpha) * (struct_valid P') * (nf alpha)
+
+| node A => (true = true)
 
 | exchange_ab A B d alpha P' =>
-    (ptree_formula P' = lor A B) * (valid P') *
+    (ptree_formula P' = lor A B) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | exchange_cab E A B d alpha P' =>
-    (ptree_formula P' = lor (lor E A) B) * (valid P') *
+    (ptree_formula P' = lor (lor E A) B) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | exchange_abd A B D d alpha P' =>
-    (ptree_formula P' = lor (lor A B) D) * (valid P') *
+    (ptree_formula P' = lor (lor A B) D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | exchange_cabd E A B D d alpha P' =>
-    (ptree_formula P' = lor (lor (lor E A) B) D) * (valid P') *
+    (ptree_formula P' = lor (lor (lor E A) B) D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | contraction_a A d alpha P' =>
-    (ptree_formula P' = lor A A) * (valid P') *
+    (ptree_formula P' = lor A A) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | contraction_ad A D d alpha P' =>
-    (ptree_formula P' = lor (lor A A) D) * (valid P') *
+    (ptree_formula P' = lor (lor A A) D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
-
 | weakening_ad A D d alpha P' =>
-    (ptree_formula P' = D) * (closed A = true) * (valid P') *
+    (ptree_formula P' = D) * (closed A = true) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = neg A) * (valid P1) *
-    (ptree_formula P2 = neg B) * (valid P2) *
+    (ptree_formula P1 = neg A) * (struct_valid P1) *
+    (ptree_formula P2 = neg B) * (struct_valid P2) *
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor (neg A) D) * (valid P1) *
-    (ptree_formula P2 = lor (neg B) D) * (valid P2) *
+    (ptree_formula P1 = lor (neg A) D) * (struct_valid P1) *
+    (ptree_formula P2 = lor (neg B) D) * (struct_valid P2) *
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | negation_a A d alpha P' =>
-    (ptree_formula P' = A) * (valid P') *
+    (ptree_formula P' = A) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | negation_ad A D d alpha P' =>
-    (ptree_formula P' = lor A D) * (valid P') *
+    (ptree_formula P' = lor A D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 
 | quantification_a A n t d alpha P' =>
-    (ptree_formula P' = neg (substitution A n (projT1 t))) * (valid P') *
+    (ptree_formula P' = neg (substitution A n (projT1 t))) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | quantification_ad A D n t d alpha P' =>
-    (ptree_formula P' = lor (neg (substitution A n (projT1 t))) D) * (valid P') *
+    (ptree_formula P' = lor (neg (substitution A n (projT1 t))) D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
-| w_rule_a A n d alpha g => (forall (t : c_term),
-    (ptree_formula (g t) = substitution A n (projT1 t)) *
-    (valid (g t)) * (d >= ptree_deg (g t)) * (alpha = ptree_ord (g t)))
+| loop_a A n d alpha P' =>
+    (ptree_formula P' = substitution A n (succ (var n))) * (count_occ form_eq_dec (node_extract P') A = 1) *
+    (struct_valid P') * (d >= ptree_deg P') * (alpha = ptree_ord P')
 
-| w_rule_ad A D n d alpha g => (forall (t : c_term),
-    (ptree_formula (g t) = lor (substitution A n (projT1 t)) D) *
-    (valid (g t)) * (d >= ptree_deg (g t)) * (alpha = ptree_ord (g t)))
-
+| loop_ad A D n d alpha P' =>
+    (ptree_formula P' = lor (substitution A n (succ (var n))) D) * (count_occ form_eq_dec (node_extract P') A = 1) *
+    (struct_valid P') * (d >= ptree_deg P') * (alpha = ptree_ord P')
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor E A) * (valid P1) *
-    (ptree_formula P2 = neg A) * (valid P2) *
+    (ptree_formula P1 = lor E A) * (struct_valid P1) *
+    (ptree_formula P2 = neg A) * (struct_valid P2) *
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | cut_ad A D d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = A) * (valid P1) *
-    (ptree_formula P2 = lor (neg A) D) * (valid P2) *
+    (ptree_formula P1 = A) * (struct_valid P1) *
+    (ptree_formula P2 = lor (neg A) D) * (struct_valid P2) *
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | cut_cad E A D d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor E A) * (valid P1) *
-    (ptree_formula P2 = lor (neg A) D) * (valid P2) *
+    (ptree_formula P1 = lor E A) * (struct_valid P1) *
+    (ptree_formula P2 = lor (neg A) D) * (struct_valid P2) *
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
-
 end.
+
+Definition valid (P : ptree) : Type := (struct_valid P) * (forall (A : formula), In A (node_extract P) -> PA_cyclic_axiom A = true).
 
 Definition P_proves (P : ptree) (A : formula) (d : nat) (alpha : ord) : Type :=
   (ptree_formula P = A) * (valid P) *
@@ -302,13 +355,16 @@ Definition provable (A : formula) (d : nat) (alpha : ord) : Type :=
   {P : ptree & P_proves P A d alpha}.
 
 Lemma provable_theorem : forall (A : formula) (d : nat) (alpha : ord),
-  PA_omega_theorem A d alpha -> provable A d alpha.
+  PA_cyclic_theorem A d alpha -> provable A d alpha.
 Proof.
-intros A d alpha T. unfold provable.
-induction T; try destruct IHT as [P [[[PF PV] PD] PO]].
+intros A d alpha T. apply true_theorem in T. unfold provable.
+induction T;
+try destruct IHT as [P [[[PF [PSV PA]] PD] PO]];
+try destruct IHT1 as [P1 [[[P1F [P1SV P1A]] P1D] P1H]];
+try destruct IHT2 as [P2 [[[P2F [P2SV P2A]] P2D] P2H]].
 - exists (deg_up d' P). repeat split; auto. lia.
 - exists (ord_up beta P). repeat split; auto. rewrite <- PO. auto.
-- exists (node A). repeat split. apply e. auto.
+- exists (node A). repeat split. intros A' IN. inversion IN. destruct H. apply e. inversion H. auto.
 - exists (exchange_ab A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_cab C A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_abd A B D (ptree_deg P) alpha P). repeat split; auto.
@@ -316,52 +372,43 @@ induction T; try destruct IHT as [P [[[PF PV] PD] PO]].
 - exists (contraction_a A (ptree_deg P) alpha P). repeat split; auto.
 - exists (contraction_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (weakening_ad A D (ptree_deg P) alpha P). repeat split; auto.
-- destruct IHT1 as [P1 [[[P1F P1V] P1D] P1H]].
-  destruct IHT2 as [P2 [[[P2F P2V] P2D] P2H]].
-  exists (demorgan_ab A B (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; auto. simpl. lia.
-- destruct IHT1 as [P1 [[[P1F P1V] P1D] P1H]].
-  destruct IHT2 as [P2 [[[P2F P2V] P2D] P2H]].
-  exists (demorgan_abd A B D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; auto. simpl. lia.
+- exists (demorgan_ab A B (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1A, IN1. apply P2A, IN2. lia.
+- exists (demorgan_abd A B D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1A, IN1. apply P2A, IN2. lia.
 - exists (negation_a A (ptree_deg P) alpha P). repeat split; auto.
 - exists (negation_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_a A n c (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_ad A D n c (ptree_deg P) alpha P). repeat split; auto.
-- exists (w_rule_a A n d alpha (fun c => projT1(X c))).
-  repeat split; try destruct (X t) as [P [[[HP1 HP2] HP3] HP4]]; auto.
-- unfold P_proves in X.
-  exists (w_rule_ad A D n d alpha (fun c => (projT1 (X c)))).
-  repeat split; try destruct (X t) as [P [[[HP1 HP2] HP3] HP4]]; auto.
-- destruct IHT1 as [P1 [[[P1F P1V] P1D] P1H]].
-  destruct IHT2 as [P2 [[[P2F P2V] P2D] P2H]].
-  exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; auto. simpl. lia.
-- destruct IHT1 as [P1 [[[P1F P1V] P1D] P1H]].
-  destruct IHT2 as [P2 [[[P2F P2V] P2D] P2H]].
-  exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; auto. simpl. lia.
-- destruct IHT1 as [P1 [[[P1F P1V] P1D] P1H]].
-  destruct IHT2 as [P2 [[[P2F P2V] P2D] P2H]].
-  exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; auto. simpl. lia.
-Qed.
-
-Lemma valid_w_rule_a :
-  forall (A : formula) (n d : nat) (alpha : ord) (g : c_term -> ptree),
-  valid (w_rule_a A n d alpha g) ->
-  (forall (t : c_term),
-    (ptree_formula (g t) = substitution A n (projT1 t)) *
-    valid (g t) * (d >= ptree_deg (g t)) * (alpha = ptree_ord (g t))).
-Proof.
-intros. destruct (X t) as [[[H1 H2] H3] H4]. fold valid in H2.
-repeat split; auto.
-Qed.
-
-Lemma valid_w_rule_ad :
-  forall (A D : formula) (n d : nat) (alpha : ord) (g : c_term -> ptree),
-  valid (w_rule_ad A D n d alpha g) ->
-  (forall (t : c_term),
-    (ptree_formula (g t) = lor (substitution A n (projT1 t)) D) *
-    valid (g t) * (d >= ptree_deg (g t)) * (alpha = ptree_ord (g t))).
-Proof.
-intros. destruct (X t) as [[[H1 H2] H3] H4]. fold valid in H2.
-repeat split; auto.
+- exists (loop_a A n d beta P2).
+  repeat split; simpl; auto.
+  + admit.
+  + intros B INB.
+    apply P2A.
+    case in_dec as [IN | NIN].
+    * destruct count_occ.
+      --  apply INB.
+      --  apply in_app_iff in INB as [EQ | INB].
+          ++  apply repeat_spec in EQ.
+              destruct EQ.
+              apply IN.
+          ++  apply (proj1 (in_remove _ _ _ _ INB)).
+    * apply INB.
+- exists (loop_ad A D n d beta P2).
+  repeat split; simpl; auto.
+  + admit.
+  + intros B INB.
+    apply P2A.
+    case in_dec as [IN | NIN].
+    * destruct count_occ.
+      --  apply INB.
+      --  apply in_app_iff in INB as [EQ | INB].
+          ++  apply repeat_spec in EQ.
+              destruct EQ.
+              apply IN.
+          ++  apply (proj1 (in_remove _ _ _ _ INB)).
+    * apply INB.
+- exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1A, IN1. apply P2A, IN2. lia.
+- exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1A, IN1. apply P2A, IN2. lia.
+- exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1A, IN1. apply P2A, IN2. lia.
 Qed.
 
 Lemma theorem_provable' : forall (P : ptree),
@@ -448,11 +495,12 @@ rewrite H.
 apply ptree_ord_nf.
 apply X.
 Qed.
+*)
 
 Lemma associativity_1 : forall (C A B : formula) (d : nat) (alpha : ord),
   provable (lor (lor C A) B) d alpha -> provable (lor C (lor A B)) d alpha.
 Proof.
-unfold provable. intros C A B d alpha H. destruct H as [P [[[H1 H2] H3] H4]].
+unfold provable. intros C A B d alpha [P [[[PF [PSV PA]] PD] PO]].
 exists (exchange_ab
           (lor A B) C (ptree_deg P) alpha
           (exchange_cab
@@ -464,7 +512,7 @@ Qed.
 Lemma associativity_2 : forall (C A B : formula) (d : nat) (alpha : ord),
   provable (lor C (lor A B)) d alpha -> provable (lor (lor C A) B) d alpha.
 Proof.
-unfold provable. intros C A B d alpha H. destruct H as [P [[[H1 H2] H3] H4]].
+unfold provable. intros C A B d alpha [P [[[PF [PSV PA]] PD] PO]].
 exists (exchange_abd
             A C B (ptree_deg P) alpha
             (exchange_cab
@@ -473,82 +521,7 @@ exists (exchange_abd
 repeat split; auto.
 Qed.
 
-Lemma axiom_atomic : forall (A : formula),
-  PA_omega_axiom A = true ->
-    (exists (a : atomic_formula), A = atom a) \/
-    (exists (a : atomic_formula), A = neg (atom a)).
-Proof.
-intros.
-destruct A; try inversion H.
-- left. exists a. auto.
-- right. destruct A; try inversion H.
-  + exists a. auto.
-Qed.
-
-Lemma axiom_correct : forall (A : formula),
-  PA_omega_axiom A = true ->
-    (exists (a : atomic_formula), A = atom a /\ correct_a a = true) \/
-    (exists (a : atomic_formula), A = neg (atom a) /\ incorrect_a a = true).
-Proof.
-intros.
-destruct A; try inversion H.
-- left. exists a. auto.
-- right. destruct A; try inversion H.
-  + exists a. auto.
-Qed.
-
-Lemma axiom_closed : forall (A : formula),
-  PA_omega_axiom A = true -> closed A = true.
-Proof.
-intros.
-apply axiom_correct in H. destruct H.
-- destruct H as [ a [ HA Ha] ]. rewrite HA. unfold closed.
-  apply correct_closed. apply Ha.
-- destruct H as [ a [ HA Ha] ]. rewrite HA. unfold closed.
-  apply incorrect_closed. apply Ha.
-Qed.
-
-Lemma theorem_closed : forall (A : formula) (d : nat) (alpha : ord),
-  PA_omega_theorem A d alpha -> closed A = true.
-Proof.
-intros A d alpha T. induction T; auto;
-try inversion IHT as [C1];
-try destruct (and_bool_prop _ _ IHT1) as [C1 C2];
-try destruct (and_bool_prop _ _ IHT2) as [C3 C4];
-try destruct (and_bool_prop _ _ C1) as [C2 C3];
-try destruct (and_bool_prop _ _ C2) as [C4 C5];
-try destruct (and_bool_prop _ _ C4) as [C6 C7];
-simpl in *; fold closed in *;
-try rewrite C1; try rewrite C2; try rewrite C3; try rewrite C4;
-try rewrite C5; try rewrite C6; try rewrite C7; try rewrite e;
-try rewrite IHT1; try rewrite IHT2; auto.
-
-- apply axiom_closed. auto.
-
-- destruct (subst_one_var_free _ _ _ (projT2 c) IHT) as [LIST | LIST].
-  + case (closed A) eqn:X.
-    * reflexivity.
-    * rewrite LIST. rewrite nat_eqb_refl. rewrite list_eqb_refl. auto.
-  + apply free_list_closed in LIST. rewrite LIST. reflexivity.
-
-- destruct (subst_one_var_free _ _ _ (projT2 c) C2) as [LIST | LIST].
-  + case (closed A) eqn:X.
-    * reflexivity.
-    * rewrite LIST. rewrite nat_eqb_refl. rewrite list_eqb_refl. auto.
-  + apply free_list_closed in LIST. rewrite LIST. reflexivity.
-
-- destruct (subst_one_var_free A n zero (represent_closed 0) (H czero)) as [LIST | LIST]; simpl.
-  + case (closed A) eqn:X; auto. rewrite LIST. rewrite nat_eqb_refl. auto.
-  + apply free_list_closed in LIST. rewrite LIST. auto.
-
-- pose proof (H czero). simpl in H0. destruct (and_bool_prop _ _ H0).
-  rewrite H2.
-  destruct (subst_one_var_free A n zero (represent_closed 0) H1) as [LIST | LIST]; simpl.
-  + case (closed A) eqn:X; auto. rewrite LIST. rewrite nat_eqb_refl. auto.
-  + apply free_list_closed in LIST. rewrite LIST. auto.
-
-Qed.
-
+(*
 Lemma provable_closed : forall (A : formula) (d : nat) (alpha : ord),
   provable A d alpha -> closed A = true.
 Proof.
@@ -562,3 +535,4 @@ intros. pose (ptree_deg P) as d. pose (ptree_ord P) as alpha.
 apply (provable_closed _ d alpha). unfold provable. exists P.
 unfold P_proves. repeat split; auto.
 Qed.
+*)
