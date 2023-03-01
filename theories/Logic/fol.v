@@ -1040,6 +1040,22 @@ destruct (closed_univ B n H).
   reflexivity.
 Qed.
 
+Lemma closed_sub_univ : forall (B : formula) (n : nat) (t : term),
+    closed_t t = true ->
+        closed (substitution B n t) = true ->
+            closed (univ n B) = true.
+Proof.
+intros A n t Ct CS.
+case (closed A) eqn:CA.
+- unfold closed.
+  fold closed.
+  rewrite CA.
+  reflexivity.
+- apply closed_free_list in CS.
+  apply free_list_closed.
+  rewrite (subst_remove _ _ _ Ct) in CS.
+  apply CS.
+Qed.
 
 Lemma closed_univ_sub_repr : forall (B : formula) (n : nat),
   closed (univ n B) = true ->
