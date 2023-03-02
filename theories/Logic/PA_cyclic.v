@@ -108,7 +108,7 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (substitution A n (succ (var n))) d alpha L ->
     PA_cyclic_pre (univ n A) d (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero)) ((univ n A) :: remove form_eq_dec A L)
 
-| multloop2 : forall {A D : formula} {n : nat} {d : nat} {alpha : ord} (L : list formula) (OCC1 : (count_occ form_eq_dec L A) = 1) (LSTN : free_list A <> [n] /\ free_list A <> []),
+| multloop2 : forall {A D : formula} {n : nat} {d : nat} {alpha : ord} (L : list formula) (OCC1 : (count_occ form_eq_dec L A) = 1) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed D = false),
     PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d alpha L ->
     PA_cyclic_pre (lor (univ n A) D) d (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero)) ((univ n A) :: remove form_eq_dec A L)
 
@@ -277,6 +277,30 @@ destruct (correctness_decid _ HC) as [Cor | Inc].
     * inversion FAL.
 Qed.
 
+Lemma pre_LEM_atomic :
+  forall (a : atomic_formula),
+      PA_cyclic_pre (lor (neg (atom a)) (atom a)) 0 (ord_succ Zero) [atom a].
+Proof.
+intros a. (*weakening should be subset of flatmap freelist instead of closed*)
+destruct (correctness_decid _ HC) as [Cor | Inc].
+- apply (@prune _ _ _ [atom a]).
+  + fold (closed (neg (atom a))) in HC.
+    apply (weakening _ HC), axiom.
+  + intros B INB.
+    inversion INB as [EQ | FAL].
+    * destruct EQ.
+      apply Cor.
+    * inversion FAL.
+- apply (@prune _ _ _ [neg (atom a)]).
+  + fold (closed (atom a)) in HC.
+    apply exchange1, (weakening _ HC), axiom.
+  + intros B INB.
+    inversion INB as [EQ | FAL].
+    * destruct EQ.
+      apply Inc.
+    * inversion FAL.
+Qed.
+
 Definition P1 (A : formula) : Type :=
   closed A = true ->
     PA_cyclic_theorem (lor (neg A) A) 0 (ord_succ (nat_ord ((num_conn A) + (num_conn A)))).
@@ -328,23 +352,19 @@ apply (P3_strongind_aux Ind0 Ind n n).
 reflexivity.
 Qed.
 
-(*
 Lemma P3_inductive :
   forall n, (forall m, m <= n -> P3 m) ->
     P3 (S n).
 Proof.
 unfold P3,P2,P1. intros n Ind A NA CA.
-apply prune.
 destruct A as [a | B | B C | m B].
 
 - inversion NA.
 
 - inversion NA as [NA1].
-  apply (ord_incr (ord_succ (ord_succ (nat_ord ((num_conn B) + (num_conn B)))))).
-  + apply negation2.
-    apply exchange1.
-    apply true_theorem.
-    apply (Ind _ (nat_le_refl _) _ NA1 CA).
+  destruct (true_theorem (Ind _ (nat_le_refl _) _ NA1 CA)) as [L [T TAX]].
+  refine (prune (ord_incr (ord_succ (ord_succ (nat_ord ((num_conn B) + (num_conn B))))) _ _ _ _) TAX).
+  + apply negation2, exchange1, T.
   + apply ord_lt_succ.
     unfold num_conn. fold num_conn.
     repeat rewrite ord_succ_nat.
@@ -357,11 +377,11 @@ destruct A as [a | B | B C | m B].
 
 - destruct (closed_lor _ _ CA) as [CB CC].
   destruct (num_conn_lor _ _ _ NA) as [NB NC].
-  pose proof (true_theorem (Ind (num_conn B) NB B (eq_refl (num_conn B)) CB)) as T1.
+  pose proof (true_theorem (Ind (num_conn B) NB B (eq_refl (num_conn B)) CB)) as [L1 [T1 TAX1]].
   apply (weakening _ CC) in T1.
   apply exchange1 in T1.
   apply passociativity1 in T1.
-  pose proof (true_theorem (Ind (num_conn C) NC C (eq_refl (num_conn C)) CC)) as T2.
+  pose proof (true_theorem (Ind (num_conn C) NC C (eq_refl (num_conn C)) CC)) as [L2 [T2 TAX2]].
   apply (weakening _ CB) in T2.
   apply exchange1 in T2.
   apply exchange2 in T2.
@@ -373,12 +393,20 @@ destruct A as [a | B | B C | m B].
   rewrite X1,X2.
   + unfold ord_max in T3.
     rewrite ord_ltb_irrefl in T3.
-    apply T3.
+    apply (prune T3).
+    intros D IND.
+    apply in_app_iff in IND as [IND1 | IND2].
+    * apply TAX1, IND1.
+    * apply TAX2, IND2.
   + rewrite <- plus_n_O in *.
     repeat rewrite <- plus_n_Sm in *.
     repeat rewrite ord_succ_nat in *.
     rewrite ord_max_ltb_not_l in T3.
-    * apply T3.
+    * apply (prune T3).
+      intros D IND.
+      apply in_app_iff in IND as [IND1 | IND2].
+      --  apply TAX1, IND1.
+      --  apply TAX2, IND2.
     * apply ord_ltb_asymm.
       apply ord_lt_ltb.
       apply nat_ord_lt.
@@ -388,7 +416,11 @@ destruct A as [a | B | B C | m B].
     repeat rewrite ord_succ_nat in *.
     rewrite ord_max_symm in T3.
     rewrite ord_max_ltb_not_l in T3.
-    * apply T3.
+    * apply (prune T3).
+      intros D IND.
+      apply in_app_iff in IND as [IND1 | IND2].
+      --  apply TAX1, IND1.
+      --  apply TAX2, IND2.
     * apply ord_ltb_asymm.
       apply ord_lt_ltb.
       apply nat_ord_lt.
@@ -411,20 +443,30 @@ destruct A as [a | B | B C | m B].
     rewrite plus_comm.
     repeat rewrite plus_n_Sm in *.
     case (ord_ltb (nat_ord (n1 + S (S (S (S n1))))) (nat_ord (n0 + S (S (S (S n0)))))) eqn:X3.
-    * rewrite (ord_max_ltb_is_r _ _ X3) in T3 .
-      apply (ord_incr _ _ T3).
+    * rewrite (ord_max_ltb_is_r _ _ X3) in T3.
+      refine (prune (ord_incr _ _ T3 _ _) _).
       --  repeat rewrite ord_succ_nat.
           apply nat_ord_lt.
           lia.
       --  apply nf_nat.
+      --  intros D IND.
+          apply in_app_iff in IND as [IND1 | IND2].
+          ++  apply TAX1, IND1.
+          ++  apply TAX2, IND2.
     * rewrite (ord_max_ltb_not_l _ _ X3) in T3. 
-      apply (ord_incr _ _ T3).
+      refine (prune (ord_incr _ _ T3 _ _) _).
       --  repeat rewrite ord_succ_nat.
           apply nat_ord_lt.
           lia.
       --  apply nf_nat.
+      --  intros D IND.
+          apply in_app_iff in IND as [IND1 | IND2].
+          ++  apply TAX1, IND1.
+          ++  apply TAX2, IND2.
 
 - inversion NA as [NB].
+  rewrite <- NB in Ind.
+  pose proof (Ind _ (nat_le_refl _) _ (num_conn_sub _ _ _) (closed_univ_sub _ _ CA _ (projT2 czero))).
   apply exchange1.
   unfold num_conn. fold num_conn.
   rewrite <- plus_n_Sm.
