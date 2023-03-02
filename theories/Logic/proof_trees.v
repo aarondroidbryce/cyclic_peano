@@ -334,11 +334,11 @@ match P with
 
 | loop_a A n d alpha P' =>
     (ptree_formula P' = substitution A n (succ (var n))) * (count_occ form_eq_dec (node_extract P') A = 1) *
-    (struct_valid P') * (d >= ptree_deg P') * (alpha = ptree_ord P')
+    (struct_valid P') * (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | loop_ad A D n d alpha P' =>
     (ptree_formula P' = lor (substitution A n (succ (var n))) D) * (count_occ form_eq_dec (node_extract P') A = 1) *
-    (struct_valid P') * (d >= ptree_deg P') * (alpha = ptree_ord P')
+    (struct_valid P') * (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -369,7 +369,7 @@ Definition provable (A : formula) (d : nat) (alpha : ord) : Type :=
   {P : ptree & P_proves P A d alpha}.
 
 Lemma structural_pre_theorem :
-    forall {A : formula} {d : nat} {alpha : ord} {L : list formula} (ST : PA_cyclic_pre A d alpha L), {P : ptree & prod (prod( prod (prod (ptree_formula P = A) (struct_valid P)) (d >= ptree_deg P)) (alpha = ptree_ord P)) (node_extract P = L) }.
+    forall {A : formula} {d : nat} {alpha : ord} {L : list formula} (ST : PA_cyclic_pre A d alpha L), {P : ptree & prod (prod( prod (prod (ptree_formula P = A) (struct_valid P)) (d = ptree_deg P)) (alpha = ptree_ord P)) (node_extract P = L)}.
 intros A d alpha L TS.
 induction TS;
 try destruct IHTS as [P [[[[PF PSV] PD] PO] PN]];
@@ -377,7 +377,7 @@ try destruct IHTS1 as [P1 [[[[P1F P1SV] P1D] P1H] P1N]];
 try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
 - exists (deg_up d' P). repeat split; auto. lia.
 - exists (ord_up beta P). repeat split; auto. rewrite <- PO. auto.
-- exists (node A). repeat split. simpl. lia.
+- exists (node A). repeat split.
 - exists (exchange_ab A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_cab C A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_abd A B D (ptree_deg P) alpha P). repeat split; auto.
@@ -385,8 +385,8 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
 - exists (contraction_a A (ptree_deg P) alpha P). repeat split; auto.
 - exists (contraction_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (weakening_ad A D (ptree_deg P) alpha P). repeat split; auto.
-- exists (demorgan_ab A B (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. lia. rewrite P1N,P2N. reflexivity.
-- exists (demorgan_abd A B D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. lia. rewrite P1N,P2N. reflexivity.
+- exists (demorgan_ab A B (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto.  rewrite P1N,P2N. reflexivity.
+- exists (demorgan_abd A B D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (negation_a A (ptree_deg P) alpha P). repeat split; auto.
 - exists (negation_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_a A n c (ptree_deg P) alpha P). repeat split; auto.
@@ -455,9 +455,9 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
           ++  reflexivity.
     * rewrite ((proj1 (count_occ_not_In form_eq_dec _ _) NIN)) in OCC1.
       discriminate.
-- exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. lia. rewrite P1N,P2N. reflexivity.
-- exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. lia. rewrite P1N,P2N. reflexivity.
-- exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. lia. rewrite P1N,P2N. reflexivity.
+- exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
+- exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
+- exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 Qed.
 
 Lemma provable_theorem : forall (A : formula) (d : nat) (alpha : ord),
@@ -528,60 +528,129 @@ try destruct (IHTS2 (fun B INB => TAX B (proj2 (in_app_iff _ _ _) (or_intror INB
 - exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. intros A' IN. apply in_app_iff in IN as [IN1 | IN2]. apply P1AX, IN1. apply P2AX, IN2. lia.
 Qed.
 
-Lemma theorem_provable' : forall (P : ptree),
-  valid P -> PA_omega_theorem (ptree_formula P) (ptree_deg P) (ptree_ord P).
+Lemma theorem_provable' :
+    forall (P : ptree),
+        valid P ->
+            PA_cyclic_theorem (ptree_formula P) (ptree_deg P) (ptree_ord P).
 Proof.
-intros P PV. induction P;
-(try inversion PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1H] P2H]) ||
-(try inversion PV as [[[PF PV'] PD] PH]); simpl;
-try rewrite P1F in IHP1; try rewrite P2F in IHP2;
-try rewrite P1D,P2D,P1H,P2H;
-try rewrite PF in IHP; try rewrite PD,PH.
+intros P PV. induction P.
 
-- inversion PV as [LT PV']. apply (deg_incr _ (ptree_deg P) _ _ (IHP PV') LT).
-- inversion PV as [[LT PV'] N]. simpl. apply (ord_incr _ _ (ptree_ord P) _ (IHP PV') LT N). 
-- inversion PV as [AX]. apply axiom. apply AX.
-- apply exchange1. apply IHP. apply PV'.
-- apply exchange2. apply IHP. apply PV'.
-- apply exchange3. apply IHP. apply PV'.
-- apply exchange4. apply IHP. apply PV'.
-- apply contraction1. apply IHP. apply PV'.
-- apply contraction2. apply IHP. apply PV'.
-- destruct PF as [PF CF]. apply weakening.
-  + apply CF.
-  + rewrite <- PF. apply IHP. apply PV'.
-- apply demorgan1.
-  + apply IHP1. apply P1V.
-  + apply IHP2. apply P2V.
-- apply demorgan2.
-  + apply IHP1. apply P1V.
-  + apply IHP2. apply P2V.
-- apply negation1. apply IHP. apply PV'.
-- apply negation2. apply IHP. apply PV'.
-- apply (quantification1 _ _ c). apply IHP. apply PV'.
-- apply (quantification2 _ _ _ c). apply IHP. apply PV'.
-- apply w_rule1. intros c.
-  destruct (PV c) as [[[PF PV'] PD] PH].
-  fold valid in PV'.
-  rewrite <- PF. rewrite PH.
-  apply (deg_monot _ _ _ _ PD).
-  apply X. apply PV'.
-- apply w_rule2. intros c.
-  destruct (PV c) as [[[PF PV'] PD] PH].
-  fold valid in PV'.
-  rewrite <- PF. rewrite PH.
-  apply (deg_monot _ _ _ _ PD).
-  apply X. apply PV'.
-- apply cut1.
-  + apply IHP1. apply P1V.
-  + apply IHP2. apply P2V.
-- apply cut2.
-  + apply IHP1. apply P1V.
-  + apply IHP2. apply P2V.
-- apply cut3.
-  + apply IHP1. apply P1V.
-  + apply IHP2. apply P2V.
-Qed.
+1 : destruct PV as [[LT PSV] AX]. (*deg up*)
+2 : destruct PV as [[[LT PSV] NO] AX]. (*ord up*)
+3 : destruct PV as [_ AX]. (*node*)
+4-9,13-16 :  destruct PV as [[[[PF PSV] PD] PO] AX]. (*single hyp*)
+14 : destruct PV as [[[[[PF CPF] PSV] PD] PO] AX]. (*weakening*)
+15,16,19-21 : destruct PV as [[[[[[[[PF1 PSV1] PF2] PSV2] PD1] PD2] PO1] PO2] AX]; (*double hyp*)
+              rewrite PF1,<-PD1,<-PO1 in IHP1;
+              rewrite PF2,<-PD2,<-PO2 in IHP2;
+              pose proof (projT1 (projT2 (true_theorem (IHP1 (PSV1, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as P1';
+              pose proof (projT1 (projT2 (true_theorem (IHP2 (PSV2, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as P2';
+              pose proof (projT2 (projT2 (true_theorem (IHP1 (PSV1, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as AX1';
+              pose proof (projT2 (projT2 (true_theorem (IHP2 (PSV2, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as AX2'.
+20,21 : destruct PV as [[[[[PF OCC1] PSV] PD] PO] AX]. (*loop*)
+
+1-14 :  try rewrite PF,<-PD,<-PO in IHP;
+        try pose proof (projT1 (projT2 (true_theorem (IHP (PSV, AX))))) as P';
+        try pose proof (projT2 (projT2 (true_theorem (IHP (PSV, AX))))) as AX'.
+
+20,21 : try rewrite PF,<-PD,<-PO in IHP.
+      
+- apply (prune (deg_incr _ _ P' LT) AX').
+- apply (prune (ord_incr _ _ P' LT NO) AX').
+- apply (prune (axiom _) AX).
+- apply (prune (exchange1 P') AX').
+- apply (prune (exchange2 P') AX').
+- apply (prune (exchange3 P') AX').
+- apply (prune (exchange4 P') AX').
+- apply (prune (contraction1 P') AX').
+- apply (prune (contraction2 _ P') AX').
+- apply (prune (negation1 P') AX').
+- apply (prune (negation2 P') AX').
+- apply (prune (quantification1 P') AX').
+- apply (prune (quantification2 P') AX').
+- apply (prune (weakening _ CPF P') AX').
+
+- refine (prune (demorgan1 P1' P2') _).
+  intros B INB.
+  apply in_app_iff in INB as [INB1 | INB2].
+  + apply (AX1' _ INB1).
+  + apply (AX2' _ INB2).
+- refine (prune (demorgan2 P1' P2') _).
+  intros B INB.
+  apply in_app_iff in INB as [INB1 | INB2].
+  + apply (AX1' _ INB1).
+  + apply (AX2' _ INB2).
+- refine (prune (cut1 _ _ P1' P2') _).
+  intros B INB.
+  apply in_app_iff in INB as [INB1 | INB2].
+  + apply (AX1' _ INB1).
+  + apply (AX2' _ INB2).
+- refine (prune (cut2 _ _ P1' P2') _).
+  intros B INB.
+  apply in_app_iff in INB as [INB1 | INB2].
+  + apply (AX1' _ INB1).
+  + apply (AX2' _ INB2).
+- refine (prune (cut3 _ _ _ P1' P2') _).
+  intros B INB.
+  apply in_app_iff in INB as [INB1 | INB2].
+  + apply (AX1' _ INB1).
+  + apply (AX2' _ INB2).
+
+- refine (prune (oneloop1 _ OCC1 _ _ ) _).
+  + unfold node_extract in AX; fold node_extract in AX.
+    case in_dec as [IN | NIN].
+    * rewrite OCC1 in AX.
+      destruct (free_list f) as [| m L].
+      --  right.
+          reflexivity.
+      --  destruct L.
+          ++  case (nat_eqb m n) eqn:EQ.
+              **  apply nat_eqb_eq in EQ.
+                  destruct EQ.
+                  left.
+                  reflexivity.
+              **  pose proof (AX (univ n f) (or_introl eq_refl)) as FAL.
+                  unfold PA_cyclic_axiom in FAL.
+                  inversion FAL.
+          ++  pose proof (AX (univ n f) (or_introl eq_refl)) as FAL.
+              unfold PA_cyclic_axiom in FAL.
+              inversion FAL.
+    * contradict NIN.
+      rewrite count_occ_In.
+      rewrite OCC1.
+      lia.
+  + admit. (*
+  assert (valid P) as VP.
+    admit.
+    unfold ptree_deg.
+    pose proof (projT1 (projT2 (true_theorem (IHP VP)))).
+    unfold true_theorem in X.
+    unfold projT1 in X.
+    simpl in X.
+    fold (@true_theorem (substitution f n (succ (var n)))) in X.
+  pose proof (projT1 (projT2 (true_theorem (IHP (PSV, AX))))) as P'. *)
+  + unfold node_extract in AX; fold node_extract in AX.
+    case in_dec as [IN | NIN].
+    * rewrite OCC1 in AX.
+      destruct (free_list f) as [| m L].
+      --  rewrite app_nil_l in AX.
+          apply AX.
+      --  destruct L.
+          ++  case (nat_eqb m n) eqn:EQ.
+              **  apply nat_eqb_eq in EQ.
+                  destruct EQ.
+                  rewrite app_nil_l in AX.
+                  apply AX.
+              **  pose proof (AX (univ n f) (or_introl eq_refl)) as FAL.
+                  unfold PA_cyclic_axiom in FAL.
+                  inversion FAL.
+          ++  pose proof (AX (univ n f) (or_introl eq_refl)) as FAL.
+              unfold PA_cyclic_axiom in FAL.
+              inversion FAL.
+    * intros B INB.
+      apply (AX _ (proj1 (in_remove _ _ _ _ INB))).
+- admit.
+Admitted.
 
 Lemma theorem_provable : forall (A : formula) (d : nat) (alpha : ord),
   provable A d alpha -> PA_omega_theorem A d alpha.
