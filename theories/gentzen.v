@@ -6,11 +6,11 @@ From Cyclic_PA.Maths Require Import naturals.
 From Cyclic_PA.Maths Require Import ordinals.
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
-From Cyclic_PA.Logic Require Import PA_omega.
+From Cyclic_PA.Logic Require Import PA_cyclic.
 From Cyclic_PA.Logic Require Import proof_trees.
 From Cyclic_PA.Logic Require Import substitute.
-From Cyclic_PA.Logic Require Import cut_elim.
-From Cyclic_PA.Logic Require Import Peano.
+(*From Cyclic_PA.Logic Require Import cut_elim.
+From Cyclic_PA.Logic Require Import Peano.*)
 
 Fixpoint disjunction_of (A E : formula) : bool :=
 match form_eqb A E with
@@ -68,7 +68,7 @@ unfold disjunction_of; fold disjunction_of;
 try rewrite form_eqb_refl;
 unfold "&&";
 try reflexivity.
-case (disjunction_of A (zero # succ zero));
+case (disjunction_of A (atom (equ zero (succ zero))));
 reflexivity.
 Qed.
 
@@ -124,29 +124,44 @@ intros P.
 induction P.
 3 : { intros A.
       induction A;
-      intros d alpha [[[HP1 HP2] HP3] HP4] DA;
+      intros d alpha [[[PF [PSV AX]] PD] PO] DA;
       unfold dangerous_disjunct in DA;
       unfold disjunction_of in DA;
       unfold ptree_formula,ptree_deg,ptree_ord in *;
-      rewrite HP1 in HP2;
-      inversion HP2 as [RA].
-      - case (form_eqb (atom a) danger) eqn:X; inversion DA.
-        unfold form_eqb, danger in X.
-        apply atom_beq_eq in X.
-        symmetry in X.
-        destruct X.
-        inversion RA.
+      rewrite PF in *.
+      - case (form_eqb (atom a) danger) eqn:EQB; inversion DA.
+        unfold form_eqb, danger in EQB.
+        apply atom_beq_eq in EQB.
+        rewrite EQB in *.
+        unfold node_extract, List.In in AX.
+        contradict AX.
+        intros FAL.
+        pose proof (FAL (atom (equ zero (succ zero))) (or_introl eq_refl)) as NA.
+        unfold PA_cyclic_axiom, correct_a, correctness, eval, nat_eqb in NA.
+        inversion NA.
       - case (form_eqb (neg A) danger) eqn:Y.
         inversion Y.
-        inversion DA. }
+        inversion DA.
+      - unfold node_extract, List.In in AX.
+        contradict AX.
+        intros FAL.
+        pose proof (FAL _ (or_introl eq_refl)) as NA.
+        unfold PA_cyclic_axiom, correct_a, correctness, eval, nat_eqb in NA.
+        inversion NA.
+      - unfold node_extract, List.In in AX.
+        contradict AX.
+        intros FAL.
+        pose proof (FAL _ (or_introl eq_refl)) as NA.
+        unfold PA_cyclic_axiom, correct_a, correctness, eval, nat_eqb in NA.
+        inversion NA. }
 
-all : intros A d alpha [[[HP1 HP2] HP3] HP4] DA;
+all : intros A d alpha [[[PF' [PSV AX]] PD'] PO'] DA;
       unfold ptree_formula,ptree_deg,ptree_ord,num_conn in *;
       fold ptree_formula ptree_deg ptree_ord num_conn in *.
 
 18,19,20 : lia.
 
-10-17 : rewrite <- HP1 in DA.
+10-17 : rewrite <- PF' in DA.
 
 11,13,15,17 : rewrite danger_split in DA;
               apply and_bool_prop in DA;
@@ -156,20 +171,21 @@ all : intros A d alpha [[[HP1 HP2] HP3] HP4] DA;
         unfold disjunction_of in DA;
         inversion DA.
 
-1 : destruct HP2 as [ID PV].
-2 : destruct HP2 as [[IO PV] NO].
-3-8 : destruct HP2 as [[[PF PV] PD] PO].
-9 : destruct HP2 as [[[[PF FC] PV] PD] PO].
+1 : destruct PSV as [ID PSV].
+2 : destruct PSV as [[IO PSV] NO].
+3-8 : destruct PSV as [[[PF PSV] PD] PO].
+9 : destruct PSV as [[[[PF FC] PSV] PD] PO].
 
 all : apply (IHP (ptree_formula P) _ (ptree_ord P));
       repeat split;
-      try apply PV;
+      try apply PSV;
       try lia;
-      rewrite <- HP1 in DA;
+      rewrite <- PF' in DA;
       repeat rewrite danger_split in DA;
       try rewrite PF;
       try rewrite danger_swap;
-      repeat rewrite danger_split.
+      repeat rewrite danger_split;
+      try apply AX.
 
 8 : rewrite DA;
     unfold "&&";
@@ -177,7 +193,7 @@ all : apply (IHP (ptree_formula P) _ (ptree_ord P));
   
 1,3 : apply DA.
 
-1 : apply HP3.
+1 : apply PD'.
 
 all : apply and_bool_prop in DA;
       destruct DA as [DA DA1].
