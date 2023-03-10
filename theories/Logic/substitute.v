@@ -201,6 +201,40 @@ fold non_target substitution.
 all : reflexivity.
 Qed.
 
+Lemma non_target_sub_term' :
+    forall (A C D: formula) (n : nat) (t : term),
+        formula_sub_ind_fit (substitution A n t) C D (non_target A) = (substitution A n t).
+Proof.
+intros.
+rewrite (non_target_term_sub _ n t).
+apply non_target_sub'.
+Qed.
+
+Lemma formula_sub_ind_free_list :
+    forall (A B C : formula),
+        (free_list B = free_list C) ->
+            forall (S : subst_ind),
+                free_list (formula_sub_ind_fit A B C S) = free_list A.
+Proof.
+intros A B C FREE.
+induction A;
+intros S;
+unfold formula_sub_ind.
+
+all : unfold formula_sub_ind_fit;
+      fold formula_sub_ind_fit;
+      try case form_eqb eqn:EQ;
+      destruct S;
+      try apply form_eqb_eq in EQ;
+      try destruct EQ, FREE;
+      try reflexivity.
+
+1 : unfold free_list;
+    fold free_list.
+    rewrite IHA1,IHA2.
+    reflexivity.
+Qed.
+
 Lemma formula_sub_ind_closed :
     forall (A B C : formula),
         closed A = true ->

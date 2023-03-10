@@ -9,43 +9,37 @@ Require Import List.
 Import ListNotations.
 
 Inductive ptree : Type :=
-| deg_up : nat -> ptree -> ptree
+| deg_up : forall (d' : nat) (P' : ptree), ptree
 
-| ord_up : ord -> ptree -> ptree
+| ord_up : forall (beta : ord) (P' : ptree), ptree
 
-| node : formula -> ptree
+| node : forall (a : formula), ptree
 
-| exchange_ab : formula -> formula -> nat -> ord -> ptree -> ptree
+| exchange_ab : forall (a b : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| exchange_cab : formula -> formula -> formula -> nat -> ord -> ptree -> ptree
+| exchange_cab : forall (c a b : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| exchange_abd : formula -> formula -> formula -> nat -> ord -> ptree -> ptree
+| exchange_abd : forall (a b d : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| exchange_cabd :
-    formula -> formula -> formula -> formula -> nat -> ord -> ptree -> ptree
+| exchange_cabd : forall (c a b d : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| contraction_a : formula -> nat -> ord -> ptree -> ptree
+| contraction_a : forall (a : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| contraction_ad : formula -> formula -> nat -> ord -> ptree -> ptree
+| contraction_ad : forall (a d : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| weakening_ad : formula -> formula -> nat -> ord -> ptree -> ptree
+| weakening_ad : forall (a d : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| demorgan_ab :
-    formula -> formula ->  nat -> nat -> ord -> ord ->
-    ptree -> ptree -> ptree
+| demorgan_ab : forall (a b : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| demorgan_abd :
-    formula -> formula -> formula -> nat -> nat -> ord -> ord ->
-    ptree -> ptree -> ptree
+| demorgan_abd : forall (a b d : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| negation_a : formula -> nat -> ord -> ptree -> ptree
+| negation_a : forall (a : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| negation_ad : formula -> formula -> nat -> ord -> ptree -> ptree
+| negation_ad :  forall (a d : formula) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| quantification_a : formula -> nat -> c_term -> nat -> ord -> ptree -> ptree
+| quantification_a :  forall (a : formula) (m : nat) (t : c_term) (d : nat) (alpha : ord) (P' : ptree), ptree
 
-| quantification_ad :
-    formula -> formula -> nat -> c_term -> nat -> ord -> ptree -> ptree
+| quantification_ad : forall (a d : formula) (m : nat) (t : c_term) (d : nat) (alpha : ord) (P' : ptree), ptree
 
 | loop_a : forall (a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
@@ -55,17 +49,11 @@ Inductive ptree : Type :=
 
 | loop_cad : forall (c a d : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| cut_ca :
-    formula -> formula ->  nat -> nat -> ord -> ord ->
-    ptree -> ptree -> ptree
+| cut_ca : forall (c a : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| cut_ad :
-    formula -> formula ->  nat -> nat -> ord -> ord ->
-    ptree -> ptree -> ptree
+| cut_ad : forall (a d : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| cut_cad :
-    formula -> formula -> formula -> nat -> nat -> ord -> ord ->
-    ptree -> ptree -> ptree.
+| cut_cad : forall (c a d : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree.
 
 Fixpoint ptree_formula (P : ptree) : formula :=
 match P with
@@ -378,24 +366,28 @@ match P with
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
 | loop_a A n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = substitution A n zero) * (ptree_formula P2 = substitution A n (succ (var n))) *
-    (struct_valid P1) * (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
-    (struct_valid P2) * (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2)
+    (ptree_formula P1 = substitution A n zero) * (struct_valid P1) *
+    (ptree_formula P2 = substitution A n (succ (var n))) * (struct_valid P2) *
+    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
+    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor C (substitution A n zero)) * (ptree_formula P2 = (substitution A n (succ (var n)))) *
-    (struct_valid P1) * (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
-    (struct_valid P2) * (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2)
+    (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
+    (ptree_formula P2 = (substitution A n (succ (var n)))) * (struct_valid P2) *
+    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
+    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = (substitution A n zero)) * (ptree_formula P2 = lor (substitution A n (succ (var n))) D) *
-    (struct_valid P1) * (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
-    (struct_valid P2) * (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2)
+    (ptree_formula P1 = (substitution A n zero)) * (struct_valid P1) *
+    (ptree_formula P2 = lor (substitution A n (succ (var n))) D) * (struct_valid P2) *
+    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
+    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor C (substitution A n zero)) * (ptree_formula P2 = lor (substitution A n (succ (var n))) D) *
-    (struct_valid P1) * (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
-    (struct_valid P2) * (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2)
+    (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
+    (ptree_formula P2 = lor (substitution A n (succ (var n))) D) * (struct_valid P2) *
+    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
+    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -696,12 +688,12 @@ intros P PSV. induction P.
 3 : destruct PSV as []. (*node*)
 4-9,13-16 :  destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
 14 : destruct PSV as [[[[PF CPF] PSV] PD] PO]. (*weakening*)
-15,16,21-23 : destruct PSV as [[[[[[[PF1 PSV1] PF2] PSV2] PD1] PD2] PO1] PO2]; (*double hyp*)
-              rewrite PF1,<-PD1,<-PO1 in IHP1;
-              rewrite PF2,<-PD2,<-PO2 in IHP2;
-              pose proof (IHP1 PSV1) as P1';
-              pose proof (IHP2 PSV2) as P2'.
-20-23 : destruct PSV as [[[[[[[P1F P2F] P1SV] P1D] P1O] P2SV] P2D] P2O]. (*loop*)
+15,16,21-23 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O]; (*double hyp*)
+              rewrite P1F,<-P1D,<-P1O in IHP1;
+              rewrite P2F,<-P2D,<-P2O in IHP2;
+              pose proof (IHP1 P1SV) as P1';
+              pose proof (IHP2 P2SV) as P2'.
+20-23 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O]. (*loop*)
 
 1-14 :  try rewrite PF,<-PD,<-PO in IHP;
         try pose proof (IHP PSV) as P'.
@@ -780,15 +772,15 @@ intros P PV. induction P.
 4-9,13-16 :  destruct PV as [[[[PF PSV] PD] PO] AX]. (*single hyp*)
 14 :  destruct PV as [[[[[PF CPF] PSV] PD] PO] AX]; (*weakening*)
       pose proof (pre_theorem_structural _ PSV) as P'.
-15,16,21-23 : destruct PV as [[[[[[[[PF1 PSV1] PF2] PSV2] PD1] PD2] PO1] PO2] AX]; (*double hyp*)
-              rewrite PF1,<-PD1,<-PO1 in IHP1;
-              rewrite PF2,<-PD2,<-PO2 in IHP2;
-              pose proof (projT1 (projT2 (true_theorem (IHP1 (PSV1, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as P1';
-              pose proof (projT1 (projT2 (true_theorem (IHP2 (PSV2, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as P2';
-              pose proof (projT2 (projT2 (true_theorem (IHP1 (PSV1, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as AX1';
-              pose proof (projT2 (projT2 (true_theorem (IHP2 (PSV2, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as AX2';
+15,16,21-23 : destruct PV as [[[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O] AX]; (*double hyp*)
+              rewrite P1F,<-P1D,<-P1O in IHP1;
+              rewrite P2F,<-P2D,<-P2O in IHP2;
+              pose proof (projT1 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as P1';
+              pose proof (projT1 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as P2';
+              pose proof (projT2 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as AX1';
+              pose proof (projT2 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as AX2';
               fold node_extract in *.
-20-23 : destruct PV as [[[[[[[[P1F P2F] P1SV] P1D] P1O] P2SV] P2D] P2O] AX]. (*loop*)
+20-23 : destruct PV as [[[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O] AX]. (*loop*)
 
 1-14 :  try rewrite PF,<-PD,<-PO in IHP;
         try pose proof (projT1 (projT2 (true_theorem (IHP (PSV, AX))))) as P';
@@ -883,6 +875,16 @@ pose proof (theorem_provable' _ PV) as PT.
 apply (ord_nf _ PT).
 Qed.
 
+Lemma ptree_ord_nf_struct :
+    forall (P : ptree),
+        struct_valid P ->
+            nf (ptree_ord P).
+Proof.
+intros P PV.
+pose proof (pre_theorem_structural _ PV) as PT.
+apply (ord_nf_pre _ PT).
+Qed.
+
 Lemma ptree_ord_nf_hyp :
     forall (alpha : ord) (P : ptree),
         alpha = ptree_ord P ->
@@ -943,30 +945,4 @@ pose (ptree_ord P) as alpha.
 apply (provable_closed _ d alpha).
 exists P.
 repeat split; auto.
-Qed.
-
-Require Import Coq.Arith.Wf_nat.
-
-
-Lemma pre_LEM :
-    forall {A : formula},
-            {P : ptree & prod (ptree_formula P = (lor (neg A) A)) (struct_valid P)}.
-Proof.
-induction A as [A IND] using (induction_ltof1 _ num_conn);
-unfold ltof in IND.
-destruct A.
-- destruct (structural_pre_theorem (pre_LEM_atomic a)) as [P [[[[PF PSV] PD] PO] PL]].
-  apply (existT _ P (PF, PSV)).
-- destruct (IND _ (le_n _)) as [P [PF PSV]].
-  exists (negation_ad A (neg A) (ptree_deg P) (ptree_ord P) (exchange_ab (neg A) A (ptree_deg P) (ptree_ord P) P)).
-  repeat split.
-  + apply PF.
-  + apply PSV.
-- assert (num_conn A1 < num_conn (lor A1 A2)) as IE1. {unfold num_conn. lia. }
-  assert (num_conn A2 < num_conn (lor A1 A2)) as IE2. {unfold num_conn. lia. }
-  destruct (IND _ IE1) as [P1 [P1F P1SV]].
-  destruct (IND _ IE2) as [P2 [P2F P2SV]].
-  exists (demorgan_abd A1 A2 (lor A1 A2) (ptree_deg P1) (ptree_deg P2) (ptree_ord P1) (ord_succ (ptree_ord P2)) P1 (weakening_ad A1 A2 (ptree_deg P2) (ptree_ord P2) P2)).
-  repeat split; simpl.
-
 Qed.

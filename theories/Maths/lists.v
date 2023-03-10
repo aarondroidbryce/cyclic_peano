@@ -6,6 +6,7 @@ Require Import Classes.DecidableClass.
 From Cyclic_PA.Maths Require Import naturals.
 From Cyclic_PA.Logic Require Import definitions.
 
+Require Import Coq.Arith.Wf_nat.
 
 Open Scope bool_scope.
 Open Scope list_scope.
@@ -13,6 +14,62 @@ Open Scope list_scope.
 Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
+
+Lemma concat_map_remove_eq {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+forall (f : A -> list B) (a : A) (L1 L2 : list A),
+    concat (map f L1) = concat (map f L2) ->
+        concat (map f (remove DEC a L1)) = concat (map f (remove DEC a L2)).
+intros f a L1.
+induction L1 as [L1 IND1] using (induction_ltof1 _ (@length _));
+unfold ltof in IND1.
+intros L2 EQ;
+induction L2 as [L2 IND2] using (induction_ltof1 _ (@length _));
+unfold ltof in IND2.
+destruct L1 as [| hd1 L1];
+destruct L2 as [| hd2 L2].
+- reflexivity.
+- unfold map, remove in *;
+  fold (map f) (remove DEC) in *.
+  symmetry in EQ.
+  apply app_eq_nil in EQ as [EQ1 EQ2].
+  fold (@concat B) in *.
+  case DEC as [EQ | NE];
+  unfold map;
+  fold (map f);
+  try rewrite EQ1;
+  try rewrite IND2;
+  try apply le_n;
+  symmetry;
+  try apply EQ2.
+- unfold flat_map, remove in *;
+  fold (flat_map f) (remove DEC) in *.
+  apply app_eq_nil in EQ as [EQ1 EQ2].
+  case DEC as [EQ | NE];
+  unfold flat_map;
+  fold (flat_map f);
+  try rewrite EQ1;
+  try rewrite app_nil_l;
+  refine (IND1 _ _ [] _);
+  try apply le_n;
+  apply EQ2.
+- unfold remove;
+  fold (remove DEC).
+  unfold flat_map in *;
+  fold (flat_map f) in *.
+  case DEC as [EQ' | NE].
+  + rewrite flat_map_concat_map.
+Qed.
+*)
+Lemma flat_map_remove_eq {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+  forall (f : A -> list B) (a : A) (L1 L2 : list A),
+      flat_map f L1 = flat_map f L2 ->
+          flat_map f (remove DEC a L1) = flat_map f (remove DEC a L2).
+Proof.
+intros f a L1 L2 EQ.
+repeat rewrite flat_map_concat_map in *.
+apply concat_map_remove_eq, EQ.
+Qed.
+
 
 Fixpoint list_eqb (l1 l2 : list nat) : bool :=
 match l1,l2 with
