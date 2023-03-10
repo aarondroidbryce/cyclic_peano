@@ -23,154 +23,157 @@ match A with
 | _ => false
 end.
 
-Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
-| deg_incr : forall {A : formula} (d d' : nat) {alpha : ord} {L : list formula},
-    PA_cyclic_pre A d alpha L ->
+Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> list nat-> Type :=
+| deg_incr : forall {A : formula} {d d' : nat} {alpha : ord} {LF : list formula} {LN : list nat},
     d' > d ->
-    PA_cyclic_pre A d' alpha L
+    PA_cyclic_pre A d alpha LF LN ->
+    PA_cyclic_pre A d' alpha LF LN
 
-| ord_incr : forall {A : formula} {d : nat} (alpha beta : ord) {L : list formula},
-    PA_cyclic_pre A d alpha L ->
-    ord_lt alpha beta -> nf beta ->
-    PA_cyclic_pre A d beta L
+| ord_incr : forall {A : formula} {d : nat} (alpha beta : ord) {LF : list formula} {LN : list nat},
+    ord_lt alpha beta ->
+    nf beta ->
+    PA_cyclic_pre A d alpha LF LN ->
+    PA_cyclic_pre A d beta LF LN
 
 | axiom : forall (A : formula),
-    PA_cyclic_pre A 0 Zero [A]
+    PA_cyclic_pre A 0 Zero [A] (free_list A)
 
-| exchange1 : forall {A B : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A B) d alpha L ->
-    PA_cyclic_pre (lor B A) d alpha L
+| exchange1 : forall {A B : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor A B) d alpha LF LN ->
+    PA_cyclic_pre (lor B A) d alpha LF LN
 
-| exchange2 : forall {C A B : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor C A) B) d alpha L ->
-    PA_cyclic_pre (lor (lor C B) A) d alpha L
+| exchange2 : forall {C A B : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (lor C A) B) d alpha LF LN ->
+    PA_cyclic_pre (lor (lor C B) A) d alpha LF LN
 
-| exchange3 : forall {A B D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor A B) D) d alpha L ->
-    PA_cyclic_pre (lor (lor B A) D) d alpha L
+| exchange3 : forall {A B D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (lor A B) D) d alpha LF LN ->
+    PA_cyclic_pre (lor (lor B A) D) d alpha LF LN
 
-| exchange4 : forall {C A B D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor (lor C A) B) D) d alpha L ->
-    PA_cyclic_pre (lor (lor (lor C B) A) D) d alpha L
+| exchange4 : forall {C A B D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (lor (lor C A) B) D) d alpha LF LN ->
+    PA_cyclic_pre (lor (lor (lor C B) A) D) d alpha LF LN
 
-| contraction1 : forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A A) d alpha L ->
-    PA_cyclic_pre A d alpha L
+| contraction1 : forall {A : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor A A) d alpha LF LN ->
+    PA_cyclic_pre A d alpha LF LN
 
-| contraction2 : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor A A) D) d alpha L ->
-    PA_cyclic_pre (lor A D) d alpha L
+| contraction2 : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (lor A A) D) d alpha LF LN ->
+    PA_cyclic_pre (lor A D) d alpha LF LN
 
-| weakening : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {L : list formula} (FLSub : incl (free_list A) (flat_map free_list L)),
-    PA_cyclic_pre D d alpha L ->
-    PA_cyclic_pre (lor A D) d (ord_succ alpha) L
+| weakening : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre D d alpha LF LN ->
+    PA_cyclic_pre (lor A D) d (ord_succ alpha) LF (nodup nat_eq_dec (free_list A ++ LN))
 
 | demorgan1 : forall {A B : formula} {d1 d2 : nat}
-                     {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (neg A) d1 alpha1 L1 ->
-    PA_cyclic_pre (neg B) d2 alpha2 L2 ->
-    PA_cyclic_pre (neg (lor A B)) (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
+                     {alpha1 alpha2 : ord} {LF1 LF2 : list formula} {LN1 LN2 : list nat},
+    PA_cyclic_pre (neg A) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (neg B) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (neg (lor A B)) (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (LF1 ++ LF2) (nodup nat_eq_dec (LN1 ++ LN2))
 
-| demorgan2 : forall {A B D : formula} {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor (neg A) D) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg B) D) d2 alpha2 L2 ->
+| demorgan2 : forall {A B D : formula} {d1 d2 : nat} {alpha1 alpha2 : ord} {LF1 LF2 : list formula} {LN1 LN2 : list nat},
+    PA_cyclic_pre (lor (neg A) D) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (neg B) D) d2 alpha2 LF2 LN2 ->
     PA_cyclic_pre (lor (neg (lor A B)) D)
-                     (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
+                     (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (LF1 ++ LF2) (nodup nat_eq_dec (LN1 ++ LN2))
 
-| negation1 : forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre A d alpha L ->
-    PA_cyclic_pre (neg (neg A)) d (ord_succ alpha) L
+| negation1 : forall {A : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre A d alpha LF LN ->
+    PA_cyclic_pre (neg (neg A)) d (ord_succ alpha) LF LN
 
-| negation2 : forall {A D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A D) d alpha L ->
-    PA_cyclic_pre (lor (neg (neg A)) D) d (ord_succ alpha) L
+| negation2 : forall {A D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor A D) d alpha LF LN ->
+    PA_cyclic_pre (lor (neg (neg A)) D) d (ord_succ alpha) LF LN
 
 | quantification1 : forall {A : formula} {n : nat} {c : c_term}
-                           {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (neg (substitution A n (projT1 c))) d alpha L ->
-    PA_cyclic_pre (neg (univ n A)) d (ord_succ alpha) L
+                           {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (neg (substitution A n (projT1 c))) d alpha LF LN ->
+    PA_cyclic_pre (neg (univ n A)) d (ord_succ alpha) LF LN
 
 | quantification2 : forall {A D : formula} {n : nat} {c : c_term}
-                           {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (neg (substitution A n (projT1 c))) D) d alpha L ->
-    PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) L
+                           {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (neg (substitution A n (projT1 c))) D) d alpha LF LN ->
+    PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) LF LN
 
-| oneloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []),
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A L2) ++ L1)
+| oneloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat) (LSTC : free_list A = [n] \/ free_list A = []),
+    PA_cyclic_pre (substitution A n (projT1 czero)) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (univ n A) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true),
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A L2) ++ L1)
+| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true),
+    PA_cyclic_pre (lor C (substitution A n (projT1 czero))) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| oneloop3 : forall {A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []) (CD : closed D = true),
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor (univ n A) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A L2) ++ L1)
+| oneloop3 : forall {A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat) (LSTC : free_list A = [n] \/ free_list A = []) (CD : closed D = true),
+    PA_cyclic_pre (substitution A n (projT1 czero)) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor (univ n A) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| oneloop4 : forall {C A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true) (CD : closed D = true),
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor (lor C (univ n A)) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A L2) ++ L1)
+| oneloop4 : forall {C A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true) (CD : closed D = true),
+    PA_cyclic_pre (lor C (substitution A n (projT1 czero))) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor (lor C (univ n A)) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) ((remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| multloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : free_list A <> [n] /\ free_list A <> []),
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+| multloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTN : free_list A <> [n] /\ free_list A <> []),
+    PA_cyclic_pre (substitution A n (projT1 czero)) d1 alpha1 LF1 LN2 ->
+    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (univ n A) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false),
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false),
+    PA_cyclic_pre (lor C (substitution A n (projT1 czero))) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| multloop3 : forall {A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed D = false),
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor (univ n A) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+| multloop3 : forall {A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed D = false),
+    PA_cyclic_pre (substitution A n (projT1 czero)) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor (univ n A) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| multloop4 : forall {C A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false \/ closed D = false),
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor (lor C (univ n A)) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+| multloop4 : forall {C A D : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (LF1 LF2 : list formula) (LN1 LN2 : list nat)  (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false \/ closed D = false),
+    PA_cyclic_pre (lor C (substitution A n (projT1 czero))) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (substitution A n (succ (var n))) D) d2 alpha2 LF2 LN2 ->
+    PA_cyclic_pre (lor (lor C (univ n A)) D) (max d1 d2) (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1) (((univ n A) :: remove form_eq_dec A LF2) ++ LF1) (nodup nat_eq_dec ((remove nat_eq_dec n LN2) ++ LN1))
 
-| cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
-    PA_cyclic_pre (neg A) d2 alpha2 L2 ->
+| cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {LF1 LF2 : list formula} {LN1 LN2 : list nat},
+    PA_cyclic_pre (lor C A) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (neg A) d2 alpha2 LF2 LN1 ->
     PA_cyclic_pre C
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2)
+                     (LF1 ++ LF2) (nodup nat_eq_dec (LN1 ++ LN2))
 
-| cut2 : forall (A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre A d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg A) D) d2 alpha2 L2 ->
+| cut2 : forall (A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {LF1 LF2 : list formula} {LN1 LN2 : list nat},
+    PA_cyclic_pre A d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (neg A) D) d2 alpha2 LF2 LN2 ->
     PA_cyclic_pre D
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_succ (ord_max alpha1 alpha2)))
-                     (L1 ++ L2)
+                     (LF1 ++ LF2) (nodup nat_eq_dec (LN1 ++ LN2))
 
-| cut3 : forall (C A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg A) D) d2 alpha2 L2 ->
+| cut3 : forall (C A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {LF1 LF2 : list formula} {LN1 LN2 : list nat},
+    PA_cyclic_pre (lor C A) d1 alpha1 LF1 LN1 ->
+    PA_cyclic_pre (lor (neg A) D) d2 alpha2 LF2 LN2 ->
     PA_cyclic_pre (lor C D)
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2).
+                     (LF1 ++ LF2) (nodup nat_eq_dec (LN1 ++ LN2)).
 
 Inductive PA_cyclic_theorem : formula -> nat -> ord -> Type :=
-| prune : forall {A : formula} {d : nat} {alpha : ord} {L : list formula}, PA_cyclic_pre A d alpha L -> (forall (B : formula), In B L -> PA_cyclic_axiom B = true) -> PA_cyclic_theorem A d alpha.
+| prune : forall {A : formula} {d : nat} {alpha : ord} {LF : list formula}, PA_cyclic_pre A d alpha LF [] -> (forall (B : formula), In B LF -> PA_cyclic_axiom B = true) -> PA_cyclic_theorem A d alpha.
 
-Definition true_theorem {A : formula} {d : nat} {alpha : ord} : PA_cyclic_theorem A d alpha -> {L : list formula & {X : PA_cyclic_pre A d alpha L & (forall (B : formula), In B L -> PA_cyclic_axiom B = true)}}.
-Proof. intros T. inversion T. exists L, X. apply H. Defined.
+Definition true_theorem {A : formula} {d : nat} {alpha : ord} : PA_cyclic_theorem A d alpha -> {LF : list formula & {LN : list nat & prod (prod (PA_cyclic_pre A d alpha LF LN) (forall (B : formula), In B LF -> PA_cyclic_axiom B = true)) ([] = LN)}}.
+Proof. intros T. inversion T. exists LF, []. repeat split. apply X. apply H. Defined.
 
 Lemma associativity1 :
   forall (C A B : formula) {d : nat} {alpha : ord},
     PA_cyclic_theorem (lor (lor C A) B) d alpha ->
       PA_cyclic_theorem (lor C (lor A B)) d alpha.
 Proof.
-intros C A B d alpha T. apply true_theorem in T as [L [TS TA]].
+intros C A B d alpha T.
+apply true_theorem in T as [LF [LN [[TS TA] NIL]]].
+destruct NIL.
 apply (prune (exchange1 (exchange2 (exchange3 TS))) TA).
 Qed.
 
@@ -179,39 +182,53 @@ Lemma associativity2 :
     PA_cyclic_theorem (lor C (lor A B)) d alpha ->
       PA_cyclic_theorem (lor (lor C A) B) d alpha.
 Proof.
-intros C A B d alpha T. apply true_theorem in T as [L [TS TA]].
+intros C A B d alpha T.
+apply true_theorem in T as [LF [LN [[TS TA] NIL]]].
+destruct NIL.
 apply (prune (exchange3 (exchange2 (exchange1 TS))) TA).
 Qed.
 
 Lemma passociativity1 :
-  forall (C A B : formula) {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor C A) B) d alpha L ->
-      PA_cyclic_pre (lor C (lor A B)) d alpha L.
+  forall (C A B : formula) {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor (lor C A) B) d alpha LF LN ->
+      PA_cyclic_pre (lor C (lor A B)) d alpha LF LN.
 Proof.
-intros C A B d alpha t T.
+intros C A B d alpha LF LN T.
 apply (exchange1 (exchange2 (exchange3 T))).
 Qed.
 
 Lemma passociativity2 :
-  forall (C A B : formula) {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor C (lor A B)) d alpha L ->
-      PA_cyclic_pre (lor (lor C A) B) d alpha L.
+  forall (C A B : formula) {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+    PA_cyclic_pre (lor C (lor A B)) d alpha LF LN ->
+      PA_cyclic_pre (lor (lor C A) B) d alpha LF LN.
 Proof.
-intros C A B d alpha t T.
+intros C A B d alpha LF LN T.
 apply (exchange3 (exchange2 (exchange1 T))).
 Qed.
 
-Lemma weakening_closed :
-    forall {A D : formula} {d : nat} {alpha : ord} {L : list formula},
-        closed A = true ->
-            PA_cyclic_pre D d alpha L ->
-                PA_cyclic_pre (lor A D) d (ord_succ alpha) L.
+Lemma nodup_theorem_nat_list :
+    forall {A : formula} {d : nat} {alpha : ord} {LF : list formula} (LN : list nat),
+      PA_cyclic_pre A d alpha LF LN ->
+          nodup nat_eq_dec LN = LN.
 Proof.
-intros A D d alpha L CA T.
-refine (weakening _ _ T).
-rewrite (closed_free_list _ CA).
-intros f IN.
-inversion IN.
+intros A d alpha LF LN T.
+induction T;
+try apply IHT;
+try apply nodup_fixed_point, NoDup_nodup.
+
+- rewrite free_list_remove_dups_idem at 2.
+  reflexivity.
+Qed.
+
+Lemma weakening_closed :
+    forall {A D : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+        closed A = true ->
+            PA_cyclic_pre D d alpha LF LN ->
+                PA_cyclic_pre (lor A D) d (ord_succ alpha) LF LN.
+Proof.
+intros A D d alpha LF LN CA T.
+rewrite <- (nodup_theorem_nat_list _ T), <- (app_nil_l LN), <- (closed_free_list _ CA).
+apply (weakening _ T).
 Qed.
 
 Lemma deg_monot :
@@ -220,21 +237,23 @@ Lemma deg_monot :
           PA_cyclic_theorem A d alpha ->
               PA_cyclic_theorem A d' alpha.
 Proof.
-intros A d d' alpha IE T. apply true_theorem in T as [L [TS TA]].
+intros A d d' alpha IE T.
+apply true_theorem in T as [LF [LN [[TS TA] NIL]]].
+destruct NIL.
 destruct (nat_ge_case_type _ _ IE) as [LT | EQ].
 
-- apply (prune (deg_incr d d' TS LT) TA).
+- apply (prune (deg_incr LT TS) TA).
 
 - destruct EQ.
   apply (prune TS TA).
 Qed.
 
 Lemma ord_nf_pre :
-    forall {A : formula} {d : nat} (alpha : ord) {L : list formula},
-        PA_cyclic_pre A d alpha L ->
+    forall {A : formula} {d : nat} (alpha : ord) {LF : list formula} {LN : list nat},
+        PA_cyclic_pre A d alpha LF LN ->
             nf alpha.
 Proof.
-intros A d alpha L T.
+intros A d alpha LF LN T.
 induction T;
 repeat apply nf_nf_succ;
 try apply nf_ord_max;
@@ -257,7 +276,8 @@ Lemma ord_nf :
             nf alpha.
 Proof.
 intros A d alpha T.
-apply true_theorem in T as [L [TS TA]].
+apply true_theorem in T as [LF [LN [[TS TA] NIL]]].
+destruct NIL.
 apply (ord_nf_pre _ TS).
 Qed.
 
@@ -267,8 +287,9 @@ Lemma ord_monot : forall {A : formula} {d : nat} (alpha beta : ord),
       PA_cyclic_theorem A d beta.
 Proof.
 intros A d alpha beta [[I N] | EQ] T.
-apply true_theorem in T as [L [TS TA]].
-- apply (prune (ord_incr alpha _ TS I N) TA).
+apply true_theorem in T as [LF [LN [[TS TA] NIL]]].
+destruct NIL.
+- apply (prune (ord_incr alpha _ I N TS) TA).
 
 - destruct EQ.
   apply T.
@@ -310,23 +331,23 @@ apply axiom_correct in H. destruct H.
 Qed.
 
 Lemma valid_empty_free_list : 
-    forall {L : list formula},
-        (forall B, In B L -> PA_cyclic_axiom B = true) ->
-            flat_map free_list L = [].
+    forall {LF : list formula},
+        (forall B, In B LF -> PA_cyclic_axiom B = true) ->
+            flat_map free_list LF = [].
 Proof.
-induction L;
+induction LF;
 intros AX.
 - reflexivity.
 - unfold flat_map; fold (flat_map free_list).
   rewrite closed_free_list.
-  + apply (IHL (fun B INB => AX B (or_intror INB))).
+  + apply (IHLF (fun B INB => AX B (or_intror INB))).
   + apply axiom_closed, AX, or_introl, eq_refl.
 Qed.
 
 Lemma valid_closed_formula : 
-    forall {L : list formula} {A : formula},
-        (forall B, In B L -> PA_cyclic_axiom B = true) ->
-            incl (free_list A) (flat_map free_list L) ->
+    forall {LF : list formula} {A : formula},
+        (forall B, In B LF -> PA_cyclic_axiom B = true) ->
+            incl (free_list A) (flat_map free_list LF) ->
                 closed A = true.
 Proof.
 intros L A AX SUB.
@@ -338,13 +359,14 @@ destruct (free_list A).
   inversion FAL.
 Qed.
 
+(*
 Lemma pre_theorem_closed :
-    forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-        PA_cyclic_pre A d alpha L ->
-            (forall B : formula, In B L -> PA_cyclic_axiom B = true) ->
+    forall {A : formula} {d : nat} {alpha : ord} {LF : list formula} {LN : list nat},
+        PA_cyclic_pre A d alpha LF [] ->
+            (forall B : formula, In B LF -> PA_cyclic_axiom B = true) ->
                 closed A = true.
 Proof.
-intros A d alpha L TS AX.
+intros A d alpha LF LN TS AX.
 induction TS;
 try apply IHTS;
 try apply AX;
@@ -363,7 +385,7 @@ auto.
   
 - apply axiom_closed, AX, or_introl, eq_refl.
 
-- apply (valid_closed_formula AX FLSub).
+- (*apply (valid_closed_formula AX FLSub).*) admit.
 
 - apply (closed_sub_univ _ _ _ (projT2 c) IHC).
 
@@ -436,20 +458,27 @@ auto.
 
   - pose proof (AX _ (or_introl eq_refl)) as FAL.
   inversion FAL.
-Qed.
+Admitted.
+*)
 
 Lemma theorem_closed : forall (A : formula) (d : nat) (alpha : ord),
   PA_cyclic_theorem A d alpha -> closed A = true.
 Proof.
 intros A d alpha T.
-apply true_theorem in T as [L [TS TAX]].
+apply true_theorem in T as [LF [LN [[TS TAX] NIL]]].
 induction TS;
 try apply IHTS;
 try apply TAX;
 try apply INF;
-try pose proof (IHTS TAX) as IHC;
-try pose proof (IHTS1 (fun B INB => TAX B (proj2 (in_app_iff _ _ _) (or_introl INB)))) as IHC1;
-try pose proof (IHTS2 (fun B INB => TAX B (proj2 (in_app_iff _ _ _) (or_intror INB)))) as IHC2;
+try symmetry in NIL;
+try apply remove_dups_empty in NIL;
+try apply app_eq_nil in NIL as [NIL1 NIL2];
+try symmetry in NIL;
+try symmetry in NIL1;
+try symmetry in NIL2;
+try pose proof (IHTS TAX NIL) as IHC;
+try pose proof (IHTS1 (fun B INB => TAX B (proj2 (in_app_iff _ _ _) (or_introl INB))) NIL1) as IHC1;
+try pose proof (IHTS2 (fun B INB => TAX B (proj2 (in_app_iff _ _ _) (or_intror INB))) NIL2) as IHC2;
 try apply IHC;
 unfold closed in *;
 fold closed in *;
@@ -461,7 +490,8 @@ auto.
   
 - apply axiom_closed, TAX, or_introl, eq_refl.
 
-- apply (valid_closed_formula TAX FLSub).
+- symmetry in NIL1.
+  apply free_list_closed, NIL1.
 
 - apply (closed_sub_univ _ _ _ (projT2 c) IHC).
 
@@ -557,6 +587,7 @@ intros a HC.
 destruct (correctness_decid _ HC) as [Cor | Inc].
 - apply (@prune _ _ _ [atom a]).
   + fold (closed (neg (atom a))) in HC.
+    rewrite <- (closed_free_list (atom a) HC).
     apply (weakening_closed HC), axiom.
   + intros B INB.
     inversion INB as [EQ | FAL].
@@ -565,6 +596,7 @@ destruct (correctness_decid _ HC) as [Cor | Inc].
     * inversion FAL.
 - apply (@prune _ _ _ [neg (atom a)]).
   + fold (closed (atom a)) in HC.
+    rewrite <- (closed_free_list (neg (atom a)) HC).
     apply exchange1, (weakening_closed HC), axiom.
   + intros B INB.
     inversion INB as [EQ | FAL].
@@ -576,75 +608,40 @@ Qed.
 
 Lemma pre_LEM_atomic :
   forall (a : atomic_formula),
-      PA_cyclic_pre (lor (neg (atom a)) (atom a)) 0 (ord_succ Zero) [atom a].
+      PA_cyclic_pre (lor (neg (atom a)) (atom a)) 0 (ord_succ Zero) [atom a] (free_list (atom a)).
 Proof.
-intros a. (*weakening should be subset of flatmap freelist instead of closed*)
+intros a.
+assert (free_list (atom a) = nodup nat_eq_dec (free_list (neg (atom a)) ++ free_list (atom a))) as EQ.
+{ unfold free_list.
+  rewrite remove_dups_concat_self.
+  fold (free_list (atom a)).
+  apply free_list_remove_dups_idem. }
+rewrite EQ.
 apply weakening, axiom.
-unfold flat_map, free_list.
-rewrite app_nil_r.
-apply incl_refl.
 Qed.
 
-(*
 Lemma pre_LEM_empty :
-    forall {A : formula},
-        ( free_list A = [] ->
-            { L : list formula & (PA_cyclic_pre (lor (neg A) A) 0 (ord_succ (nat_ord ((num_conn A) + (num_conn A)))) L)}) *
-        ( forall (n : nat), free_list A = [n] ->
-          { L : list formula & prod (PA_cyclic_pre (lor (neg A) A) 0 (ord_succ (nat_ord ((num_conn A) + (num_conn A)))) L) (incl [n] (flat_map free_list L))}).
+    forall {A : formula}, {LF : list formula & (PA_cyclic_pre (lor (neg A) A) 0 (ord_succ (nat_ord ((num_conn A) + (num_conn A)))) LF (free_list A))}.
 Proof.
 induction A as [A IND] using (induction_ltof1 _ num_conn);
 unfold ltof in IND.
-destruct A as [a | A | A1 A2 | m A ];
-split;
-try intros n FL;
-try intros FL.
+destruct A as [a | A | A1 A2 | m A ].
 - unfold num_conn.
   rewrite <- plus_n_O.
   exists [atom a].
   apply pre_LEM_atomic.
-- unfold num_conn.
-  rewrite <- plus_n_O.
-  exists [atom a].
-  split.
-  + apply pre_LEM_atomic.
-  + unfold flat_map. rewrite FL.
-    apply incl_refl.
-- destruct (fst (IND A (le_n _)) FL) as [L T].
+- destruct (IND A (le_n _)) as [LF T].
   unfold num_conn; fold num_conn.
   rewrite <- plus_n_Sm, <- ord_succ_nat, plus_Sn_m, <- ord_succ_nat.
-  exists L.
-  apply negation2, exchange1, (ord_incr _ _ T (ord_succ_monot _)).
-  repeat rewrite ord_succ_nat.
-  apply nf_nat.
-- destruct (snd (IND A (le_n _)) _ FL) as [L [T INCL]].
-  unfold num_conn; fold num_conn.
-  rewrite <- plus_n_Sm, <- ord_succ_nat, plus_Sn_m, <- ord_succ_nat.
-  exists L.
-  split.
-  + apply negation2, exchange1, (ord_incr _ _ T (ord_succ_monot _)).
-    repeat rewrite ord_succ_nat.
-    apply nf_nat.
-  + apply INCL.
+  exists LF.
+  apply negation2, exchange1, (ord_incr _ _ (ord_succ_monot _) (nf_nf_succ _ (nf_nf_succ _ (nf_nat _))) T).
 - assert (num_conn A1 < num_conn (lor A1 A2)) as IE1. {unfold num_conn. lia. }
   assert (num_conn A2 < num_conn (lor A1 A2)) as IE2. {unfold num_conn. lia. }
-  assert (free_list A1 = []) as FL1.
-  { unfold free_list in FL;
-    fold free_list in FL.
-    apply nodup_nil in FL.
-    apply app_eq_nil in FL.
-    apply (proj1 FL). }
-  assert (free_list A2 = []) as FL2.
-  { unfold free_list in FL;
-    fold free_list in FL.
-    apply nodup_nil in FL.
-    apply app_eq_nil in FL.
-    apply (proj2 FL). }
   assert ((max 0 0) = 0) as EQ. { lia. }
   destruct EQ.
   assert ((max (num_conn A1 + num_conn A1) (num_conn A2 + num_conn A2)) <= (num_conn A1 + num_conn A2 + (num_conn A1 + num_conn A2))) as IE. { lia. }
-  destruct (fst (IND A1 IE1) FL1) as [L1 T1].
-  destruct (fst (IND A2 IE2) FL2) as [L2 T2].
+  destruct (IND A1 IE1) as [LF1 T1].
+  destruct (IND A2 IE2) as [LF2 T2].
   apply (weakening A2), exchange1, passociativity1 in T1.
   apply (weakening A1), exchange1, passociativity1, exchange1, exchange3, exchange1 in T2.
   unfold num_conn; fold num_conn.
@@ -652,83 +649,55 @@ try intros FL.
   pose proof (demorgan2 T1 T2) as T3.
   repeat rewrite ord_max_succ_succ in T3.
   rewrite ord_max_nat in T3.
-  exists (L1 ++ L2).  
+  rewrite double_nodup_is_symm in T3.
+  exists (LF1 ++ LF2).  
   apply nat_ge_case_type in IE as [GT | EQ].
-  + refine (ord_incr _ _ T3 _ _).
+  + refine (ord_incr _ _ _ _ T3).
     * apply ord_lt_succ, ord_lt_succ, ord_lt_succ, nat_ord_lt, GT. 
     * repeat apply nf_nf_succ.
       apply nf_nat.
   + rewrite EQ.
     apply T3.
-  + rewrite FL1.
-    apply incl_nil_l.
-  + rewrite FL2.
-    apply incl_nil_l.
-- assert (num_conn A1 < num_conn (lor A1 A2)) as IE1. {unfold num_conn. lia. }
-  assert (num_conn A2 < num_conn (lor A1 A2)) as IE2. {unfold num_conn. lia. }
-  assert ((max 0 0) = 0) as EQ. { lia. }
-  destruct EQ.
-  assert ((max (num_conn A1 + num_conn A1) (num_conn A2 + num_conn A2)) <= (num_conn A1 + num_conn A2 + (num_conn A1 + num_conn A2))) as IE. { lia. }
-  destruct (free_list_lor _ _ _ FL) as [[FL1 | FL1] [FL2 | FL2]];
-  try apply closed_free_list in FL1;
-  try apply closed_free_list in FL2.
-  1 : destruct (snd (IND A1 IE1) _ FL1) as [L1 [T1 INCL1]];
-      destruct (snd (IND A2 IE2) _ FL2) as [L2 [T2 INCL2]].
-  2 : destruct (snd (IND A1 IE1) _ FL1) as [L1 [T1 INCL1]];
-      destruct (fst (IND A2 IE2) FL2) as [L2 T2].
-  3 : destruct (fst (IND A1 IE1) FL1) as [L1 T1];
-      destruct (snd (IND A2 IE2) _ FL2) as [L2 [T2 INCL2]].
-  4 : destruct (fst (IND A1 IE1) FL1) as [L1 T1];
-      destruct (fst (IND A2 IE2) FL2) as [L2 T2].
-  all : apply (weakening A2), exchange1, passociativity1 in T1.
-  1,3,5,7 : apply (weakening A1), exchange1, passociativity1, exchange1, exchange3, exchange1 in T2.
-  1,3,5,7 : unfold num_conn; fold num_conn;
-            try rewrite <- plus_n_Sm, <- ord_succ_nat, plus_Sn_m, <- ord_succ_nat;
-            pose proof (demorgan2 T1 T2) as T3;
-            repeat rewrite ord_max_succ_succ in T3;
-            rewrite ord_max_nat in T3;
-            exists (L1 ++ L2);
-            apply nat_ge_case_type in IE as [GT | EQ].
-  2,4,6,8 : rewrite EQ; split; try apply T3.
-  1,6-8 : split;
-          try refine (ord_incr _ _ T3 _ _);
-          try apply ord_lt_succ, ord_lt_succ, ord_lt_succ, nat_ord_lt, GT;
-          repeat apply nf_nf_succ;
-          try apply nf_nat.
-  
-  all : unfold flat_map; fold (flat_map free_list);
-        try rewrite flat_map_app;
-        try rewrite FL1; try rewrite FL2;
-        try apply incl_nil_l;
-        try apply (incl_appl _ INCL1);
-        try apply (incl_appr _ INCL2); 
-        try apply INCL1;
-        try apply INCL2.
-  
-  + unfold free_list in FL; fold free_list in FL.
-    rewrite FL1,FL2 in FL.
-    inversion FL.
-  + unfold free_list in FL; fold free_list in FL.
-    rewrite FL1,FL2 in FL.
-    inversion FL.
-  + admit.
-  + admit.
-- assert ((free_list A = []) + {n : nat & free_list A = [n]}) as CASE.
-  { pose proof (closed_univ _ _ (free_list_closed _ FL)). }
-  destruct CASE as [FLe | [n FLn]].
-  + destruct (fst (IND A (le_n _)) FLe) as [L T].
-    exists (remove form_eq_dec A L ++ L).
-    assert (ord_succ (nat_ord (num_conn (univ m A) + num_conn (univ m A))) = ord_add (ord_mult (ord_succ (ord_succ (nat_ord (num_conn A + num_conn A)))) (wcon (wcon Zero 0 Zero) 0 Zero)) (ord_succ (ord_succ (nat_ord (num_conn A + num_conn A))))) as FAKE.
-    admit.
-    rewrite FAKE.
-    assert (max 0 0 = 0) as EQ. lia.
+- assert (ord_succ (nat_ord (num_conn (univ m A) + num_conn (univ m A))) = ord_add (ord_mult (ord_succ (ord_succ (nat_ord (num_conn A + num_conn A)))) (wcon (wcon Zero 0 Zero) 0 Zero)) (ord_succ (ord_succ (nat_ord (num_conn A + num_conn A))))) as FAKE.
+  admit.
+  rewrite FAKE.
+  assert (max 0 0 = 0) as EQ. lia.
+  assert ((free_list A = []) + (free_list A = [m]) + (free_list A <> [m] /\ free_list A <> [])) as [[FLe | FLm] | [FLne FLnm]].
+  { destruct (free_list A) as [| hd [| hd' tl]].
+    * left.
+      left.
+      reflexivity.
+    * case (nat_eq_dec hd m) as [EQ' | NE].
+      --  destruct EQ.
+          left.
+          right.
+          destruct EQ'.
+          reflexivity.
+      --  right.
+          split.
+          ++  intros FAL.
+              inversion FAL as [FAL'].
+              apply (NE FAL').
+          ++  discriminate.
+    * right.
+      split;
+      discriminate. }
+  + assert (free_list (univ m A) = (nodup nat_eq_dec (remove nat_eq_dec m (free_list A) ++ (free_list A)))) as MAYBE.
+    { unfold free_list; fold free_list. rewrite FLe. reflexivity. }
+    rewrite MAYBE.
+    destruct (IND A (le_n _)) as [LF T].  
+    exists (remove form_eq_dec A LF ++ LF).
     rewrite <- EQ at 1.
     apply contraction2.
     apply exchange2.
     apply oneloop4.
     * right. apply FLe.
-    * apply free_list_closed, FL.
-    * apply free_list_closed, FL.
+    * unfold closed; fold closed.
+      rewrite (free_list_closed _ FLe).
+      reflexivity.
+    * unfold closed; fold closed.
+      rewrite (free_list_closed _ FLe).
+      reflexivity.
     * rewrite <- (closed_subst_eq _ m (projT1 czero)) in T.
       apply (quantification2 T).
       apply free_list_closed.
@@ -737,11 +706,53 @@ try intros FL.
       reflexivity.
     * rewrite <- (closed_subst_eq (neg A) m (projT1 czero) (free_list_closed _ FLe)) in T.
       rewrite <- (closed_subst_eq A m (succ (var m)) (free_list_closed _ FLe)) in T at 2.
-      apply exchange1, (quantification2 T). 
-  + 
-- admit.
+      apply exchange1, (quantification2 T).
+  + assert (free_list (univ m A) = (nodup nat_eq_dec (remove nat_eq_dec m (free_list A) ++ (free_list (substitution A m (projT1 czero)))))) as MAYBE.
+    { rewrite (free_list_univ_sub _ _ _ _ (projT2 czero) (eq_refl _)).
+      unfold free_list; fold free_list.
+      rewrite FLm.
+      unfold remove.
+      case nat_eq_dec as [_|FAL].
+      * reflexivity.
+      * contradict FAL.
+        reflexivity. }
+    rewrite MAYBE.
+    pose proof (IND (substitution A m (projT1 czero))) as TEMP.
+    rewrite num_conn_sub in TEMP.
+    destruct TEMP as [LF1 T1]. { apply le_n. }
+    pose proof (IND (substitution A m (succ (var m)))) as TEMP.
+    rewrite num_conn_sub in TEMP.
+    destruct TEMP as [LF2 T2]. { apply le_n. }
+    exists (remove form_eq_dec A LF2 ++ LF1).
+    rewrite <- EQ at 1.
+    apply contraction2.
+    apply exchange2.
+    apply oneloop4.
+    * left. apply FLm.
+    * unfold closed; fold closed.
+      rewrite FLm, nat_eqb_refl, list_eqb_refl.
+      case (closed A); reflexivity.
+    * unfold closed; fold closed.
+      rewrite FLm, nat_eqb_refl, list_eqb_refl.
+      case (closed A); reflexivity.
+    * apply (quantification2 T1). 
+    * apply exchange1. admit.
+  + destruct (IND A (le_n _)) as [LF T].
+    pose proof (IND (substitution A m (projT1 czero))) as TEMP.
+    rewrite num_conn_sub in TEMP.
+    destruct TEMP as [LFZ TZ]. { apply (le_n _). }
+    rewrite (free_list_univ_sub _ _ _ _ (projT2 czero) (eq_refl _)) in TZ.
+    exists ((univ m A) :: remove form_eq_dec A [A] ++ LFZ).
+    rewrite <- EQ at 1.
+    rewrite free_list_remove_dups_idem, <- remove_dups_concat_self.
+    apply multloop2.
+    * apply (or_introl (conj FLne FLnm)).
+    * apply (quantification2 TZ).
+    * fold free_list.
+      admit.
 Admitted.
 
+(*
 Lemma pre_LEM :
     forall {A : formula} {n : nat},
         free_list A = [n] ->
@@ -1042,7 +1053,17 @@ destruct (correctness_decid (substitution_a a n s)) as [COR1 | COR1].
 - apply (@prune _ _ _ [atom (substitution_a a n t)]).
   apply weakening_closed.
   + apply correct_closed, COR1.
-  + apply axiom.
+  + rewrite <- (closed_free_list (atom (substitution_a a n t))).
+    apply axiom.
+    apply free_list_closed.
+    unfold free_list.
+    rewrite subst_remove_a, FREE.
+    unfold remove.
+    case nat_eq_dec as [_ | FAL].
+    * reflexivity.
+    * contradict FAL.
+      reflexivity.
+    * apply (proj2 (correct_closed_t _ _ COR)).
   + intros B INB.
     destruct INB as [EQ | FAL].
     * destruct EQ.
@@ -1055,7 +1076,17 @@ destruct (correctness_decid (substitution_a a n s)) as [COR1 | COR1].
           destruct (correct_eval s t COR) as [E1 E2].
           apply E2.
       --  apply COR1.
-    * apply axiom.
+    * rewrite <- (closed_free_list (neg (atom (substitution_a a n s)))).
+      apply axiom.
+      apply free_list_closed.
+      unfold free_list.
+      rewrite subst_remove_a, FREE.
+      unfold remove.
+      case nat_eq_dec as [_ | FAL].
+      --  reflexivity.
+      --  contradict FAL.
+          reflexivity.
+      --  apply (proj1 (correct_closed_t _ _ COR)).
   + intros B INB.
     destruct INB as [EQ | FAL].
     * destruct EQ.
@@ -1115,7 +1146,7 @@ inversion NA.
 unfold Q1.
 intros n s t COR LIST.
 apply (LEM_term_atomic _ _ _ _ COR LIST).
-Qed.  
+Qed.
 
 (*
 Lemma Q3_inductive :
