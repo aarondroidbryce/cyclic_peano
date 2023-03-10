@@ -2,8 +2,6 @@ Require Import Lia.
 Require Import Nat.
 Require Import List.
 Require Import Classes.DecidableClass.
-Require Import Coq.Arith.Wf_nat.
-
 
 From Cyclic_PA.Maths Require Import naturals.
 From Cyclic_PA.Logic Require Import definitions.
@@ -457,7 +455,7 @@ rewrite H1; apply IHl.
   apply H1.
 Qed.  
 
-Lemma nodups_incl_app {A : Type} {DEC} : forall L1 L2, (forall (m : A), In m L1 -> In m L2) -> nodup DEC (L1 ++ L2) = nodup DEC L2. 
+Lemma nodups_incl_app : forall L1 L2, (forall m, In m L1 -> In m L2) -> nodup nat_eq_dec (L1 ++ L2) = nodup nat_eq_dec L2. 
 Proof.
 induction L1; intros.
 - rewrite app_nil_l. reflexivity.
@@ -474,7 +472,7 @@ induction L1; intros.
     reflexivity.
 Qed.
 
-Lemma remove_dups_concat_self {A : Type} {DEC} : forall (L : list A), nodup DEC (L ++ L) = nodup DEC L.
+Lemma remove_dups_concat_self : forall L, nodup nat_eq_dec (L ++ L) = nodup nat_eq_dec L.
 Proof.
 intros.
 apply nodups_incl_app.
@@ -584,16 +582,4 @@ Qed.
 Lemma split_member : forall l1 l2 n, member n (l1 ++ (n :: l2)) = true.
 Proof.
 intros l1. induction l1. intros. simpl. rewrite nat_eqb_refl. auto. intros. simpl. case (nat_eqb a n); auto.
-Qed.
-
-Lemma double_nodup_is_symm {A : Type} {DEC} :
-    forall (L1 L2 : list A),
-        nodup DEC (nodup DEC (L2 ++ L1) ++ nodup DEC (L1 ++ L2)) = nodup DEC (L1 ++ L2).
-Proof.
-intros.
-rewrite nodups_incl_app.
-- apply nodup_fixed_point, NoDup_nodup.
-- intros m IN.
-  apply nodup_In, in_app_iff in IN.
-  apply nodup_In, in_app_iff, or_comm, IN.
 Qed.
