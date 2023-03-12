@@ -2993,4 +2993,34 @@ destruct alpha.
   apply (ord_succ_lt_exp_succ _ (nf_nf_succ _ NA) (ord_lt_trans _ _ _ (zero_lt _ _ _) (ord_succ_monot _))).
 Qed.
 
+Lemma lt_succ_mult_add_l :
+    forall (alpha beta : ord),
+        alpha < (ord_succ (ord_add (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero)) beta)).
+Proof.
+intros alpha beta.
+destruct alpha as [| a1 an a2].
+- destruct (ord_add (ord_mult Zero (wcon (wcon Zero 0 Zero) 0 Zero)) beta);
+  try destruct o1;
+  apply zero_lt.
+- refine (ord_lt_trans _ _ _ _ (ord_succ_monot _)).
+  destruct beta.
+  + rewrite ord_add_zero.
+    apply (ord_mult_monot _ _ (head_lt _ _ _ _ _ _ (zero_lt _ _ _)) (single_nf _ _ (single_nf _ _ zero_nf)) (zero_lt _ _ _ )).
+  + apply (ord_lt_trans _ _ _ (ord_mult_monot _ _ (head_lt _ _ _ _ _ _ (zero_lt _ _ _)) (single_nf _ _ (single_nf _ _ zero_nf)) (zero_lt _ _ _ )) (add_right_incr_non_zero _ _ (zero_lt _ _ _))).
+Qed.
+
+Lemma lt_succ_mult_add_r :
+    forall (alpha beta : ord),
+        beta < (ord_succ (ord_add (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero)) beta)).
+Proof.
+intros alpha beta.
+apply ord_ltb_lt.
+destruct (ord_semiconnex_bool beta (ord_add (ord_mult alpha (wcon (wcon Zero 0 Zero) 0 Zero)) beta)) as [LT | [GT | EQ]].
+- apply (ord_ltb_trans _ _ _ LT (ord_lt_ltb _ _ (ord_succ_monot _))).
+- rewrite add_left_non_decr in GT.
+  inversion GT.
+- apply ord_eqb_eq in EQ.
+  destruct EQ.
+  apply ord_lt_ltb, ord_succ_monot.
+Qed.
 Close Scope cantor_scope. 

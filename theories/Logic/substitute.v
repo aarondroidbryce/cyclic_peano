@@ -2,6 +2,10 @@ From Cyclic_PA.Maths Require Import naturals.
 From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
+From Cyclic_PA.Logic Require Import proof_trees.
+
+Require Import List.
+Import ListNotations.
 
 (* Defining substitution indicators. When we later define formula substitution,
 we will want to take some formula A, and replace any instances of the
@@ -133,6 +137,17 @@ Lemma non_target_fit :
 Proof.
 intros A.
 unfold subst_ind_fit, non_target.
+induction A.
+3 : rewrite IHA1, IHA2.
+all : reflexivity.
+Qed.
+
+Lemma target_fit :
+    forall (A : formula),
+        subst_ind_fit A (target A) = true.
+Proof.
+intros A.
+unfold subst_ind_fit, target.
 induction A.
 3 : rewrite IHA1, IHA2.
 all : reflexivity.
@@ -315,3 +330,416 @@ rewrite formula_sub_ind_lor.
 - rewrite FS.
   apply non_target_fit.
 Qed.
+
+Definition tree_trace_form_l (P : ptree) : formula :=
+match P with
+| deg_up d P'_ => ptree_formula P
+
+| ord_up alpha P' => ptree_formula P
+
+| node A => A
+
+| exchange_ab A B d alpha P' => (lor A B)
+
+| exchange_cab C A B d alpha P' => (lor (lor C A) B)
+
+| exchange_abd A B D d alpha P' => (lor (lor A B) D)
+
+| exchange_cabd C A B D d alpha P' => (lor (lor (lor C A) B) D)
+
+| contraction_a A d alpha P' => (lor A A)
+
+| contraction_ad A D d alpha P' => (lor (lor A A) D)
+
+| weakening_ad A D d alpha P' => D
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => (neg A)
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => (lor (neg A) D)
+
+| negation_a A d alpha P' => A
+
+| negation_ad A D d alpha P' => lor A D
+
+| quantification_a A n t d alpha P' => (substitution A n (projT1 t))
+
+| quantification_ad A D n t d alpha P' => lor (substitution A n (projT1 t)) D
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => substitution A n (projT1 czero)
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => lor C (substitution A n (projT1 czero))
+
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => substitution A n (projT1 czero)
+
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => lor C (substitution A n (projT1 czero))
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => (lor C A)
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => A
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => (lor C A)
+end.
+
+Definition tree_trace_form_r (P : ptree) : formula :=
+match P with
+| deg_up d P'_ => ptree_formula P
+
+| ord_up alpha P' => ptree_formula P
+
+| node A => A
+
+| exchange_ab A B d alpha P' => (lor A B)
+
+| exchange_cab C A B d alpha P' => (lor (lor C A) B)
+
+| exchange_abd A B D d alpha P' => (lor (lor A B) D)
+
+| exchange_cabd C A B D d alpha P' => (lor (lor (lor C A) B) D)
+
+| contraction_a A d alpha P' => (lor A A)
+
+| contraction_ad A D d alpha P' => (lor (lor A A) D)
+
+| weakening_ad A D d alpha P' => D
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => (neg B)
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => (lor (neg B) D)
+
+| negation_a A d alpha P' => A
+
+| negation_ad A D d alpha P' => lor A D
+
+| quantification_a A n t d alpha P' => (substitution A n (projT1 t))
+
+| quantification_ad A D n t d alpha P' => lor (substitution A n (projT1 t)) D
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => substitution A n (succ (var n))
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => (substitution A n (succ (var n)))
+
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => lor (substitution A n (succ (var n))) D
+
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => lor (substitution A n (succ (var n))) D
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => (neg A)
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => (lor (neg A) D)
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => (lor (neg A) D)
+end.
+
+Definition tree_tracer_fit_l (P : ptree) (S : subst_ind) : subst_ind :=
+match P, S with
+| deg_up d P', _ => S
+
+| ord_up alpha P', _ => S
+
+| node A, _ => S
+
+| exchange_ab A B d alpha P', lor_ind S_B S_A => (lor_ind S_A S_B)
+
+| exchange_cab C A B d alpha P', lor_ind (lor_ind S_C S_B) S_A => (lor_ind (lor_ind S_C S_A) S_B)
+
+| exchange_abd A B D d alpha P', lor_ind (lor_ind S_B S_A) S_D => (lor_ind (lor_ind S_A S_B) S_D)
+
+| exchange_cabd C A B D d alpha P', lor_ind (lor_ind (lor_ind S_C S_B) S_A) S_D => (lor_ind (lor_ind (lor_ind S_C S_A) S_B) S_D)
+
+| contraction_a A d alpha P', _ => (lor_ind S S)
+
+| contraction_ad A D d alpha P', lor_ind S_A S_D => (lor_ind (lor_ind S_A S_A) S_D)
+
+| weakening_ad A D d alpha P', lor_ind S_A S_D => S_D
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2, _ => (0)
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_AB S_D => (lor_ind (0) S_D)
+
+| negation_a A d alpha P', _ => (non_target A)
+
+| negation_ad A D d alpha P', lor_ind S_A S_D => (lor_ind (non_target A) S_D)
+
+| quantification_a A n t d alpha P', _ => (non_target A)
+
+| quantification_ad A D n t d alpha P', lor_ind S_A S_D => (lor_ind (non_target A) S_D)
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2, _ => non_target A
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind SC SA) => (lor_ind SC (non_target A))
+
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2, (lor_ind SA SD) => (non_target A)
+
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2, (lor_ind (lor_ind SC SA) SD) => (lor_ind SC (non_target A))
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ => (lor_ind S (non_target A))
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2, _ => (non_target A)
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_D => (lor_ind S_C (non_target A))
+
+| _, _ => (0)
+end.
+
+Definition tree_tracer_fit_r (P : ptree) (S : subst_ind) : subst_ind :=
+match P, S with
+| deg_up d P', _ => S
+
+| ord_up alpha P', _ => S
+
+| node A, _ => S
+
+| exchange_ab A B d alpha P', lor_ind S_B S_A => (lor_ind S_A S_B)
+
+| exchange_cab C A B d alpha P', lor_ind (lor_ind S_C S_B) S_A => (lor_ind (lor_ind S_C S_A) S_B)
+
+| exchange_abd A B D d alpha P', lor_ind (lor_ind S_B S_A) S_D => (lor_ind (lor_ind S_A S_B) S_D)
+
+| exchange_cabd C A B D d alpha P', lor_ind (lor_ind (lor_ind S_C S_B) S_A) S_D => (lor_ind (lor_ind (lor_ind S_C S_A) S_B) S_D)
+
+| contraction_a A d alpha P', _ => (lor_ind S S)
+
+| contraction_ad A D d alpha P', lor_ind S_A S_D => (lor_ind (lor_ind S_A S_A) S_D)
+
+| weakening_ad A D d alpha P', lor_ind S_A S_D => S_D
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2, _ => (0)
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_AB S_D => (lor_ind (0) S_D)
+
+| negation_a A d alpha P', _ => (non_target A)
+
+| negation_ad A D d alpha P', lor_ind S_A S_D => (lor_ind (non_target A) S_D)
+
+| quantification_a A n t d alpha P', _ => (non_target A)
+
+| quantification_ad A D n t d alpha P', lor_ind S_A S_D => (lor_ind (non_target A) S_D)
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2, _ => non_target A
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind SC SA) => (non_target A)
+
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2, (lor_ind SA SD) => (lor_ind (non_target A) SD)
+
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2, (lor_ind (lor_ind SC SA) SD) => (lor_ind (non_target A) SD)
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ => (0)
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2, _ => (lor_ind (0) S)
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_D => (lor_ind (0) S_D)
+
+| _, _ => (0)
+end.
+
+Definition tree_tracer_l (P : ptree) (S : subst_ind) : subst_ind :=
+match subst_ind_fit (ptree_formula P) S with
+| false => (0)
+| true => (tree_tracer_fit_l P S)
+end.
+
+Definition tree_tracer_r (P : ptree) (S : subst_ind) : subst_ind :=
+match subst_ind_fit (ptree_formula P) S with
+| false => (0)
+| true => (tree_tracer_fit_r P S)
+end.
+
+Fixpoint target_check (A : formula) (S : subst_ind) : list formula :=
+match A,S with
+| atom a, (1) => [A]
+| neg B, (1) => [A]
+| univ n B, (1) => [A]
+| lor B C , (lor_ind S1 S2) => (target_check B S1) ++ (target_check C S2)
+| _, _ => []
+end.
+
+Lemma target_check_non_target :
+    forall (A : formula),
+        target_check A (non_target A) = [].
+Proof.
+induction A;
+try reflexivity;
+simpl.
+rewrite IHA1,IHA2.
+reflexivity.
+Qed.
+
+Lemma target_check_nil :
+    forall (A E F : formula) (S : subst_ind),
+        target_check A S = [] ->
+            formula_sub_ind A E F S = A.
+Proof.
+induction A;
+intros E F S K;
+unfold formula_sub_ind;
+case subst_ind_fit eqn:FS;
+try reflexivity;
+unfold target_check in K;
+fold target_check in K;
+destruct S;
+inversion FS as [FS'];
+inversion K as [K'];
+try apply formula_sub_ind_fit_0.
+case (target_check A1 S1) eqn:K1;
+case (target_check A2 S2) eqn:K2;
+try inversion K.
+unfold formula_sub_ind_fit;
+fold formula_sub_ind_fit.
+apply and_bool_prop in FS' as [FS1 FS2].
+pose proof (IHA1 E F S1 K1) as I1.
+pose proof (IHA2 E F S2 K2) as I2.
+unfold formula_sub_ind in *.
+rewrite FS1 in I1.
+rewrite FS2 in I2.
+rewrite I1,I2.
+reflexivity.
+Qed.
+
+Lemma target_check_not_mem_idem :
+    forall (A E F : formula) (S : subst_ind),
+        ~ In E (target_check A S) ->
+            formula_sub_ind A E F S = A.
+Proof.
+induction A;
+intros E F S NIN;
+unfold formula_sub_ind;
+case subst_ind_fit eqn:FS;
+try reflexivity;
+unfold target_check in NIN;
+fold target_check in NIN;
+destruct S;
+inversion FS as [FS'];
+try apply formula_sub_ind_fit_0;
+unfold formula_sub_ind_fit;
+fold formula_sub_ind_fit;
+try case form_eqb eqn:EQ;
+try reflexivity;
+try apply form_eqb_eq in EQ;
+try rewrite EQ in NIN;
+try contradict (NIN (or_introl eq_refl)).
+
+apply and_bool_prop in FS' as [FS1 FS2].
+pose proof (IHA1 E F S1) as I1.
+pose proof (IHA2 E F S2) as I2.
+unfold formula_sub_ind in *.
+rewrite FS1 in I1.
+rewrite FS2 in I2.
+rewrite I1,I2.
+reflexivity.
+
+all : intros FAL;
+      apply NIN, in_app_iff; auto.
+Qed.
+
+Lemma target_check_subst_ptree_l : 
+    forall (P : ptree) (S : subst_ind),
+        struct_valid P ->
+            subst_ind_fit (ptree_formula P) S = true ->
+                subst_ind_fit (tree_trace_form_l P) (tree_tracer_l P S) = true.
+Proof.
+intros P S PSV FS.
+induction P;
+unfold tree_trace_form_l, tree_tracer_l, ptree_formula, subst_ind_fit, tree_tracer_fit_l in *;
+fold ptree_formula tree_trace_form_l tree_tracer_l subst_ind_fit in *;
+try rewrite FS in *;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try rewrite FS;
+try reflexivity;
+destruct S;
+inversion FS as [FS'];
+try apply and_bool_prop in FS' as [FS1 FS2];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try reflexivity;
+try destruct S1;
+try inversion FS as [FS''];
+try rewrite FS'';
+try apply and_bool_prop in FS1 as [FS1 FS3];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite FS3;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try reflexivity;
+try destruct S1_1;
+inversion FS as [FS'''];
+try rewrite FS''';
+try apply and_bool_prop in FS1 as [FS1 FS4];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite FS3;
+try rewrite FS4;
+try reflexivity.
+Qed.
+
+Lemma target_check_subst_ptree_r : 
+    forall (P : ptree) (S : subst_ind),
+        struct_valid P ->
+            subst_ind_fit (ptree_formula P) S = true ->
+                subst_ind_fit (tree_trace_form_r P) (tree_tracer_r P S) = true.
+Proof.
+intros P S PSV FS.
+induction P;
+unfold tree_trace_form_r, tree_tracer_r, ptree_formula, subst_ind_fit, tree_tracer_fit_r in *;
+fold ptree_formula tree_trace_form_r tree_tracer_r subst_ind_fit in *;
+try rewrite FS in *;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try rewrite FS;
+try reflexivity;
+destruct S;
+inversion FS as [FS'];
+try apply and_bool_prop in FS' as [FS1 FS2];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try reflexivity;
+try destruct S1;
+try inversion FS as [FS''];
+try rewrite FS'';
+try apply and_bool_prop in FS1 as [FS1 FS3];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite FS3;
+try rewrite non_target_fit;
+try rewrite non_target_sub_fit;
+try reflexivity;
+try destruct S1_1;
+inversion FS as [FS'''];
+try rewrite FS''';
+try apply and_bool_prop in FS1 as [FS1 FS4];
+try rewrite FS1;
+try rewrite FS2;
+try rewrite FS3;
+try rewrite FS4;
+try reflexivity.
+Qed.
+
+(*
+Lemma testi :
+    forall (P : ptree) (A : formula),
+        ptree_formula P = A ->
+            forall (S : subst_ind),
+                subst_ind_fit A S = true ->
+                    (forall (B : formula), In B (target_check A S) <-> In B (target_check (tree_trace_form_l P) (tree_tracer_l P S))).
+Proof.
+induction P;
+intros A FEQ S FS;
+unfold tree_trace_form_l, tree_tracer_l;
+unfold ptree_formula in *;
+fold ptree_formula in *;
+try rewrite FEQ;
+try rewrite FS;
+unfold tree_tracer_fit_l;
+try reflexivity;
+try rewrite <- FEQ in FS;
+destruct S;
+inversion FS as [FS'];
+try rewrite <- FEQ;
+unfold target_check;
+fold target_check.
+intros B.
+rewrite in_app_comm.*)

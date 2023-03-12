@@ -15,61 +15,142 @@ Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
-Lemma concat_map_remove_eq {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
-forall (f : A -> list B) (a : A) (L1 L2 : list A),
-    concat (map f L1) = concat (map f L2) ->
-        concat (map f (remove DEC a L1)) = concat (map f (remove DEC a L2)).
-intros f a L1.
-induction L1 as [L1 IND1] using (induction_ltof1 _ (@length _));
-unfold ltof in IND1.
-intros L2 EQ;
-induction L2 as [L2 IND2] using (induction_ltof1 _ (@length _));
-unfold ltof in IND2.
-destruct L1 as [| hd1 L1];
-destruct L2 as [| hd2 L2].
-- reflexivity.
-- unfold map, remove in *;
-  fold (map f) (remove DEC) in *.
-  symmetry in EQ.
-  apply app_eq_nil in EQ as [EQ1 EQ2].
-  fold (@concat B) in *.
-  case DEC as [EQ | NE];
-  unfold map;
-  fold (map f);
-  try rewrite EQ1;
-  try rewrite IND2;
-  try apply le_n;
-  symmetry;
-  try apply EQ2.
-- unfold flat_map, remove in *;
-  fold (flat_map f) (remove DEC) in *.
-  apply app_eq_nil in EQ as [EQ1 EQ2].
-  case DEC as [EQ | NE];
-  unfold flat_map;
-  fold (flat_map f);
-  try rewrite EQ1;
-  try rewrite app_nil_l;
-  refine (IND1 _ _ [] _);
-  try apply le_n;
-  apply EQ2.
-- unfold remove;
-  fold (remove DEC).
-  unfold flat_map in *;
-  fold (flat_map f) in *.
-  case DEC as [EQ' | NE].
-  + rewrite flat_map_concat_map.
-Qed.
-*)
-Lemma flat_map_remove_eq {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
-  forall (f : A -> list B) (a : A) (L1 L2 : list A),
-      flat_map f L1 = flat_map f L2 ->
-          flat_map f (remove DEC a L1) = flat_map f (remove DEC a L2).
+Lemma in_app_comm {A : Type} :
+    forall (L1 L2 : list A) (a : A),
+      In a (L1 ++ L2) <-> In a (L2 ++ L1).
 Proof.
-intros f a L1 L2 EQ.
-repeat rewrite flat_map_concat_map in *.
-apply concat_map_remove_eq, EQ.
+intros.
+rewrite (in_app_iff L1).
+rewrite (in_app_iff L2).
+rewrite or_comm.
+reflexivity.
 Qed.
 
+Lemma remove_not_head {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (a b : A) (L : list A),
+        a <> b ->
+            remove DEC a (b :: L) = b :: (remove DEC a L).
+Proof.
+intros a b.
+induction L;
+intros NE;
+unfold remove;
+fold (remove DEC);
+case DEC as [FAL | _].
+- contradict NE.
+  apply FAL.
+- reflexivity.
+- contradict NE.
+  apply FAL.
+- reflexivity.
+Qed.
+
+Lemma flat_map_remove_in {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (a : A) (L : list A) (b : B),
+        In b (flat_map f (remove DEC a L)) ->
+            In b (flat_map f L).
+Proof.
+intros f a.
+induction L;
+intros b IN.
+- apply IN.
+- unfold remove in IN.
+  fold (remove DEC) in IN.
+  case DEC as [EQ | NE].
+  + destruct EQ.
+    apply in_app_iff, or_intror, IHL, IN.
+  + apply in_app_iff in IN as [IN | IN].
+    * apply in_app_iff, or_introl, IN.
+    * apply in_app_iff, or_intror, IHL, IN.
+Qed.
+
+Lemma flat_map_remove_in_other {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (a : A) (L : list A) (b : B),
+        In b (flat_map f (remove DECA a L)) ->
+            (~ In b (f a)) + {c : A & In c (remove DECA a L) /\ In b (f c)}.
+Proof.
+intros f a.
+induction L;
+intros b IN.
+- inversion IN.
+- unfold remove in IN.
+  fold (remove DECA) in IN.
+  case DECA as [EQ | NE].
+  + destruct EQ.
+    destruct (IHL _ IN) as [NIN | Elem].
+    * left.
+      apply NIN.
+    * right.
+      rewrite remove_cons.
+      apply Elem.
+  + apply in_app_iff in IN.
+    fold (flat_map f) in IN.
+    case (in_dec DECB b (f a0)) as [IN' | NIN].
+    * right.
+      exists a0.
+      rewrite (remove_not_head _ _ _ NE).
+      exact (conj (or_introl eq_refl) IN').
+    * assert (In b (flat_map f (remove DECA a L))) as IN''.
+      { destruct IN as [IN | IN]. contradict IN. apply NIN. apply IN. }
+      destruct (IHL _ IN'') as [NIN' | [c [INr INb]]].
+      --  left.
+          apply NIN'.
+      --  right.
+          rewrite (remove_not_head _ _ _ NE).
+          exact (existT _ c (conj (or_intror INr) INb)).
+Qed.
+
+Lemma flat_map_not_in_remove {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (a : A) (L : list A) (b : B),
+        In b (flat_map f L) ->
+            (~ In b (f a)) ->
+                In b (flat_map f (remove DECA a L)).
+Proof.
+intros f a.
+induction L;
+intros b IN NIN.
+- inversion IN.
+- unfold remove.
+  fold (remove DECA).
+  case DECA as [EQ | NE].
+  + destruct EQ.
+    apply in_app_iff in IN as [IN | IN].
+    * contradict NIN.
+      apply IN.
+    * apply (IHL _ IN NIN).
+  + apply in_app_iff in IN as [IN | IN].
+    * apply in_app_iff, or_introl, IN.
+    * apply in_app_iff, or_intror, (IHL _ IN NIN).
+Qed.
+
+Lemma flat_map_in_other_remove {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (a : A) (L : list A) (b : B),
+        In b (flat_map f L) ->
+            forall (c : A),
+                In b (f c) ->
+                    In c (remove DECA a L) ->
+                        In b (flat_map f (remove DECA a L)).
+Proof.
+intros f a.
+induction L;
+intros b INb c INf INc.
+- inversion INb.
+- unfold remove in INc.
+  fold (remove DECA) in INc.
+  case DECA as [EQ | NE].
+  + destruct EQ.
+    rewrite remove_cons.
+    apply in_flat_map.
+    exists c.
+    exact (conj INc INf).
+  + rewrite (remove_not_head _ _ _ NE).
+    apply in_app_iff in INb as [INb | INb].
+    * apply in_app_iff, or_introl, INb.
+    * destruct INc as [EQ | INc].
+      --  destruct EQ.
+          apply in_app_iff, or_introl, INf.
+      --  apply in_app_iff, or_intror, (IHL _ INb _ INf INc).
+Qed.
 
 Fixpoint list_eqb (l1 l2 : list nat) : bool :=
 match l1,l2 with

@@ -188,13 +188,13 @@ match P with
 
 | quantification_ad A D n t d alpha P' => ord_succ alpha
 
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 
@@ -894,6 +894,17 @@ Proof.
 intros alpha P EQ PV.
 rewrite EQ.
 apply ptree_ord_nf, PV.
+Qed.
+
+Lemma ptree_ord_nf_struct_hyp :
+    forall (alpha : ord) (P : ptree),
+        alpha = ptree_ord P ->
+            struct_valid P ->
+                nf alpha.
+Proof.
+intros alpha P EQ PV.
+rewrite EQ.
+apply ptree_ord_nf_struct, PV.
 Qed.
 
 Lemma associativity_1 :
