@@ -331,6 +331,106 @@ rewrite formula_sub_ind_lor.
   apply non_target_fit.
 Qed.
 
+(*
+Fixpoint leaf_subst (P : ptree) (S : subst_ind) : list subst_ind :=
+match P,S with
+| deg_up d P', _ => leaf_subst P' S
+
+| ord_up alpha P', _ => leaf_subst P'
+
+| node A, _ => [S]
+
+| exchange_ab A B d alpha P', _ => leaf_subst P' S
+
+| exchange_cab C A B d alpha P', _ => leaf_subst P' S
+
+| exchange_abd A B D d alpha P' => node_extract P'
+
+| exchange_cabd C A B D d alpha P' => node_extract P'
+
+| contraction_a A d alpha P' => node_extract P'
+
+| contraction_ad A D d alpha P' => node_extract P'
+
+| weakening_ad A D d alpha P' => node_extract P'
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| negation_a A d alpha P' => node_extract P'
+
+| negation_ad A D d alpha P' => node_extract P'
+
+| quantification_a A n t d alpha P' => node_extract P'
+
+| quantification_ad A D n t d alpha P' => node_extract P'
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 =>
+    match free_list A with
+    | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+    | hd :: [] =>
+        match nat_eqb hd n with
+        | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+        | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+        end
+    | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+    end
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => 
+    match closed C with
+        | true =>
+            match free_list A with
+            | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            | hd :: [] =>
+                match nat_eqb hd n with
+                | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                end
+            | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            end
+        | false => (univ n A) ::  (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+        end
+
+| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 =>
+    match closed D with
+        | true =>
+            match free_list A with
+            | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            | hd :: [] =>
+                match nat_eqb hd n with
+                | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                end
+            | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            end
+        | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+        end
+
+| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => 
+    match closed C, closed D with
+        | true, true =>
+            match free_list A with
+            | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            | hd :: [] =>
+                match nat_eqb hd n with
+                | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+                end
+            | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+            end
+        | _, _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+        end
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+end.
+*)
+
+(*
 Definition tree_trace_form_l (P : ptree) : formula :=
 match P with
 | deg_up d P'_ => ptree_formula P
@@ -717,6 +817,7 @@ try rewrite FS3;
 try rewrite FS4;
 try reflexivity.
 Qed.
+*)
 
 (*
 Lemma testi :

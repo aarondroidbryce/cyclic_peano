@@ -45,10 +45,6 @@ Inductive ptree : Type :=
 
 | loop_ca : forall (c a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| loop_ad : forall (a d : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
-
-| loop_cad : forall (c a d : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
-
 | cut_ca : forall (c a : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
 | cut_ad : forall (a d : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
@@ -92,10 +88,6 @@ match P with
 | loop_a A n d1 d2 alpha1 alpha2 P1 P2 => (univ n A)
 
 | loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => lor C (univ n A)
-
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => lor (univ n A) D
-
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => lor (lor C (univ n A)) D
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => C
 
@@ -143,10 +135,6 @@ match P with
 
 | loop_ca A D n d1 d2 alpha1 alpha2 P1 P2 => max d1 d2
 
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => max d1 d2
-
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => max d1 d2
-
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => max (max d1 d2) (num_conn (neg A))
 
 | cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => max (max d1 d2) (num_conn (neg A))
@@ -191,10 +179,6 @@ match P with
 | loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
 | loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
-
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
-
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 
@@ -261,36 +245,6 @@ match P with
             | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
             end
         | false => (univ n A) ::  (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-        end
-
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 =>
-    match closed D with
-        | true =>
-            match free_list A with
-            | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-            | hd :: [] =>
-                match nat_eqb hd n with
-                | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-                | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-                end
-            | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-            end
-        | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-        end
-
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 => 
-    match closed C, closed D with
-        | true, true =>
-            match free_list A with
-            | [] => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-            | hd :: [] =>
-                match nat_eqb hd n with
-                | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-                | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-                end
-            | _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-            end
-        | _, _ => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
         end
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
@@ -377,18 +331,6 @@ match P with
     (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
     (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
 
-| loop_ad A D n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = (substitution A n zero)) * (struct_valid P1) *
-    (ptree_formula P2 = lor (substitution A n (succ (var n))) D) * (struct_valid P2) *
-    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
-    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
-
-| loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2 =>
-    (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
-    (ptree_formula P2 = lor (substitution A n (succ (var n))) D) * (struct_valid P2) *
-    (d1 = ptree_deg P1) * (d2 = ptree_deg P2) *
-    (alpha1 = ptree_ord P1) * (alpha2 = ptree_ord P2)
-
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
     (ptree_formula P2 = neg A) * (struct_valid P2) *
@@ -455,20 +397,6 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
   rewrite LSTn;
   try rewrite nat_eqb_refl;
   reflexivity.
-- exists (loop_ad A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  rewrite P2N, P1N, CD.
-  destruct LSTC as [LSTn | LSTn];
-  rewrite LSTn;
-  try rewrite nat_eqb_refl;
-  reflexivity.
-- exists (loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  rewrite P2N, P1N, CD, CC.
-  destruct LSTC as [LSTn | LSTn];
-  rewrite LSTn;
-  try rewrite nat_eqb_refl;
-  reflexivity.
 - exists (loop_a A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   rewrite P2N, P1N.
@@ -503,50 +431,6 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
       reflexivity.
   + rewrite CC.
     reflexivity.
-- exists (loop_ad A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  rewrite P2N, P1N.
-  destruct LSTN as [[LSTn LSTe] | CD].
-  destruct (free_list A) as [| m FLA].
-  + contradict LSTe.
-    reflexivity.
-  + destruct FLA.
-    * case (nat_eqb m n) eqn:EQ.
-      --  apply nat_eqb_eq in EQ.
-          destruct EQ.
-          contradict LSTn.
-          reflexivity.
-      --  case (closed D);
-          reflexivity.
-    * case (closed D);
-      reflexivity.
-  + rewrite CD.
-    reflexivity.
-- exists (loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  rewrite P2N, P1N.
-  destruct LSTN as [[LSTn LSTe] | CDC].
-  destruct (free_list A) as [| m FLA].
-  + contradict LSTe.
-    reflexivity.
-  + destruct FLA.
-    * case (nat_eqb m n) eqn:EQ.
-      --  apply nat_eqb_eq in EQ.
-          destruct EQ.
-          contradict LSTn.
-          reflexivity.
-      --  case (closed C);
-          case (closed D);
-          reflexivity.
-    * case (closed C);
-      case (closed D);
-      reflexivity.
-  + destruct CDC as [CC | CD].
-    * rewrite CC.
-      reflexivity.
-    * rewrite CD.
-      case (closed C);
-      reflexivity.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
@@ -629,30 +513,6 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
   rewrite LSTn in INB;
   try rewrite nat_eqb_refl in INB;
   apply TAX, INB.
-- pose proof (structural_pre_theorem TS1) as [P1 [[[[P1F P1SV] P1D] P1O] P1L]].
-  pose proof (structural_pre_theorem TS2) as [P2 [[[[P2F P2SV] P2D] P2O] P2L]].
-  exists (loop_ad A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  intros B INB.
-  rewrite P2L, P1L, CD in INB.
-  destruct LSTC as [LSTn | LSTn];
-  rewrite LSTn in INB;
-  try rewrite nat_eqb_refl in INB;
-  apply TAX, INB.
-- pose proof (structural_pre_theorem TS1) as [P1 [[[[P1F P1SV] P1D] P1O] P1L]].
-  pose proof (structural_pre_theorem TS2) as [P2 [[[[P2F P2SV] P2D] P2O] P2L]].
-  exists (loop_cad C A D n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  intros B INB.
-  rewrite P2L, P1L, CC, CD in INB.
-  destruct LSTC as [LSTn | LSTn];
-  rewrite LSTn in INB;
-  try rewrite nat_eqb_refl in INB;
-  apply TAX, INB.
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
 - pose proof (TAX _ (or_introl eq_refl)) as FAL.
   inversion FAL.
 - pose proof (TAX _ (or_introl eq_refl)) as FAL.
@@ -688,18 +548,14 @@ intros P PSV. induction P.
 3 : destruct PSV as []. (*node*)
 4-9,13-16 :  destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
 14 : destruct PSV as [[[[PF CPF] PSV] PD] PO]. (*weakening*)
-15,16,21-23 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O]; (*double hyp*)
-              rewrite P1F,<-P1D,<-P1O in IHP1;
-              rewrite P2F,<-P2D,<-P2O in IHP2;
-              pose proof (IHP1 P1SV) as P1';
-              pose proof (IHP2 P2SV) as P2'.
-20-23 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O]. (*loop*)
+15-21 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O]; (*double hyp*)
+        rewrite P1F,<-P1D,<-P1O in IHP1;
+        rewrite P2F,<-P2D,<-P2O in IHP2;
+        pose proof (IHP1 P1SV) as P1';
+        pose proof (IHP2 P2SV) as P2'.
 
 1-14 :  try rewrite PF,<-PD,<-PO in IHP;
         try pose proof (IHP PSV) as P'.
-
-20-23 : rewrite P1F,<-P1D,<-P1O in IHP1;
-        rewrite P2F,<-P2D,<-P2O in IHP2.
       
 1 : apply (deg_incr _ _ P' LT).
 1 : apply (ord_incr _ _ P' LT NO).
@@ -717,38 +573,28 @@ intros P PSV. induction P.
 1 : apply (weakening _ CPF P').
 1 : apply (demorgan1 P1' P2').
 1 : apply (demorgan2 P1' P2').
-1 : apply (cut1 _ _ P1' P2').
-1 : apply (cut2 _ _ P1' P2').
-1 : apply (cut3 _ _ _ P1' P2').
+3 : apply (cut1 _ _ P1' P2').
+3 : apply (cut2 _ _ P1' P2').
+3 : apply (cut3 _ _ _ P1' P2').
 
 all : unfold node_extract;
       fold node_extract;
       try case (closed c) eqn:Cc;
-      try case (closed d) eqn:Cd;
       destruct (free_list a) as [| m L] eqn:FLa;
       try apply (oneloop1 _ _ (or_intror FLa) (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop2 _ _ (or_intror FLa) Cc (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop3 _ _ (or_intror FLa) Cd (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop4 _ _ (or_intror FLa) Cc Cd (IHP1 P1SV) (IHP2 P2SV)).
+      try apply (oneloop2 _ _ (or_intror FLa) Cc (IHP1 P1SV) (IHP2 P2SV)).
 
-1,2,5,8 : destruct L;
-          case (nat_eqb m n) eqn:EQB;
-          try apply nat_eqb_eq in EQB as EQ;
-          try destruct EQ.
+1,2 : destruct L;
+      case (nat_eqb m n) eqn:EQB;
+      try apply nat_eqb_eq in EQB as EQ;
+      try destruct EQ.
 
 all : try apply (oneloop1 _ _ (or_introl FLa) (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop2 _ _ (or_introl FLa) Cc (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop3 _ _ (or_introl FLa) Cd (IHP1 P1SV) (IHP2 P2SV));
-      try apply (oneloop4 _ _ (or_introl FLa) Cc Cd (IHP1 P1SV) (IHP2 P2SV)); (*finished loops*)
+      try apply (oneloop2 _ _ (or_introl FLa) Cc (IHP1 P1SV) (IHP2 P2SV)); (*finished loops*)
       try apply (multloop1 _ _ _ (IHP1 P1SV) (IHP2 P2SV));
-      try apply (multloop2 _ _ (or_intror Cc) (IHP1 P1SV) (IHP2 P2SV));
-      try apply (multloop3 _ _ (or_intror Cd) (IHP1 P1SV) (IHP2 P2SV));
-      try apply (multloop4 _ _ (or_intror (or_intror Cd)) (IHP1 P1SV) (IHP2 P2SV));
-      try apply (multloop4 _ _ (or_intror (or_introl Cc)) (IHP1 P1SV) (IHP2 P2SV)); (*closed multi loops*)
+      try apply (multloop2 _ _ (or_intror Cc) (IHP1 P1SV) (IHP2 P2SV)); (*closed multi loops*)
       try refine (multloop1 _ _ _ (IHP1 P1SV) (IHP2 P2SV));
-      try refine (multloop2 _ _ (or_introl (conj _ _)) (IHP1 P1SV) (IHP2 P2SV));
-      try refine (multloop3 _ _ (or_introl (conj _ _)) (IHP1 P1SV) (IHP2 P2SV));
-      try refine (multloop4 _ _ (or_introl (conj _ _)) (IHP1 P1SV) (IHP2 P2SV)); (*open multi loops*)
+      try refine (multloop2 _ _ (or_introl (conj _ _)) (IHP1 P1SV) (IHP2 P2SV)); (*open multi loops*)
       try rewrite FLa;
       try split;
       try discriminate; (*are open*)
@@ -764,7 +610,8 @@ Lemma theorem_provable' :
         valid P ->
             PA_cyclic_theorem (ptree_formula P) (ptree_deg P) (ptree_ord P).
 Proof.
-intros P PV. induction P.
+intros P PV.
+induction P.
 
 1 : destruct PV as [[LT PSV] AX]. (*deg up*)
 2 : destruct PV as [[[LT PSV] NO] AX]. (*ord up*)
@@ -772,22 +619,18 @@ intros P PV. induction P.
 4-9,13-16 :  destruct PV as [[[[PF PSV] PD] PO] AX]. (*single hyp*)
 14 :  destruct PV as [[[[[PF CPF] PSV] PD] PO] AX]; (*weakening*)
       pose proof (pre_theorem_structural _ PSV) as P'.
-15,16,21-23 : destruct PV as [[[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O] AX]; (*double hyp*)
-              rewrite P1F,<-P1D,<-P1O in IHP1;
-              rewrite P2F,<-P2D,<-P2O in IHP2;
-              pose proof (projT1 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as P1';
-              pose proof (projT1 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as P2';
-              pose proof (projT2 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as AX1';
-              pose proof (projT2 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as AX2';
-              fold node_extract in *.
-20-23 : destruct PV as [[[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O] AX]. (*loop*)
+15-21 : destruct PV as [[[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O] AX]; (*double hyp*)
+        rewrite P1F,<-P1D,<-P1O in IHP1;
+        rewrite P2F,<-P2D,<-P2O in IHP2;
+        try pose proof (projT1 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as P1';
+        try pose proof (projT1 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as P2';
+        try pose proof (projT2 (projT2 (true_theorem (IHP1 (P1SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))))))) as AX1';
+        try pose proof (projT2 (projT2 (true_theorem (IHP2 (P2SV, (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_intror INB)))))))) as AX2';
+        try fold node_extract in *.
 
 1-14 :  try rewrite PF,<-PD,<-PO in IHP;
         try pose proof (projT1 (projT2 (true_theorem (IHP (PSV, AX))))) as P';
         try pose proof (projT2 (projT2 (true_theorem (IHP (PSV, AX))))) as AX'.
-
-20-23 : rewrite P1F,<-P1D,<-P1O in IHP1;
-        rewrite P2F,<-P2D,<-P2O in IHP2.
   
 1 : apply (prune (deg_incr _ _ P' LT) AX').
 1 : apply (prune (ord_incr _ _ P' LT NO) AX').
@@ -807,23 +650,19 @@ intros P PV. induction P.
 
 1 : refine (prune (demorgan1 P1' P2') _).
 2 : refine (prune (demorgan2 P1' P2') _).
-3 : refine (prune (cut1 _ _ P1' P2') _).
-4 : refine (prune (cut2 _ _ P1' P2') _).
-5 : refine (prune (cut3 _ _ _ P1' P2') _).
+5 : refine (prune (cut1 _ _ P1' P2') _).
+6 : refine (prune (cut2 _ _ P1' P2') _).
+7 : refine (prune (cut3 _ _ _ P1' P2') _).
 
-1-5 : intros B INB;
-      apply in_app_iff in INB as [INB1 | INB2];
-      try apply (AX1' _ INB1);
-      apply (AX2' _ INB2).
+1,2,5-7 : intros B INB;
+          apply in_app_iff in INB as [INB1 | INB2];
+          try apply (AX1' _ INB1);
+          apply (AX2' _ INB2).
 
 all : pose proof (pre_theorem_structural P1 P1SV) as P1';
       pose proof (pre_theorem_structural P2 P2SV) as P2';
       rewrite P1F, <-P1D, <-P1O in P1';
       rewrite P2F, <-P2D, <-P2O in P2'.
-
-4 : refine (prune (oneloop4 _ _ _ _ _ P1' P2') _).
-
-3 : refine (prune (oneloop3 _ _ _ _ P1' P2') _).
 
 2 : refine (prune (oneloop2 _ _ _ _ P1' P2') _).
 
@@ -831,9 +670,9 @@ all : pose proof (pre_theorem_structural P1 P1SV) as P1';
 
 all : unfold node_extract in AX; fold node_extract in AX.
 
-1,2,3,5,6,8,9,12 : destruct (free_list a) as [| m L].
+1,2,3,5 : destruct (free_list a) as [| m L].
 
-1,5,9,13 : right; reflexivity.
+1,5 : right; reflexivity.
 
 all : try destruct L;
       try case (nat_eqb m n) eqn:EQB; (*relevant cases for all*)
@@ -843,7 +682,6 @@ all : try destruct L;
       try left;
       try reflexivity; (*shows list equalities hold*)
       try case (closed c) eqn:Cc;
-      try case (closed d) eqn:Cd;
       try reflexivity; (*shows closures hold*) 
       try apply AX;
       pose proof (AX _ (or_introl eq_refl)) as FAL;
@@ -957,3 +795,66 @@ apply (provable_closed _ d alpha).
 exists P.
 repeat split; auto.
 Qed.
+
+Lemma struct_non_empty_nodes : 
+    forall (P : ptree),
+            node_extract P <> [].
+Proof.
+induction P;
+unfold node_extract;
+fold node_extract.
+
+all : try apply IHP.
+
+1 : discriminate.
+
+all : intros FAL;
+      try case (closed c) eqn:CC;
+      try case (closed d) eqn:CD;
+      try destruct (free_list a);
+      try destruct l;
+      try case nat_eqb eqn:EQ;
+      try inversion FAL;
+      try apply app_eq_nil in FAL as [FAL1 FAL2];
+      try apply (IHP1 FAL1);
+      try apply (IHP1 FAL2);
+      try apply (IHP2 FAL2).
+Qed.
+
+Lemma struct_node_sum_less_l {L : list formula} {P : ptree} :
+    length L < length (L ++ (node_extract P)).
+Proof.
+rewrite app_length.
+case (node_extract P) eqn:L2.
+- destruct (struct_non_empty_nodes _ L2).
+- unfold length;
+  fold (@length formula).
+  lia.
+Qed.
+
+Lemma struct_node_sum_less_r {L : list formula} {P : ptree} :
+    length L < length ((node_extract P) ++ L).
+Proof.
+rewrite app_length.
+case (node_extract P) eqn:L1.
+- destruct (struct_non_empty_nodes _ L1).
+- unfold length;
+  fold (@length formula).
+  lia.
+Qed.
+
+
+(*
+
+Master destruct tactic.
+
+1 : destruct PSV as [ID PSV].
+2 : destruct PSV as [[IO PSV] NO].
+3 : destruct PSV.
+4-9 : destruct PSV as [[[PF PSV] PD] PO].
+10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
+13-16 : destruct PSV as [[[PF PSV] PD] PO].
+11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+
+
+*)

@@ -26,6 +26,16 @@ rewrite or_comm.
 reflexivity.
 Qed.
 
+(*
+Lemma remove_empty {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (a : A) (L : list A),
+        remove DEC a L = [] ->
+            forall (b : A),
+                In b L ->
+                    b = a.
+Proof.
+*)
+
 Lemma remove_not_head {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (a b : A) (L : list A),
         a <> b ->
