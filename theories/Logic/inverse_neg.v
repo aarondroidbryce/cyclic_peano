@@ -206,7 +206,7 @@ unfold form_eqb.
 reflexivity.
 Qed.
 
-Lemma dub_neg_ptree_formula_struct' : forall (P : ptree) (E : formula),
+Lemma dub_neg_ptree_formula' : forall (P : ptree) (E : formula),
   struct_valid P ->
       forall (S : subst_ind),
           subst_ind_fit (ptree_formula P) S = true ->
@@ -283,7 +283,7 @@ all : unfold "&&";
     reflexivity.
 Qed.
 
-Lemma dub_neg_ptree_formula_struct : forall (P : ptree) (E : formula),
+Lemma dub_neg_ptree_formula : forall (P : ptree) (E : formula),
   struct_valid P ->
       forall (S : subst_ind),
           ptree_formula (dub_neg_sub_ptree P E S) =
@@ -291,166 +291,13 @@ Lemma dub_neg_ptree_formula_struct : forall (P : ptree) (E : formula),
 Proof.
 intros P E PSV S.
 case (subst_ind_fit (ptree_formula P) S) eqn:FS.
-- apply (dub_neg_ptree_formula_struct' _ _ PSV), FS.
+- apply (dub_neg_ptree_formula' _ _ PSV), FS.
 - unfold dub_neg_sub_formula, formula_sub_ind, dub_neg_sub_ptree.
   rewrite FS.
   reflexivity.
 Qed.
 
-Lemma dub_neg_ptree_formula' : forall (P : ptree) (E : formula),
-  valid P ->
-      forall (S : subst_ind),
-          subst_ind_fit (ptree_formula P) S = true ->
-              ptree_formula (dub_neg_sub_ptree P E S) =
-                  dub_neg_sub_formula (ptree_formula P) E S.
-Proof.
-intros P E [PSV PAX].
-induction P; try intros S FS;
-unfold dub_neg_sub_ptree;
-rewrite FS;
-unfold ptree_formula, node_extract in *; fold ptree_formula node_extract in *;
-unfold dub_neg_sub_ptree_fit; fold dub_neg_sub_ptree_fit.
-  
-1 : destruct PSV as [ID PSV].
-2 : destruct PSV as [[IO PSV] NO].
-13-14 : destruct PSV as [[[PF PSV] PD] PO].
-
-1-2 : rewrite (dub_neg_ptree_formula_true _ _ _ FS);
-      unfold ptree_formula; fold ptree_formula;
-      apply (IHP PSV PAX _ FS).
-
-1 : { specialize (PAX _ (or_introl eq_refl)). 
-      unfold PA_cyclic_axiom in PAX.
-      unfold dub_neg_sub_formula, formula_sub_ind, formula_sub_ind_fit.
-      destruct a;
-      inversion PAX as [AX'];
-      destruct S;
-      unfold subst_ind_fit, form_eqb;
-      fold form_eqb;
-      try apply IN;
-      destruct a;
-      inversion PAX as [AX''];
-      unfold form_eqb;
-      reflexivity. }
-
-5 : reflexivity.
-
-all : destruct S;
-      inversion FS as [FS'];
-      try reflexivity;
-      try apply and_bool_prop in FS' as [FS' FS1];
-      unfold ptree_formula, dub_neg_sub_formula, formula_sub_ind, formula_sub_ind_fit, subst_ind_fit, form_eqb;
-      fold form_eqb formula_sub_ind_fit ptree_formula subst_ind_fit.
-
-8-10 :  case (form_eqb a E) eqn:FEQ;
-        try reflexivity;
-        try apply form_eqb_eq in FEQ;
-        try destruct FEQ;
-        try apply PF.
-
-2-4,7-10 :  destruct S1;
-            inversion FS' as [FS''];
-            try apply and_bool_prop in FS' as [FS' FS2].
-
-4 : destruct S1_1;
-    inversion FS'' as [FS'''];
-    apply and_bool_prop in FS' as [FS' FS3].
-
-all : unfold "&&";
-      try rewrite FS;
-      try rewrite FS';
-      try rewrite FS'';
-      try rewrite FS1;
-      try rewrite FS2;
-      try rewrite FS3;
-      unfold ptree_formula;
-      fold ptree_formula;
-      try reflexivity.
-
-1 : rewrite dub_neg_ptree_formula_true, (IHP PSV PAX);
-    try rewrite PF;
-    unfold dub_neg_sub_formula, subst_ind_fit;
-    fold subst_ind_fit.
-    rewrite formula_sub_ind_lor, non_target_sub.
-
-2-4 : rewrite non_target_fit, FS1;
-      reflexivity.
-
-1 : unfold formula_sub_ind.
-    rewrite FS1.
-    reflexivity.
-Qed.
-
-(*
-Lemma dub_neg_ptree_formula :
-    forall (P : ptree) (E : formula),
-        valid P ->
-            forall (S : subst_ind),
-                ptree_formula (dub_neg_sub_ptree P E S) =
-                    dub_neg_sub_formula (ptree_formula P) E S.
-Proof.
-intros P E [PSV PAX] S.
-destruct (subst_ind_fit (ptree_formula P) S) eqn:FS.
-- apply (dub_neg_ptree_formula' _ _ (PSV,PAX) _ FS).
-- unfold dub_neg_sub_ptree, dub_neg_sub_formula, formula_sub_ind.
-  rewrite FS.
-  reflexivity.
-Qed.
-*)
-
 Lemma dub_neg_ptree_deg :
-    forall (P : ptree) (E : formula),
-        valid P ->
-            forall (S : subst_ind),
-                ptree_deg (dub_neg_sub_ptree P E S) = ptree_deg P.
-Proof.
-intros P E [PSV PAX].
-unfold dub_neg_sub_ptree.
-pose (ptree_formula P) as A.
-induction P; intros S;
-case (subst_ind_fit A S) eqn:FS;
-unfold A in FS;
-try rewrite FS;
-unfold dub_neg_sub_ptree_fit; fold dub_neg_sub_ptree_fit;
-unfold ptree_deg in *; fold ptree_deg in *;
-try reflexivity.
-
-1 : destruct PSV as [[IO PSV] NO].
-
-9,10 : destruct PSV as [[[PF PSV] PD] PO].
-
-1 : unfold ptree_formula in FS; fold ptree_formula in FS.
-    pose proof (IHP PSV PAX S) as IHPS.
-    rewrite FS in IHPS.
-    apply IHPS.
-
-all : destruct S; inversion FS as [FS'];
-      try reflexivity.
-
-4,5 : case (form_eqb a E) eqn:EQ;
-      unfold ptree_deg; fold ptree_deg;
-      try rewrite PD;
-      try reflexivity.
-
-all : destruct S1; inversion FS' as [FS''].
-
-3 : destruct S1_1; inversion FS'' as [FS'''].
-
-all : unfold ptree_deg; fold ptree_deg;
-      try reflexivity.
-
-- assert (subst_ind_fit (ptree_formula P) (lor_ind (non_target a) S2) = true) as FSP.
-  { rewrite PF.
-    unfold subst_ind_fit; fold subst_ind_fit.
-    rewrite non_target_fit.
-    unfold "&&".
-    apply FS''. }
-  pose proof (IHP PSV PAX (lor_ind (non_target a) S2)) as IHPS.
-  rewrite FSP in IHPS.
-  apply IHPS.
-Qed.
-
-Lemma dub_neg_ptree_deg_struct :
     forall (P : ptree) (E : formula),
         struct_valid P ->
             forall (S : subst_ind),
@@ -503,48 +350,6 @@ all : unfold ptree_deg; fold ptree_deg;
 Qed.
 
 Lemma dub_neg_ptree_ord :
-    forall (P : ptree) (E : formula),
-        valid P ->
-            forall (S : subst_ind),
-                (ptree_ord (dub_neg_sub_ptree P E S)) = (ptree_ord P).
-Proof.
-intros P E [PSV PAX].
-unfold dub_neg_sub_ptree.
-pose (ptree_formula P) as A.
-induction P; intros S;
-case (subst_ind_fit A S) eqn:FS;
-unfold A in FS;
-try rewrite FS;
-unfold dub_neg_sub_ptree_fit; fold dub_neg_sub_ptree_fit;
-unfold ptree_ord in *; fold ptree_ord in *;
-try reflexivity.
-
-1 : destruct PSV as [ID PSV].
-
-9,10 : destruct PSV as [[[PF PSV] PD] PO].
-
-1 : unfold ptree_formula in FS; fold ptree_formula in FS.
-    pose proof (IHP PSV PAX S) as IHPS.
-    rewrite FS in IHPS.
-    apply IHPS.
-
-all : destruct S; inversion FS as [FS'];
-      try reflexivity.
-
-4,5 : case (form_eqb a E) eqn:EQ;
-      unfold ptree_deg; fold ptree_deg;
-      try rewrite PD;
-      try reflexivity.
-
-all : destruct S1; inversion FS' as [FS''].
-
-3 : destruct S1_1; inversion FS'' as [FS'''].
-
-all : unfold ptree_deg; fold ptree_deg;
-      try reflexivity.
-Qed.
-
-Lemma dub_neg_ptree_ord_struct :
     forall (P : ptree) (E : formula),
         struct_valid P ->
             forall (S : subst_ind),
@@ -910,127 +715,6 @@ case (PA_cyclic_axiom A) eqn:AX.
   inversion NAX.
 Qed.
 
-Lemma dub_neg_struct_valid :
-    forall (P : ptree) (E : formula),
-        struct_valid P ->
-            forall (S : subst_ind),
-                subst_ind_fit (ptree_formula P) S = true ->
-                    struct_valid (dub_neg_sub_ptree P E S).
-Proof.
-induction P;
-intros E PSV S FS;
-unfold dub_neg_sub_ptree;
-rewrite FS;
-unfold ptree_ord, ptree_formula in *;
-fold ptree_ord ptree_formula in *;
-unfold dub_neg_sub_ptree_fit;
-fold dub_neg_sub_ptree_fit.
-
-1 : destruct PSV as [ID PSV].
-2 : destruct PSV as [[IO PSV] NO].
-3 : destruct PSV.
-4-9 : destruct PSV as [[[PF PSV] PD] PO].
-10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-13-16 : destruct PSV as [[[PF PSV] PD] PO].
-11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
-
-4-7,9-14,17-21 : 
-      destruct S;
-      inversion FS as [FS'];
-      try rewrite FS';
-      try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
-  
-5-7,12,19,22 :
-      destruct S1;
-      inversion FS' as [FS''];
-      try rewrite FS'';
-      try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
-  
-7 : destruct S1_1;
-    inversion FS'' as [FS'''];
-    try rewrite FS''';
-    destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
-
-11,23 : case (form_eqb a E) eqn:FEQ.
-
-all : repeat rewrite dub_neg_ptree_formula_true;
-      repeat split;
-      repeat rewrite dub_neg_ptree_formula_struct;
-      try rewrite PF;
-      try rewrite P1F;
-      try rewrite P2F;
-      try rewrite FEQ;
-      unfold dub_neg_sub_formula;
-      repeat rewrite formula_sub_ind_lor;
-      try rewrite formula_sub_ind_0;
-      try rewrite non_target_sub;
-      try rewrite non_target_sub_term;
-      unfold subst_ind_fit;
-      fold subst_ind_fit;
-      repeat rewrite non_target_fit;
-      repeat rewrite non_target_sub_fit;
-      repeat rewrite FS;
-      try rewrite FS1;
-      try rewrite FS2;
-      try rewrite FS1_1;
-      try rewrite FS1_2;
-      try rewrite FS1_1_1;
-      try rewrite FS1_1_2;
-      try reflexivity;
-      repeat rewrite dub_neg_ptree_deg_struct;
-      repeat rewrite dub_neg_ptree_ord_struct;
-      try apply ID;
-      try apply IO;
-      try apply NO;
-      try apply PSV;
-      try apply P1SV;
-      try apply P2SV;
-      try apply PD;
-      try apply P1D;
-      try apply P2D;
-      try apply PO;
-      try apply P1O;
-      try apply P2O;
-      try apply PF;
-      try apply P1F;
-      try apply P2F;
-      try rewrite PO in *;
-      try apply ord_succ_monot;
-      try apply nf_nf_succ;
-      try apply ptree_ord_nf_struct;
-      try apply PSV;
-      try reflexivity.
-
-17 :  { unfold formula_sub_ind.
-        rewrite FS1.
-        rewrite formula_sub_ind_free_list.
-        apply (incl_tran FC), dub_neg_free_sub.
-        apply PSV.
-        rewrite PF.
-        apply FS2.
-        reflexivity. }
-
-all : try apply (IHP _ PSV);
-      try apply (IHP1 _ P1SV);
-      try apply (IHP2 _ P2SV);
-      try rewrite PF;
-      try rewrite P1F;
-      try rewrite P2F;
-      try rewrite FEQ;
-      unfold subst_ind_fit;
-      fold subst_ind_fit;
-      repeat rewrite non_target_fit;
-      repeat rewrite non_target_sub_fit;
-      repeat rewrite FS;
-      try rewrite FS1;
-      try rewrite FS2;
-      try rewrite FS1_1;
-      try rewrite FS1_2;
-      try rewrite FS1_1_1;
-      try rewrite FS1_1_2;
-      try reflexivity.
-Qed.
-
 Lemma dub_neg_valid :
     forall (P : ptree) (E : formula),
         valid P ->
@@ -1078,11 +762,6 @@ all : try apply (PSV,PAX).
 6 : destruct S1_1; inversion FS'' as [FS'''];
     destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
 
-10 :  assert (closed (neg (neg E)) = true -> closed E = true) as CIMP.
-10 :  { unfold closed; fold closed;
-        intros CE;
-        apply CE. }
-
 8,15 : case (form_eqb a E) eqn:EQ.
 
 all : try apply form_eqb_eq in EQ;
@@ -1092,9 +771,9 @@ all : try apply form_eqb_eq in EQ;
       try apply IHP;
       try apply IHP1;
       try apply IHP2;
-      try rewrite dub_neg_ptree_deg_struct;
-      try rewrite dub_neg_ptree_ord_struct;
-      try rewrite dub_neg_ptree_formula_struct;
+      try rewrite dub_neg_ptree_deg;
+      try rewrite dub_neg_ptree_ord;
+      try rewrite dub_neg_ptree_formula;
       try rewrite PF;
       try rewrite P1F;
       try rewrite P2F;
@@ -1135,7 +814,6 @@ all : try apply form_eqb_eq in EQ;
       try rewrite non_target_sub_term';
       try rewrite non_target_sub';
       try rewrite <- (sub_fit_true _ _ _ _ FS1);
-      try apply (formula_sub_ind_closed _ _ _ FC CIMP);
       try case (form_eqb f (neg E));
       try case (form_eqb f0 (neg E));
       try case (form_eqb (substitution f n (projT1 c)) (neg E));
