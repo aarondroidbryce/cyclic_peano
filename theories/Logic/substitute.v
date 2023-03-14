@@ -225,6 +225,16 @@ rewrite (non_target_term_sub _ n t).
 apply non_target_sub'.
 Qed.
 
+
+Lemma non_target_sub_term :
+    forall (A C D: formula) (n : nat) (t : term),
+        formula_sub_ind (substitution A n t) C D (non_target A) = (substitution A n t).
+Proof.
+intros.
+rewrite (non_target_term_sub _ n t).
+apply non_target_sub.
+Qed.
+
 Lemma formula_sub_ind_free_list :
     forall (A B C : formula),
         (free_list B = free_list C) ->
@@ -248,6 +258,35 @@ all : unfold formula_sub_ind_fit;
     fold free_list.
     rewrite IHA1,IHA2.
     reflexivity.
+Qed.
+
+Lemma formula_sub_ind_free_list_sub :
+    forall (A B C : formula),
+        (incl (free_list C) (free_list B)) ->
+            forall (S : subst_ind),
+                incl (free_list (formula_sub_ind_fit A B C S)) (free_list A).
+Proof.
+intros A B C FREE.
+induction A;
+intros S m IN;
+unfold formula_sub_ind.
+
+all : unfold formula_sub_ind_fit in IN;
+      try case form_eqb eqn:EQ;
+      destruct S;
+      try apply form_eqb_eq in EQ;
+      fold formula_sub_ind_fit in IN;
+      try destruct EQ;
+      try apply IN;
+      try apply (FREE _ IN).
+
+1 : unfold free_list in *;
+    fold free_list in *.
+    apply nodup_In.
+    apply nodup_In in IN.
+    apply in_app_or in IN as [IN1 | IN2].
+    apply (in_or_app _ _ _ (or_introl (IHA1 _ _ IN1))).
+    apply (in_or_app _ _ _ (or_intror (IHA2 _ _ IN2))).
 Qed.
 
 Lemma formula_sub_ind_closed :

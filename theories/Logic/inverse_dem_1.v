@@ -1,13 +1,31 @@
 From Cyclic_PA.Maths Require Import naturals.
+From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Maths Require Import ordinals.
 
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
 From Cyclic_PA.Logic Require Import proof_trees.
 From Cyclic_PA.Logic Require Import substitute.
+From Cyclic_PA.Logic Require Import PA_cyclic.
+
+Require Import List.
+Import ListNotations.
 
 Definition demorgan1_sub_formula (A E F : formula) (S : subst_ind) : formula :=
   formula_sub_ind A (neg (lor E F)) (neg E) S.
+
+Lemma demorgan1_formula_free :
+  forall (A E F : formula) (S : subst_ind),
+      incl (free_list (demorgan1_sub_formula A E F S)) (free_list A).
+Proof.
+intros A E F S.
+unfold demorgan1_sub_formula, formula_sub_ind.
+case (subst_ind_fit A S) eqn:FIT.
+- apply formula_sub_ind_free_list_sub.
+  intros B INB.
+  apply nodup_In, in_or_app, or_introl, INB.
+- apply incl_refl.
+Qed.
 
 Lemma demorgan1_sub_formula_closed :
     forall (A : formula),
@@ -137,15 +155,15 @@ match P, S with
       n t d alpha
       (demorgan1_sub_ptree_fit P' E F (lor_ind (0) S_D))
 
-| w_rule_a A n d alpha g, _ => P
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2, _ => P
 
-| w_rule_ad A D n d alpha g, lor_ind S_A S_D =>
-    w_rule_ad
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_A =>
+    loop_ca
+      (demorgan1_sub_formula C E F S_C)
       A
-      (demorgan1_sub_formula D E F S_D)
-      n d alpha
-      (fun (t : c_term) =>
-          demorgan1_sub_ptree_fit (g t) E F (lor_ind (non_target A) S_D))
+      n d1 d2 alpha1 alpha2
+      (demorgan1_sub_ptree_fit P1 E F (lor_ind S_C (non_target A)))
+      P2
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ =>
     cut_ca
@@ -192,30 +210,49 @@ rewrite FS.
 reflexivity.
 Qed.
 
+Lemma dub_neg_axiom_id :
+    forall (A E F : formula) (S : subst_ind),
+        PA_cyclic_axiom A = true ->
+            demorgan1_sub_formula A E F S = A.
+Proof.
+intros A E F S AX.
+induction A;
+inversion AX as [AX'];
+unfold demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit, form_eqb;
+fold form_eqb;
+case subst_ind_fit;
+try reflexivity.
+destruct A;
+inversion AX as [AX''].
+unfold form_eqb.
+reflexivity.
+Qed.
+
 Lemma demorgan1_ptree_formula' :
     forall (P : ptree) (E F : formula),
-        valid P ->
+        struct_valid P ->
             forall (S : subst_ind),
                 subst_ind_fit (ptree_formula P) S = true ->
                     ptree_formula (demorgan1_sub_ptree P E F S) =
                         demorgan1_sub_formula (ptree_formula P) E F S.
 Proof.
 intros P E F.
-induction P; try intros PV S FS;
+induction P;
+try intros PSV S FS;
 unfold demorgan1_sub_ptree;
 rewrite FS;
 unfold ptree_formula in *; fold ptree_formula in *;
 unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit.
   
-1 : destruct PV as [ID PV].
-2 : destruct PV as [[IO PV] NO].
-13-14 : destruct PV as [[[PF PV] PD] PO].
+1 : destruct PSV as [ID PSV].
+2 : destruct PSV as [[IO PSV] NO].
+13-14 : destruct PSV as [[[PF PSV] PD] PO].
 
 1-2 : rewrite (demorgan1_ptree_formula_true _ _ _ _ FS);
       unfold ptree_formula; fold ptree_formula;
-      apply (IHP PV _ FS).
+      apply (IHP PSV _ FS).
 
-1 : { inversion PV as [PX].
+1 : { inversion PSV as [PX].
       unfold demorgan1_sub_ptree, demorgan1_sub_formula, formula_sub_ind.
       rewrite FS.
       unfold ptree_formula; fold ptree_formula.
@@ -251,7 +288,7 @@ all : destruct S; inversion FS as [FS'];
 
 all : unfold "&&".
 
-4 : { destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+4 : { destruct PSV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
       apply form_eqb_eq in EQ1,EQ2.
       destruct EQ1,EQ2.
       case (nat_eqb n (ptree_deg (demorgan_ab f f0 n n0 o o0 P1 P2))) eqn:EQ;
@@ -260,7 +297,7 @@ all : unfold "&&".
 
 all : destruct S1; inversion FS' as [FS''].
 
-5 : { destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+5 : { destruct PSV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
       apply form_eqb_eq in EQ1,EQ2.
       destruct EQ1,EQ2.
       assert (subst_ind_fit (ptree_formula P1) (lor_ind (non_target (neg f)) S2) = true) as FS1.
@@ -305,9 +342,9 @@ Lemma demorgan1_ptree_formula :
                 ptree_formula (demorgan1_sub_ptree P E F S) =
                     demorgan1_sub_formula (ptree_formula P) E F S.
 Proof.
-intros P E F PV S.
+intros P E F PSV S.
 destruct (subst_ind_fit (ptree_formula P) S) eqn:FS.
-- apply (demorgan1_ptree_formula' _ _ _ PV _ FS).
+- apply (demorgan1_ptree_formula' _ _ _ PSV _ FS).
 - unfold demorgan1_sub_ptree, demorgan1_sub_formula, formula_sub_ind.
   rewrite FS.
   reflexivity.
@@ -319,7 +356,7 @@ Lemma demorgan1_ptree_deg :
             forall (S : subst_ind),
                 ptree_deg (demorgan1_sub_ptree P E F S) = ptree_deg P.
 Proof.
-intros P E F PV.
+intros P E F PSV.
 unfold demorgan1_sub_ptree.
 pose (ptree_formula P) as A.
 induction P; intros S;
@@ -330,12 +367,12 @@ unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit;
 unfold ptree_deg in *; fold ptree_deg in *;
 try reflexivity.
 
-1 : destruct PV as [[IO PV] NO].
+1 : destruct PSV as [[IO PSV] NO].
 
-8,9 : destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+8,9 : destruct PSV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
 
 1 : unfold ptree_formula in FS; fold ptree_formula in FS.
-    pose proof (IHP PV S) as IHPS.
+    pose proof (IHP PSV S) as IHPS.
     rewrite FS in IHPS.
     apply IHPS.
 
@@ -377,7 +414,7 @@ Lemma demorgan1_ptree_ord :
             forall (S : subst_ind),
                 ptree_ord (demorgan1_sub_ptree P E F S) = ptree_ord P.
 Proof.
-intros P E F PV.
+intros P E F PSV.
 unfold demorgan1_sub_ptree.
 pose (ptree_formula P) as A.
 induction P; intros S;
@@ -388,12 +425,12 @@ unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit;
 unfold ptree_ord in *; fold ptree_ord in *;
 try reflexivity.
 
-1 : destruct PV as [ID PV].
+1 : destruct PSV as [ID PSV].
 
-8,9 : destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+8,9 : destruct PSV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
 
 1 : unfold ptree_formula in FS; fold ptree_formula in FS.
-    pose proof (IHP PV S) as IHPS.
+    pose proof (IHP PSV S) as IHPS.
     rewrite FS in IHPS.
     apply IHPS.
 
@@ -422,21 +459,21 @@ Lemma demorgan1_valid :
                 subst_ind_fit (ptree_formula P) S = true ->
                     valid (demorgan1_sub_ptree P E F S).
 Proof.
-intros P E F PV.
+intros P E F PSV.
 induction P; try intros S FS;
 unfold demorgan1_sub_ptree;
 rewrite FS;
 unfold ptree_formula in *; fold ptree_formula in *;
 unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit.
 
-all : try apply PV.
+all : try apply PSV.
 
-1 : destruct PV as [ID PV].
-2 : destruct PV as [[IO PV] NO].
-3-8 : destruct PV as [[[PF PV] PD] PO].
-9 : destruct PV as [[[[PF FC] PV] PD] PO].
-12-13 : destruct PV as [[[PF PV] PD] PO].
-10,11,15,16,17: inversion PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+1 : destruct PSV as [ID PSV].
+2 : destruct PSV as [[IO PSV] NO].
+3-8 : destruct PSV as [[[PF PSV] PD] PO].
+9 : destruct PSV as [[[[PF FC] PSV] PD] PO].
+12-13 : destruct PSV as [[[PF PSV] PD] PO].
+10,11,15,16,17: inversion PSV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
 
 3,4,5,6,8,9,10,11,14,15,16,17 : destruct S; inversion FS as [FS'];
                                 try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
@@ -449,7 +486,7 @@ all : try apply PV.
 
 16 :  { assert (forall t, subst_ind_fit (ptree_formula (p t)) (lor_ind (non_target f) S2) = true) as FSt.
         { intros t.
-          destruct (PV t) as [[[PF PVt] PD] PO].
+          destruct (PSV t) as [[[PF PSVt] PD] PO].
           rewrite PF.
           unfold subst_ind_fit; fold subst_ind_fit.
           rewrite non_target_sub_fit.
@@ -457,18 +494,18 @@ all : try apply PV.
           apply FS2. }
 
         repeat split;
-        destruct (PV t) as [[[PF PVt] PD] PO];
+        destruct (PSV t) as [[[PF PSVt] PD] PO];
         rewrite (demorgan1_ptree_formula_true _ _ _ _ (FSt t)).
-        - rewrite (demorgan1_ptree_formula _ _ _ PVt).
+        - rewrite (demorgan1_ptree_formula _ _ _ PSVt).
           rewrite PF.
           unfold demorgan1_sub_formula.
           rewrite (non_target_term_sub _ n (projT1 t)).
           rewrite non_target_sub_lor.
           reflexivity.
-        - apply (X _ PVt _ (FSt t)).
-        - rewrite (demorgan1_ptree_deg _ _ _ PVt).
+        - apply (X _ PSVt _ (FSt t)).
+        - rewrite (demorgan1_ptree_deg _ _ _ PSVt).
           apply PD.
-        - rewrite (demorgan1_ptree_ord _ _ _ PVt).
+        - rewrite (demorgan1_ptree_ord _ _ _ PSVt).
           apply PO. }
 
 10 :  assert (closed (neg (lor E F)) = true -> closed (neg E) = true) as CIMP.
@@ -478,7 +515,7 @@ all : try apply PV.
 7,8,11,12 : case (form_eqb f E) eqn:EQ1;
             case (form_eqb f0 F) eqn:EQ2;
             unfold ptree_deg; fold ptree_deg;
-            try apply PV.
+            try apply PSV.
 
 11,15 : case (nat_eqb n (Nat.max n n0)) eqn:EQ.
             
@@ -501,7 +538,7 @@ all : try apply form_eqb_eq in EQ1;
       try rewrite P1F;
       try rewrite P2F;
       unfold demorgan1_sub_formula, formula_sub_ind;
-      try apply PV;
+      try apply PSV;
       try apply PD;
       try rewrite PO;
       try apply P1V;

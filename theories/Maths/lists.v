@@ -26,15 +26,41 @@ rewrite or_comm.
 reflexivity.
 Qed.
 
-(*
-Lemma remove_empty {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
-    forall (a : A) (L : list A),
-        remove DEC a L = [] ->
-            forall (b : A),
-                In b L ->
-                    b = a.
+Lemma nin_split {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    forall (L1 L2 : list A) (a : A),
+        ~ In a (L1 ++ L2) ->
+            ~ In a L1 /\ ~ In a L2.
 Proof.
-*)
+intros L1 L2 a NIN.
+case (in_dec DEC a L1) as [IN' | NIN'].
+contradict NIN.
+apply in_or_app, or_introl, IN'.
+apply (conj NIN').
+case (in_dec DEC a L2) as [IN'' | NIN''].
+contradict NIN.
+apply in_or_app, or_intror, IN''.
+apply NIN''.
+Qed.
+
+Lemma nin_ne_weaken {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    forall (L : list A) (a b : A),
+        a <> b ->
+            ~ In a (remove DEC b L) ->
+                ~ In a L.
+Proof.
+intros L a b NE NIN IN.
+apply NIN.
+apply (in_in_remove _ _ NE IN).
+Qed.
+
+Lemma incl_head {A : Type} {L1 L2 : list A} {a : A} :
+    incl L1 L2 -> incl (a :: L1)  (a:: L2).
+Proof.
+intros SUB b IN.
+destruct IN as [EQ | IN].
+- apply (or_introl EQ).
+- apply (or_intror (SUB _ IN)).
+Qed.
 
 Lemma remove_not_head {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (a b : A) (L : list A),
