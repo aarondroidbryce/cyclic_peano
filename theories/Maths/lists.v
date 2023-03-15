@@ -42,6 +42,17 @@ apply in_or_app, or_intror, IN''.
 apply NIN''.
 Qed.
 
+Lemma nin_merge {A : Type} :
+    forall (L1 L2 : list A) (a : A),
+        ~ In a L1 /\ ~ In a L2 ->
+            ~ In a (L1 ++ L2).
+Proof.
+intros L1 L2 a [NIN1 NIN2] IN.
+apply in_app_or in IN as [IN1 | IN2].
+apply (NIN1 IN1).
+apply (NIN2 IN2).
+Qed.
+
 Lemma nin_ne_weaken {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L : list A) (a b : A),
         a <> b ->

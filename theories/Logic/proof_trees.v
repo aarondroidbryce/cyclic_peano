@@ -176,9 +176,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => ord_succ alpha
 
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)) alpha1)
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 
@@ -354,7 +354,7 @@ Definition valid (P : ptree) : Type := (struct_valid P) * (forall (A : formula),
 
 Definition P_proves (P : ptree) (A : formula) (d : nat) (alpha : ord) : Type :=
   (ptree_formula P = A) * (valid P) *
-  (d >= ptree_deg P) * (alpha = ptree_ord P).
+  (d = ptree_deg P) * (alpha = ptree_ord P).
 
 Definition provable (A : formula) (d : nat) (alpha : ord) : Type :=
   {P : ptree & P_proves P A d alpha}.
@@ -464,7 +464,6 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
   + intros A' IN. inversion IN.
     * destruct H. apply TAX, or_introl, eq_refl.
     * inversion H.
-  + auto.
 - exists (exchange_ab A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_cab C A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_abd A B D (ptree_deg P) alpha P). repeat split; auto.
@@ -476,19 +475,16 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
   try rewrite P'L.
   + apply FLSub.
   + apply TAX.
-  + lia.
 - exists (demorgan_ab A B (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
     * apply P1AX, IN1.
     * apply P2AX, IN2.
-  + lia.
 - exists (demorgan_abd A B D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
     * apply P1AX, IN1.
     * apply P2AX, IN2.
-  + lia.
 - exists (negation_a A (ptree_deg P) alpha P). repeat split; auto.
 - exists (negation_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_a A n c (ptree_deg P) alpha P). repeat split; auto.
@@ -522,19 +518,16 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
     * apply P1AX, IN1.
     * apply P2AX, IN2.
-  + lia.
 - exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
     * apply P1AX, IN1.
     * apply P2AX, IN2.
-  + lia.
 - exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
     * apply P1AX, IN1.
     * apply P2AX, IN2.
-  + lia.
 Qed.
 
 Lemma pre_theorem_structural :
@@ -695,12 +688,8 @@ Lemma theorem_provable :
             PA_cyclic_theorem A d alpha.
 Proof.
 intros A d alpha [P [[[PF [PSV PAX]] PD] PO]].
-apply nat_ge_case_type in PD as [PD | PD].
-- rewrite <- PF, PO.
-  assert (valid (deg_up d P)) as PDV. split; simpl; auto.
-  apply (theorem_provable' _ PDV).
-- rewrite <- PF, PD, PO.
-  apply (theorem_provable' _ (PSV, PAX)).
+rewrite <- PF, PD, PO.
+apply (theorem_provable' _ (PSV, PAX)).
 Qed.
 
 Lemma ptree_ord_nf :
