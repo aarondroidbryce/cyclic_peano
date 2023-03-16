@@ -230,34 +230,40 @@ unfold demorgan1_sub_ptree;
 rewrite FS;
 unfold ptree_formula in *; fold ptree_formula in *;
 unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit.
-  
-1 : destruct PSV as [ID PSV].
-2 : destruct PSV as [[IO PSV] NO].
-13-14 : destruct PSV as [[[PF PSV] PD] PO].
 
-1-2 : rewrite (demorgan1_ptree_formula_true _ _ _ _ FS);
-      unfold ptree_formula; fold ptree_formula;
-      apply (IHP PSV _ FS).
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
 1 : { unfold demorgan1_sub_ptree, demorgan1_sub_formula, formula_sub_ind.
       rewrite FS.
       reflexivity. }
 
+1-2 : rewrite (demorgan1_ptree_formula_true _ _ _ _ FS);
+      unfold ptree_formula; fold ptree_formula;
+      apply (IHP PSV _ FS).
+
 5 : reflexivity.
 
-9,11,13,15,16 : unfold ptree_formula, demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit, form_eqb;
-                destruct S;
-                try reflexivity.
+6,8,13,14,16 :
+    unfold ptree_formula, demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit, form_eqb;
+    destruct S;
+    try reflexivity.
 
 all : destruct S; inversion FS as [FS'];
+      try apply and_bool_prop in FS' as [FS1 FS2];
+      unfold ptree_formula, demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit;
+      fold ptree_formula formula_sub_ind_fit;
+      try rewrite FS;
+      try rewrite FS1;
+      try rewrite FS2;
       try reflexivity.
-
-1,5,6,13 :  apply and_bool_prop in FS';
-            destruct FS' as [FS1 FS2];
-            unfold ptree_formula, demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit;
-            fold formula_sub_ind_fit;
-            rewrite FS,FS1,FS2;
-            reflexivity.
 
 4-6 : case (form_eqb a E) eqn:EQ1;
       case (form_eqb b F) eqn:EQ2;
@@ -269,26 +275,26 @@ all : destruct S; inversion FS as [FS'];
 
 all : unfold "&&".
 
-4 : { destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
-      apply form_eqb_eq in EQ1,EQ2.
+4 : { apply form_eqb_eq in EQ1,EQ2.
       destruct EQ1,EQ2.
       case (nat_eqb d1 (ptree_deg (demorgan_ab a b d1 d2 alpha1 alpha2 P1 P2))) eqn:EQ;
-      unfold ptree_formula; fold ptree_formula;
+      unfold ptree_formula;
+      fold ptree_formula;
       apply P1F. }
 
-all : destruct S1; inversion FS' as [FS''].
+all : destruct S1;
+      inversion FS as [FS''].
 
-5 : { destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
-      apply form_eqb_eq in EQ1,EQ2.
+5 : { apply form_eqb_eq in EQ1,EQ2.
       destruct EQ1,EQ2.
-      assert (subst_ind_fit (ptree_formula P1) (lor_ind (non_target (neg a)) S2) = true) as FS1.
+      assert (subst_ind_fit (ptree_formula P1) (lor_ind (non_target (neg a)) S2) = true) as FS1'.
       { rewrite P1F.
         unfold subst_ind_fit, non_target; fold subst_ind_fit.
-        apply FS'. }
+        apply FS. }
       case (nat_eqb d1 (ptree_deg (demorgan_abd a b d d1 d2 alpha1 alpha2 P1 P2))) eqn:EQ;
       unfold ptree_formula; fold ptree_formula;
-      rewrite (demorgan1_ptree_formula_true _ _ _ _ FS1);
-      rewrite (IHP1 P1SV _ FS1);
+      rewrite (demorgan1_ptree_formula_true _ _ _ _ FS1');
+      rewrite (IHP1 P1SV _ FS1');
       unfold demorgan1_sub_formula;
       rewrite P1F;
       rewrite non_target_sub_lor;
@@ -296,20 +302,19 @@ all : destruct S1; inversion FS' as [FS''].
       rewrite FS'';
       reflexivity. }
 
-all : try apply and_bool_prop in FS' as [FS1 FS2];
-      try apply and_bool_prop in FS1 as [FS1_1 FS1_2].
+all : try apply and_bool_prop in FS1 as [FS1_1 FS1_2].
 
-3 : destruct S1_1; inversion FS'' as [FS'''];
+3 : destruct S1_1;
+    inversion FS as [FS'''];
     apply and_bool_prop in FS1_1 as [FS1_1_1 FS1_1_2].
 
 all : unfold ptree_formula, demorgan1_sub_formula, formula_sub_ind, formula_sub_ind_fit, form_eqb;
       fold ptree_formula form_eqb formula_sub_ind_fit;
-      try rewrite FS;
-      try rewrite FS1;
-      try rewrite FS'';
-      try rewrite EQ;
-      try rewrite FS1_1,FS1_2,FS2;
-      try rewrite FS1_1_1,FS1_1_2,FS1_2,FS2;      
+      try rewrite FS1_1;
+      try rewrite FS1_2;
+      try rewrite FS1_1_1;
+      try rewrite FS1_1_2;
+      try rewrite FS1_2;
       unfold "&&";
       try reflexivity.
 Qed.
@@ -346,16 +351,19 @@ unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit;
 unfold ptree_deg in *; fold ptree_deg in *;
 try reflexivity.
 
-1 : destruct PSV as [[IO PSV] NO].
-
-8,9 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+1 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+2-8 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+9 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+10-12 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+13 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
 1 : unfold ptree_formula in FS; fold ptree_formula in FS.
     pose proof (IHP PSV S) as IHPS.
     rewrite FS in IHPS.
     apply IHPS.
 
-all : destruct S; inversion FS as [FS'];
+all : destruct S;
+      inversion FS as [FS'];
       try reflexivity.
 
 4-6 : case (form_eqb a E) eqn:EQ1;
@@ -404,9 +412,11 @@ unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit;
 unfold ptree_ord in *; fold ptree_ord in *;
 try reflexivity.
 
-1 : destruct PSV as [ID PSV].
-
-8,9 : destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+1 : destruct PSV as [PSV DU]. (*deg up*)
+2-8 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+9 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+10-12 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+13 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
 1 : unfold ptree_formula in FS; fold ptree_formula in FS.
     pose proof (IHP PSV S) as IHPS.
@@ -439,16 +449,18 @@ Proof.
   intros P E F.
   induction P;
   intros S PSV FS A IN NAX.
-  
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
-  
-  3 : { unfold demorgan1_sub_ptree in IN.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+    
+  1 : { unfold demorgan1_sub_ptree in IN.
         rewrite FS in IN.
         unfold demorgan1_sub_ptree_fit in IN.
         destruct IN as [EQ | FAL];
@@ -472,22 +484,16 @@ Proof.
             rewrite EQ.
             reflexivity.
           + apply NAX. }
-  
-  3-6,8-13,16-20 : 
-      destruct S;
-      inversion FS as [FS'];
-      try rewrite FS';
+
+  3-6,8-15,18,20 : 
+      destruct S; inversion FS as [FS'];
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
-  
-  4-6,11,18,21 :
-      destruct S1;
-      inversion FS' as [FS''];
-      try rewrite FS'';
+
+  4-6,17 :
+      destruct S1; inversion FS' as [FS''];
       try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
 
-  6 : destruct S1_1;
-      inversion FS'' as [FS'''];
-      try rewrite FS''';
+  6 : destruct S1_1; inversion FS'' as [FS'''];
       destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
   
   all : unfold demorgan1_sub_ptree in IN;
@@ -537,18 +543,18 @@ Proof.
         try rewrite non_target_sub_fit;
         try reflexivity.
 
-  9-12 :  exists A;
-          split;
-          auto.
+  3-6 : exists A;
+        split;
+        auto.
 
   1-4 : case (form_eqb a E) eqn:EQ1;
         case (form_eqb b F) eqn:EQ2;
         unfold node_extract, ptree_deg in IN;
         fold node_extract ptree_deg in IN.
-  
+
   5,13 : case (nat_eqb d1 (max d1 d2)) eqn:EQ.
 
-  1-18,22-24 :
+  1-19,21-22 :
       unfold node_extract in *;
       fold node_extract in *;
       try apply in_app_or in IN as [IN1 | IN2];
@@ -586,36 +592,34 @@ Proof.
       try rewrite non_target_sub_fit;
       try reflexivity.
 
-  3 : case (closed c) eqn:CC;
-      try rewrite (demorgan1_sub_formula_closed _ CC) in IN;
-      unfold "&&" in *.
+  case (closed c) eqn:CC;
+  try rewrite (demorgan1_sub_formula_closed _ CC) in IN;
+  unfold "&&" in *.
 
-  1-3 : case (closed (univ n a)) eqn:CuA.
+  1,3 : case (closed (univ n a)) eqn:CuA.
 
-  2,4,6,7 : 
-      exists (univ n a);
-      exact (conj (or_introl eq_refl) eq_refl).
+  3 : exists A;
+      exact (conj IN NAX).
 
-  1-2 : exists A;
-        exact (conj IN NAX).
 
-  1 : apply in_app_or in IN as [IN1 | IN2].
+  2-4 : exists (univ n a);
+        exact (conj (or_introl eq_refl) eq_refl).
 
-  1 : exists A;
-      exact (conj (in_or_app _ _ _ (or_introl IN1)) NAX).
+  apply in_app_or in IN as [IN1 | IN2].
 
-  1 : destruct (fun FSUB => IHP1 _ P1SV FSUB A IN2 NAX) as [B1 [INB1 BAX1]].
+  { exists A.
+    exact (conj (in_or_app _ _ _ (or_introl IN1)) NAX). }
 
-  2 : exists B1;
-      try split;
-      try apply (in_or_app _ _ _ (or_intror INB1));
-      try apply BAX1.
-
-  1 : try rewrite P1F;
+  { destruct (fun FSUB => IHP1 _ P1SV FSUB A IN2 NAX) as [B1 [INB1 BAX1]].
+    - rewrite P1F.
       unfold subst_ind_fit;
-      fold subst_ind_fit;
-      try rewrite FS1;
+      fold subst_ind_fit.
+      rewrite FS1.
       apply non_target_sub_fit.
+    - exists B1.
+      split.
+      + apply (in_or_app _ _ _ (or_intror INB1)).
+      + apply BAX1. }
 Qed.
 
 Lemma dem1_all_ax_trans : 
@@ -649,40 +653,37 @@ unfold demorgan1_sub_ptree_fit; fold demorgan1_sub_ptree_fit.
 
 all : try apply (PSV,PAX).
 
-3 : { repeat split.
+1 : { repeat split.
       rewrite dem1_axiom_id;
       apply PAX.
       apply or_introl, eq_refl. }
 
-1 : destruct PSV as [ID PSV].
-2 : destruct PSV as [[IO PSV] NO].
-3-8 : destruct PSV as [[[PF PSV] PD] PO].
-9 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-12-13 : destruct PSV as [[[PF PSV] PD] PO].
-10,11,14-17: inversion PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+  1 : destruct PSV as [PSV DU].
+  2 : destruct PSV as [[PSV OU] NO].
+  3-10 : destruct PSV as [[[PF PSV] PD] PO].
+  11 : destruct PSV as [[[[PF PSV] PD] PO] FC].
+  12-16: destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O].
+  17: destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA].
 
-3-6,8-12,15-17 :
-    destruct S;
-    inversion FS as [FS'];
-    try apply and_bool_prop in FS' as [FS1 FS2].
+  3-6,8-13,16,17 : 
+      destruct S; inversion FS as [FS'];
+      try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
 
-4,5,6,11 : 
-    destruct S1;
-    inversion FS as [FS''];
-    try apply and_bool_prop in FS1 as [FS1_1 FS1_2].
+  4-6,13 :  destruct S1; inversion FS' as [FS''];
+            try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
 
-6 : destruct S1_1;
-    inversion FS as [FS'''];
-    rewrite FS''' in *;
-    apply and_bool_prop in FS1_1 as [FS1_1_1 FS1_1_2].
+  6 : destruct S1_1; inversion FS'' as [FS'''];
+      destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
 
-7,8,11,12 : case (form_eqb a E) eqn:EQ1;
-            case (form_eqb b F) eqn:EQ2;
-            unfold ptree_deg; fold ptree_deg;
-            try apply (PSV,PAX).
+  7,8,13,14 :
+      case (form_eqb a E) eqn:EQ1;
+      case (form_eqb b F) eqn:EQ2;
+      unfold ptree_deg; fold ptree_deg;
+      try apply (PSV,PAX).
 
-11,15 : case (nat_eqb d1 (Nat.max d1 d2)) eqn:EQ.
-            
+11,19 : case (nat_eqb d1 (Nat.max d1 d2)) eqn:EQ.
+
+
 all : unfold node_extract in *;
       fold node_extract in *;
       try apply form_eqb_eq in EQ1;
@@ -692,8 +693,8 @@ all : unfold node_extract in *;
       repeat rewrite demorgan1_ptree_formula_true;
       repeat split;
       try apply IHP;
-      try apply IHP1;
-      try apply IHP2;
+      try apply (IHP1 P1SV);
+      try apply (IHP2 P2SV);
       unfold ptree_deg; fold ptree_deg;
       try rewrite demorgan1_ptree_deg;
       try rewrite demorgan1_ptree_ord;
@@ -703,6 +704,7 @@ all : unfold node_extract in *;
       try rewrite PF;
       try rewrite P1F;
       try rewrite P2F;
+      repeat split;
       unfold demorgan1_sub_formula;
       repeat rewrite formula_sub_ind_lor;
       try rewrite formula_sub_ind_0;
@@ -719,9 +721,10 @@ all : unfold node_extract in *;
       try rewrite P2D in *;
       try rewrite P2O;
       try apply FS;
-      try apply ID;
-      try apply IO;
+      try apply DU;
+      try apply OU;
       try apply NO;
+      try apply INA;
       try rewrite PF;
       try rewrite P1F;
       try rewrite P2F;

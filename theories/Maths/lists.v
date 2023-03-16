@@ -53,6 +53,20 @@ apply (NIN1 IN1).
 apply (NIN2 IN2).
 Qed.
 
+Lemma in_app_bor {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (L1 L2 : list A) (a : A),
+        In a (L1 ++ L2) ->
+            {In a L1} + {In a L2}.
+Proof.
+intros L1 L2 a IN.
+case (in_dec DEC a L1) as [IN1 | NIN1].
+- apply (left IN1).
+- case (in_dec DEC a L2) as [IN2 | NIN2].
+  + apply (right IN2).
+  + pose proof (nin_merge _ _ _ (conj NIN1 NIN2) IN) as FAL.
+    inversion FAL.
+Qed.
+
 Lemma nin_ne_weaken {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L : list A) (a b : A),
         a <> b ->

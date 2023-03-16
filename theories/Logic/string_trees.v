@@ -13,131 +13,130 @@ Require Import Lia.
 Require Import List.
 Import ListNotations.
 
-(*
-Fixpoint left_leaves (P : ptree) : list formula :=
+Fixpoint leaves (P : ptree) : list formula :=
 match P with
-| deg_up d P' => left_leaves P'
+| deg_up d P' => leaves P'
 
-| ord_up alpha P' => left_leaves P'
+| ord_up alpha P' => leaves P'
 
 | node A => [A]
 
-| exchange_ab A B d alpha P' => left_leaves P'
+| exchange_ab A B d alpha P' => leaves P'
 
-| exchange_cab C A B d alpha P' => left_leaves P'
+| exchange_cab C A B d alpha P' => leaves P'
 
-| exchange_abd A B D d alpha P' => left_leaves P'
+| exchange_abd A B D d alpha P' => leaves P'
 
-| exchange_cabd C A B D d alpha P' => left_leaves P'
+| exchange_cabd C A B D d alpha P' => leaves P'
 
-| contraction_a A d alpha P' => left_leaves P'
+| contraction_a A d alpha P' => leaves P'
 
-| contraction_ad A D d alpha P' => left_leaves P'
+| contraction_ad A D d alpha P' => leaves P'
 
-| weakening_ad A D d alpha P' => left_leaves P'
+| weakening_ad A D d alpha P' => leaves P'
 
-| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1 ++ left_leaves P2
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1 ++ left_leaves P2
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| negation_a A d alpha P' => left_leaves P'
+| negation_a A d alpha P' => leaves P'
 
-| negation_ad A D d alpha P' => left_leaves P'
+| negation_ad A D d alpha P' => leaves P'
 
-| quantification_a A n t d alpha P' => left_leaves P'
+| quantification_a A n t d alpha P' => leaves P'
 
-| quantification_ad A D n t d alpha P' => left_leaves P'
+| quantification_ad A D n t d alpha P' => leaves P'
 
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1 ++ left_leaves P2
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1 ++ left_leaves P2
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 
-| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => left_leaves P1 ++ left_leaves P2
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
 end.
-*)
+
 
 Fixpoint string_tree
     (P Q : ptree) {B : formula} {dQ : nat} {beta : ord} (QP : P_proves Q B dQ beta) (NAX : PA_cyclic_axiom B = false) : ptree :=
 match P with
-| deg_up d P' => match (nat_ltb dQ d) with
+| deg_up d P' =>
+    match (nat_ltb dQ d) with
     | false => (string_tree P' Q QP NAX)
     | true => deg_up d (string_tree P' Q QP NAX)
     end
 
-| ord_up alpha P' => ord_up (ord_add beta alpha) (string_tree P' Q QP NAX)
+| ord_up alpha P' =>
+    match ord_ltb (ptree_ord (string_tree P' Q QP NAX)) alpha with
+    | true => ord_up alpha (string_tree P' Q QP NAX)
+    | false => (string_tree P' Q QP NAX)
+    end
 
-| node A => match form_eqb B A with
+| node A =>
+    match form_eqb B A with
     | true => Q
-    | _ => match beta with
-        | Zero => (match dQ with
-                  | 0 => P
-                  | _ => deg_up dQ P
-                  end)
-        | _ => ord_up beta (match dQ with
-            | 0 => P
-            | _ => deg_up dQ P
-            end)
+    | false => match dQ with
+        | 0 => P
+        | _ => deg_up dQ P
         end
     end
 
 | exchange_ab A B d alpha P' =>
     exchange_ab A B
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | exchange_cab C A B d alpha P'=>
     exchange_cab
       C A B
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | exchange_abd A B D d alpha P' =>
     exchange_abd
       A B D
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | exchange_cabd C A B D d alpha P' =>
     exchange_cabd
       C A B D
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | contraction_a A d alpha P' =>
     contraction_a
       A
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | contraction_ad A D d alpha P' =>
     contraction_ad
       A D
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | weakening_ad A D d alpha P' =>
     weakening_ad
       A D
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 =>
     demorgan_ab A B
       (ptree_deg (string_tree P1 Q QP NAX))
       (ptree_deg (string_tree P2 Q QP NAX))
-      (ord_add beta alpha1)
-      (ord_add beta alpha2)
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
       (string_tree P1 Q QP NAX)
       (string_tree P2 Q QP NAX)
 
@@ -146,8 +145,8 @@ match P with
       A B D
       (ptree_deg (string_tree P1 Q QP NAX))
       (ptree_deg (string_tree P2 Q QP NAX))
-      (ord_add beta alpha1)
-      (ord_add beta alpha2)
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
       (string_tree P1 Q QP NAX)
       (string_tree P2 Q QP NAX)
 
@@ -155,38 +154,39 @@ match P with
     negation_a
       A
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | negation_ad A D d alpha P' =>
     negation_ad
       A D
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | quantification_a A k t d alpha P' =>
     quantification_a
       A k t
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | quantification_ad A D k t d alpha P' =>
     quantification_ad
       A D k t
       (ptree_deg (string_tree P' Q QP NAX))
-      (ord_add beta alpha)
+      (ptree_ord (string_tree P' Q QP NAX))
       (string_tree P' Q QP NAX)
 
 | loop_a A k d1 d2 alpha1 alpha2 P1 P2 =>
     loop_a
       A k
       (ptree_deg (string_tree P1 Q QP NAX))
-      d2
-      (ord_add beta alpha1)
-      alpha2
-      (string_tree P1 Q QP NAX) P2
+      (ptree_deg (string_tree P2 Q QP NAX))
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
+      (string_tree P1 Q QP NAX)
+      (string_tree P2 Q QP NAX)
 
 | loop_ca C A k d1 d2 alpha1 alpha2 P1 P2 => (*match form_eqb B (univ k A) with
     | true => 
@@ -194,17 +194,18 @@ match P with
           C A k
           (ptree_deg (string_tree P1 Q QP NAX))
           d2
-          (ord_add beta alpha1)
+          (ptree_ord (string_tree P1 Q QP NAX))
           alpha2
           (string_tree P1 Q QP NAX) P2
     | false => *)
         loop_ca
           C A k
           (ptree_deg (string_tree P1 Q QP NAX))
-          d2
-          (ord_add beta alpha1)
-          alpha2
-          (string_tree P1 Q QP NAX) P2
+          (ptree_deg (string_tree P2 Q QP NAX))
+          (ptree_ord (string_tree P1 Q QP NAX))
+          (ptree_ord (string_tree P2 Q QP NAX))
+          (string_tree P1 Q QP NAX)
+          (string_tree P2 Q QP NAX)
 (*    end*)
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 =>
@@ -212,8 +213,8 @@ match P with
       C A
       (ptree_deg (string_tree P1 Q QP NAX))
       (ptree_deg (string_tree P2 Q QP NAX))
-      (ord_add beta alpha1)
-      (ord_add beta alpha2)
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
       (string_tree P1 Q QP NAX)
       (string_tree P2 Q QP NAX)
 
@@ -222,8 +223,8 @@ match P with
       A D
       (ptree_deg (string_tree P1 Q QP NAX))
       (ptree_deg (string_tree P2 Q QP NAX))
-      (ord_add beta alpha1)
-      (ord_add beta alpha2)
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
       (string_tree P1 Q QP NAX)
       (string_tree P2 Q QP NAX)
 
@@ -232,8 +233,8 @@ match P with
       C A D
       (ptree_deg (string_tree P1 Q QP NAX))
       (ptree_deg (string_tree P2 Q QP NAX))
-      (ord_add beta alpha1)
-      (ord_add beta alpha2)
+      (ptree_ord (string_tree P1 Q QP NAX))
+      (ptree_ord (string_tree P2 Q QP NAX))
       (string_tree P1 Q QP NAX)
       (string_tree P2 Q QP NAX)
 end.
@@ -249,21 +250,19 @@ fold string_tree ptree_formula;
 try reflexivity;
 try apply IHP.
 
-- case (nat_ltb dQ d');
-  try apply IHP.
-
 - case (form_eqb A a) eqn:EQ.
-  2 : destruct beta;
-      destruct dQ;
-      try reflexivity.
+  + apply form_eqb_eq in EQ.
+    destruct EQ.
+    destruct QP as [[[QF QV] QD] QO].
+    apply QF.
+  + destruct dQ;
+    reflexivity.
 
-  1 : apply form_eqb_eq in EQ.
-      destruct EQ.
-      destruct QP as [[[QF QV] QD] QO].
-      apply QF.
+- case (nat_ltb dQ d');
+  apply IHP.
 
-(*- case (form_eqb A (univ n a)) eqn:EQ;
-  reflexivity. *)
+- case ord_ltb;
+  apply IHP.
 Qed.
 
 Lemma string_tree_deg :
@@ -278,18 +277,27 @@ fold string_tree;
 unfold ptree_deg;
 fold ptree_deg.
 
-1 : destruct PSV as [ID PSV].
-2 : destruct PSV as [[IO PSV] NO].
-3 : destruct PSV.
-4-9 : destruct PSV as [[[PF PSV] PD] PO].
-10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-13-16 : destruct PSV as [[[PF PSV] PD] PO].
-11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
 all : try rewrite (IHP PSV);
       try rewrite (IHP1 P1SV);
       try rewrite (IHP2 P2SV);
       try lia.
+
+- case (form_eqb A a) eqn:EQ.
+  2 : destruct dQ;
+      reflexivity.
+
+  1 : destruct QP as [[[QF QV] QD] QO].
+      lia.
 
 - destruct (nat_semiconnex_bool dQ d') as [LT | [GT | EQ]].
   + rewrite LT.
@@ -297,29 +305,24 @@ all : try rewrite (IHP PSV);
     reflexivity.
   + rewrite (nat_ltb_asymm _ _ GT).
     rewrite (max_split1 _ _ GT).
-    rewrite (max_split1 _ _ (nat_ltb_trans _ _ _ (nat_lt_ltb _ _ ID) GT)) in IHP.
+    rewrite (max_split1 _ _ (nat_ltb_trans _ _ _ (nat_lt_ltb _ _ DU) GT)) in IHP.
     apply (IHP PSV).
   + apply nat_eqb_eq in EQ.
     destruct EQ.
     rewrite nat_ltb_irrefl.
     rewrite (PeanoNat.Nat.max_l _ _ (le_n _)).
-    rewrite (PeanoNat.Nat.max_r _ _ (le_S_n _ _ (le_S _ _ ID))) in IHP.
+    rewrite (PeanoNat.Nat.max_r _ _ (le_S_n _ _ (le_S _ _ DU))) in IHP.
     apply (IHP PSV).
 
-- case (form_eqb A a) eqn:EQ.
-  2 : destruct beta;
-      destruct dQ;
-      reflexivity.
-
-  1 : destruct QP as [[[QF QV] QD] QO].
-      lia.
-
-(*- case (form_eqb A (univ n a)) eqn:EQ;
-  unfold ptree_deg;
-  fold ptree_deg;
-  try lia. *)
+- case ord_ltb;
+  apply IHP, PSV.
 Qed.
 
+(*
+
+(*****)
+(*Not True In This Version*)
+(*****)
 Lemma string_tree_ord :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
@@ -340,12 +343,20 @@ Proof.
   13-16 : destruct PSV as [[[PF PSV] PD] PO].
   11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
 
-  all : try case (form_eqb A (univ n a)) eqn:EQ;
-        unfold ptree_ord;
+  all : unfold ptree_ord;
         fold ptree_ord;
         repeat rewrite ord_succ_add_succ;
         try rewrite ord_max_add_comm;
         try rewrite ord_add_assoc;
+        try rewrite IHP;
+        try rewrite IHP1;
+        try rewrite IHP2;
+        try apply PSV;
+        try apply P1SV;
+        try apply P2SV;
+        try rewrite PO;
+        try rewrite P1O;
+        try rewrite P2O;
         try reflexivity;
         try apply nf_add;
         try apply nf_mult;
@@ -353,13 +364,16 @@ Proof.
         try apply nf_ord_max;
         repeat apply single_nf;
         try apply zero_nf;
-        try apply (ptree_ord_nf_struct_hyp _ _ PO PSV);
-        try apply (ptree_ord_nf_struct_hyp _ _ P1O P1SV);
-        try apply (ptree_ord_nf_struct_hyp _ _ P2O P2SV);
+        try apply (ptree_ord_nf_struct _ PSV);
+        try apply (ptree_ord_nf_struct _ P1SV);
+        try apply (ptree_ord_nf_struct _ P2SV);
         try apply (ptree_ord_nf_struct_hyp _ _ QO QSV).
   
   - case (nat_ltb dQ d') eqn:LT;
     apply (IHP PSV).
+
+  - case ord_ltb;
+
   
   - try case (form_eqb A a) eqn:EQ.
     + rewrite ord_add_zero.
@@ -369,6 +383,7 @@ Proof.
       rewrite ord_add_zero;
       reflexivity.
 Qed.
+*)
 
 Lemma axiom_app_split :
     forall (L1 L2 : list formula),
@@ -390,6 +405,253 @@ apply (AX1 _ IN1).
 apply (AX2 _ IN2).
 Qed.
 
+Lemma string_tree_leaves_not_in :
+    forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
+        struct_valid P ->
+            ~ In A (leaves P) ->
+                (leaves (string_tree P Q QP NAX)) = (leaves P).
+Proof.
+  intros P Q A dQ beta [[[QF [QSV QAX]] QD] QO] NAX PSV NIN.
+  induction P;
+  unfold string_tree;
+  fold string_tree;
+  unfold leaves in *;
+  fold leaves in *.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+  all : try case (nat_ltb dQ d') eqn:LT;
+        try case (ord_ltb _ beta0) eqn:IE;
+        try case (form_eqb A (univ n a)) eqn:FEQ;
+        unfold node_extract;
+        try case (closed c) eqn:CC;
+        fold node_extract;
+        unfold "&&" in *;
+        try apply (IHP PSV NIN);
+        try apply (nin_split form_eq_dec) in NIN as [NIN1 NIN2];
+        try split;
+        try rewrite (IHP1 P1SV NIN1);
+        try rewrite (IHP2 P2SV NIN2);
+        try reflexivity.
+
+  1 : { try case (form_eqb A a) eqn:FEQ.
+        2 : destruct dQ;
+            reflexivity.
+        1 : apply form_eqb_eq in FEQ.
+            destruct FEQ.
+            contradict (NIN (or_introl eq_refl)). }
+Qed.
+
+Lemma string_leaves_sub : 
+    forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
+        struct_valid P ->
+            incl (leaves (string_tree P Q QP NAX)) ((remove form_eq_dec A (leaves P)) ++ (leaves Q)).
+Proof.
+  intros P Q A dQ beta [[[QF [QSV QAX]] QD] QO] NAX PSV.
+  induction P;
+  unfold string_tree;
+  fold string_tree;
+  unfold leaves in *;
+  fold leaves in *.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+  
+  1 : { unfold remove.
+        case (form_eq_dec A a) as [EQ | NE].
+        - destruct EQ.
+          rewrite form_eqb_refl.
+          apply incl_appr, incl_refl.
+        - destruct dQ;
+          case form_eqb;
+          try apply incl_appl, incl_refl;
+          try apply incl_appr, incl_refl. }
+
+  all : try case (nat_ltb dQ d') eqn:LT;
+        try case (ord_ltb _ beta0) eqn:IE;
+        try case (form_eqb A (univ n a)) eqn:FEQ;
+        unfold leaves;
+        fold leaves;
+        try apply (IHP PSV);
+        try apply incl_app;
+        try rewrite remove_app;
+        try apply incl_appl, (IHP1 P1SV);
+        try rewrite (IHP1 P1SV);
+        try rewrite (IHP2 P2SV);
+        try reflexivity;
+        try rewrite <- app_assoc;
+        try apply incl_appr, (IHP2 P2SV);
+        apply (incl_tran (IHP1 P1SV));
+        apply incl_app_app;
+        try apply incl_appr;
+        apply incl_refl.
+Qed.
+
+Lemma univ_node_to_leaf :
+    forall (P : ptree),
+        struct_valid P ->
+            forall (A : formula) (n : nat),
+                In (univ n A) (node_extract P) ->
+                    {In (univ n A) (leaves P)} + {In A (leaves P)}.
+Proof.
+  intros P PSV A n IN.
+  induction P;
+  unfold leaves, node_extract in *;
+  fold leaves node_extract in *.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+  1 : left;
+      apply IN.
+
+  all : try apply (IHP PSV IN);
+        try apply (@in_app_bor _ form_eq_dec) in IN as [IN1 | IN2];
+        try destruct (IHP1 P1SV IN1) as [INu1 | INA1];
+        try apply (left (in_or_app _ _ _ (or_introl INu1)));
+        try apply (right (in_or_app _ _ _ (or_introl INA1)));
+        try destruct (IHP2 P2SV IN2) as [INu2 | INA2];
+        try apply (left (in_or_app _ _ _ (or_intror INu2)));
+        try apply (right (in_or_app _ _ _ (or_intror INA2))).
+
+  2 : case (closed c) eqn:CC;
+      unfold "&&" in *.
+
+  all : case (closed (univ n0 a)) eqn:CuA;
+        try apply (@in_app_bor _ form_eq_dec) in IN as [IN2 | IN1];
+        try apply in_remove in IN2 as [IN2 NE];
+        try destruct (IHP1 P1SV IN1) as [INu1 | INA1];
+        try apply (left (in_or_app _ _ _ (or_introl INu1)));
+        try apply (right (in_or_app _ _ _ (or_introl INA1)));
+        try destruct (IHP2 P2SV IN2) as [INu2 | INA2];
+        try apply (left (in_or_app _ _ _ (or_intror INu2)));
+        try apply (right (in_or_app _ _ _ (or_intror INA2))).
+
+(*        rewrite cons_app in IN.
+
+        apply (@in_app_bor _ form_eq_dec) in IN.
+
+        destruct IN as [EQ | IN].
+
+        admit.
+        admit.
+        admit.
+
+        admit.
+        try apply in_remove in INA2 as [INA2 NE];
+        try destruct (IHP1 P1SV INA1) as [B1 [INB1 BAX1]];
+        try destruct (IHP2 P2SV INA2) as [B2 [INB2 BAX2]];
+        try exact (existT _ B1 (conj (in_or_app _ _ _ (or_introl INB1)) BAX1));
+        try exact (existT _ B2 (conj (in_or_app _ _ _ (or_intror INB2)) BAX2)).
+*)
+
+Admitted.
+
+Lemma node_ax_to_leaves_ax :
+    forall (P : ptree),
+        struct_valid P ->
+            forall (A : formula), In A (node_extract P) -> PA_cyclic_axiom A = false ->
+                {B : formula & In B (leaves P) /\ PA_cyclic_axiom B = false}.
+Proof.
+  intros P PSV A IN NAX.
+  induction P;
+  unfold leaves, node_extract in *;
+  fold leaves node_extract in *.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+  1 : exact (existT _ A (conj IN NAX)).
+
+  all : try apply (IHP PSV IN);
+        try apply (@in_app_bor _ form_eq_dec) in IN as [IN1 | IN2];
+        try destruct (IHP1 P1SV IN1) as [B1 [INB1 BAX1]];
+        try destruct (IHP2 P2SV IN2) as [B2 [INB2 BAX2]];
+        try exact (existT _ B1 (conj (in_or_app _ _ _ (or_introl INB1)) BAX1));
+        try exact (existT _ B2 (conj (in_or_app _ _ _ (or_intror INB2)) BAX2)).
+
+  1,2 : case (closed (univ n a)) eqn:CuA;
+        unfold "&&" in *.
+
+  2,4 : refine (existT _ a (conj (in_or_app _ _ _ (or_intror INA)) _)).
+
+  all : try case (closed c) eqn:CC;
+        try apply (@in_app_bor _ form_eq_dec) in INA as [INA2 | INA1];
+        try apply in_remove in INA2 as [INA2 NE];
+        try destruct (IHP1 P1SV INA1) as [B1 [INB1 BAX1]];
+        try destruct (IHP2 P2SV INA2) as [B2 [INB2 BAX2]];
+        try exact (existT _ B1 (conj (in_or_app _ _ _ (or_introl INB1)) BAX1));
+        try exact (existT _ B2 (conj (in_or_app _ _ _ (or_intror INB2)) BAX2)).
+  admit.
+  admit.
+  admit.
+  admit.
+
+        admit.
+
+        apply (@in_app_bor _ form_eq_dec) in INA as [INA1 | INA2].
+
+
+Lemma leaves_ax_to_valid :
+    forall (P : ptree),
+        struct_valid P ->
+            (forall (B : formula), In B (leaves P) -> PA_cyclic_axiom B = true) ->
+                valid P.
+Proof.
+  intros P PSV LAX.
+  split.
+  apply PSV.
+  induction P;
+  unfold leaves, node_extract in *;
+  fold leaves node_extract in *.
+  
+  1 : destruct PSV as [ID PSV].
+  2 : destruct PSV as [[IO PSV] NO].
+  3 : destruct PSV.
+  4-9 : destruct PSV as [[[PF PSV] PD] PO].
+  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
+  13-16 : destruct PSV as [[[PF PSV] PD] PO].
+  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+
+  3 : apply LAX.
+
+  all : try apply (IHP PSV LAX);
+        try apply axiom_app_split in LAX as [LAX1 LAX2];
+        try apply axiom_app_merge;
+        try split;
+        try apply (IHP1 P1SV LAX1);
+        try apply (IHP2 P2SV LAX2).
+
+(*
 Lemma string_tree_node_not_in :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
@@ -412,6 +674,7 @@ Proof.
   11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
 
   all : try case (nat_ltb dQ d') eqn:LT;
+        try case (ord_ltb _ beta0) eqn:IE;
         try case (form_eqb A (univ n a)) eqn:FEQ;
         unfold node_extract;
         try case (closed c) eqn:CC;
@@ -425,7 +688,7 @@ Proof.
         try reflexivity.
 
   1 : { try case (form_eqb A a) eqn:FEQ.
-        2 : destruct beta, dQ;
+        2 : destruct dQ;
             reflexivity.
         1 : apply form_eqb_eq in FEQ.
             destruct FEQ.
@@ -436,8 +699,14 @@ Proof.
   all : try apply not_in_cons in NIN as [NE NIN];
         try apply (nin_split form_eq_dec) in NIN as [NIN1 NIN2];
         try rewrite (IHP1 P1SV NIN2);
+        try rewrite (IHP2 P1SV NIN2);
         try reflexivity.
+
+        admit.
+        admit.
 Qed.
+*)
+
 
 (*
 Lemma string_tree_node_remove :
@@ -518,20 +787,9 @@ case (in_dec nat_eq_dec n (free_list A)) as [TT | FF].
   apply axiom_closed, AX, INB.
 Qed.
 
-Lemma in_app_bor {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
-    forall (L1 L2 : list A) (a : A),
-        In a (L1 ++ L2) ->
-            {In a L1} + {In a L2}.
-Proof.
-intros L1 L2 a IN.
-case (in_dec DEC a L1) as [IN1 | NIN1].
-- apply (left IN1).
-- case (in_dec DEC a L2) as [IN2 | NIN2].
-  + apply (right IN2).
-  + pose proof (nin_merge _ _ _ (conj NIN1 NIN2) IN) as FAL.
-    inversion FAL.
-Qed.
 
+
+(*
 Lemma string_tree_struct :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
@@ -564,12 +822,12 @@ Proof.
         try rewrite (string_tree_deg _ _ _ _ PSV).
         apply nat_ltb_lt in LT.
         lia. }
-
-  1 : { repeat split;
+  
+  1 : { case ord_ltb eqn:LT;
+        repeat split;
         try apply (IHP PSV).
-        - rewrite (string_tree_ord _ _ _ _ PSV).
-          apply add_right_incr, IO.
-        - apply (nf_add _ _ (ptree_ord_nf_struct_hyp _ _ QO QSV) NO). }
+        apply ord_ltb_lt, LT.
+        apply NO. }
 
   1 : { case (form_eqb A a) eqn:EQ.
         1 : apply (QSV, QAX).
@@ -596,8 +854,6 @@ Proof.
           try inversion EQ;
           try apply (or_introl eq_refl). }
 
-    11 : case (form_eqb A (univ n a)) eqn:FEQ.
-
     all : unfold node_extract in *;
           fold node_extract in *;
           repeat split;
@@ -605,7 +861,6 @@ Proof.
           try apply (IHP1 P1SV);
           try apply (IHP2 P2SV);
           try rewrite string_tree_formula;
-          (*try rewrite string_tree_ord;*)
           try apply PF;
           try apply P1F;
           try apply P2F;
@@ -620,15 +875,16 @@ Proof.
 
     1 : { admit. }
 Admitted.
+*)
 
 Lemma string_tree_nin_valid :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
-            ~ In A (node_extract P) ->
-                (forall B : formula, In B (remove form_eq_dec A (node_extract P)) -> PA_cyclic_axiom B = true) ->
+            ~ In A (leaves P) ->
+                (forall B : formula, In B (remove form_eq_dec A (leaves P)) -> PA_cyclic_axiom B = true) ->
                     valid (string_tree P Q QP NAX).
 Proof.
-  intros P Q A dQ beta [[[QF [QSV QAX]] QD] QO] NAX PSV NINA PAX.
+  intros P Q A dQ beta [[[QF [QSV QAX]] QD] QO] NAX PSV NINA LAX.
   induction P;
   unfold string_tree;
   fold string_tree;
@@ -651,16 +907,16 @@ Proof.
         try rewrite LT;
         try rewrite (nat_ltb_asymm _ _ GT);
         repeat split;
-        try apply (IHP PSV NINA PAX);
+        try apply (IHP PSV NINA LAX);
         try rewrite (string_tree_deg _ _ _ _ PSV).
         apply nat_ltb_lt in LT.
         lia. }
 
-  1 : { repeat split;
-        try apply (IHP PSV NINA PAX).
-        - rewrite (string_tree_ord _ _ _ _ PSV).
-          apply add_right_incr, IO.
-        - apply (nf_add _ _ (ptree_ord_nf_struct_hyp _ _ QO QSV) NO). }
+  1 : { case ord_ltb eqn:LT;
+        repeat split;
+        try apply (IHP PSV NINA LAX).
+        - apply ord_ltb_lt, LT.
+        - apply NO. }
 
   1 : { case (form_eqb A a) eqn:EQ.
         1 : apply (QSV, QAX).
@@ -670,16 +926,16 @@ Proof.
           unfold ptree_ord;
           try apply zero_lt;
           try apply (ptree_ord_nf_struct_hyp _ _ QO QSV);
-          unfold node_extract, ptree_deg;
+          unfold leaves, ptree_deg;
           try lia;
           intros B INB;
           destruct INB as [EQ' | FAL];
           try inversion FAL;
           destruct EQ';
           try apply AX;
-          apply PAX;
-          unfold node_extract;
-          fold node_extract;
+          apply LAX;
+          unfold leaves;
+          fold leaves;
           unfold remove;
           case form_eq_dec as [TT | FF];
           try destruct TT;
@@ -689,18 +945,18 @@ Proof.
 
     11 : case (form_eqb A (univ n a)) eqn:FEQ.
 
-    all : unfold node_extract in *;
-          fold node_extract in *;
-          try rewrite remove_app in PAX;
-          try destruct (axiom_app_split _ _ PAX) as [PAX1 PAX2];
+    all : unfold leaves in *;
+          fold leaves in *;
+          try rewrite remove_app in LAX;
+          try destruct (axiom_app_split _ _ LAX) as [LAX1 LAX2];
           try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
           repeat split;
           try apply axiom_app_merge;
           try split;
-          fold node_extract;
-          try apply (IHP PSV NINA PAX);
-          try apply (IHP1 P1SV NINA1 PAX1);
-          try apply (IHP2 P2SV NINA2 PAX2);
+          fold leaves;
+          try apply (IHP PSV NINA LAX);
+          try apply (IHP1 P1SV NINA1 LAX1);
+          try apply (IHP2 P2SV NINA2 LAX2);
           try rewrite string_tree_formula;
           try rewrite string_tree_ord;
           try apply PF;
@@ -715,28 +971,33 @@ Proof.
           try apply P2SV;
           try reflexivity.
 
-    1 : { rewrite (string_tree_node_not_in _ _ _ _ PSV NINA).
-          apply FC. }
+    1 : { (*rewrite (string_tree_node_not_in _ _ _ _ PSV NINA).
+          apply FC. *) admit. }
 
     all : unfold node_extract;
           fold node_extract;
           try case (closed c) eqn:CC;
           unfold "&&" in *;
-          case (closed (univ n a)) eqn:CuA;
+          case (closed (univ n a)) eqn:CuA.
           try apply not_in_cons in NINA as [NE NINA];
-          try rewrite (remove_not_head _ _ _ NE) in PAX;
-          try rewrite remove_app in PAX;
-          try destruct (axiom_app_split _ _ PAX) as [PAX1 PAX2];
+          try rewrite (remove_not_head _ _ _ NE) in LAX;
+          try rewrite remove_app in LAX;
+          try destruct (axiom_app_split _ _ LAX) as [LAX1 LAX2];
           try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
-          try apply (IHP1 P1SV NINA2 PAX2);
-          try apply (IHP2 P2SV NINA1 PAX1);
+          try apply (IHP1 P1SV NINA2 LAX2);
+          try apply (IHP2 P2SV NINA1 LAX1);
+          try apply string_tree_struct;
+          try apply P2SV.
           try pose proof (PAX _ (or_introl eq_refl)) as FAL;
           try inversion FAL;
           try apply axiom_app_merge;
           split;
           try apply (IHP1 P1SV NINA2 PAX2);
+          try apply (IHP2 P2SV NINA1 PAX1);
           try rewrite (notin_remove _ _ _ NINA1) in PAX1;
-          try apply PAX1.
+          try rewrite (notin_remove _ _ _ NINA2) in PAX2;
+          try apply PAX1;
+          try apply PAX2.
 Qed.
 
 Lemma open_loop_ax_head_one_empty_nodes :

@@ -805,6 +805,20 @@ destruct (free_list_univ_empty_cases _ _ (closed_free_list _ CuA)) as [Ln | LE].
   apply LE.
 Qed.
 
+Lemma not_closed_univ_list :
+    forall (A : formula) (n : nat),
+        closed (univ n A) = false ->
+            free_list A <> [] /\ free_list A <> [n].
+Proof.
+intros A n CuA.
+unfold closed in CuA.
+split;
+intros FAL;
+rewrite FAL in CuA;
+try rewrite nat_eqb_refl in CuA;
+inversion CuA.
+Qed.
+
 (*Correctness Lemmas*)
 Lemma correctness_decid :
     forall (a : atomic_formula),
