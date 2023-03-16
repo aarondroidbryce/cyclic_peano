@@ -489,11 +489,9 @@ Proof.
         try reflexivity.
 
   1 : repeat rewrite <- dub_neg_sub_formula_closed.
-      case (closed c) eqn:CC.
-      destruct (free_list a);
-      try destruct l;
-      try case nat_eqb eqn:EQ.
-
+      case (closed c) eqn:CC;
+      unfold "&&";
+      case (closed (univ n a)) eqn:CuA.
 
   all : unfold flat_map;
         fold (flat_map free_list);
@@ -662,42 +660,35 @@ Proof.
       try reflexivity.
 
   3 : rewrite <- dub_neg_sub_formula_closed in *;
-      case (closed c) eqn:CC.
+      case (closed c) eqn:CC;
+      unfold "&&" in *.
 
-  1-3 : destruct (free_list a) eqn:FREE;
-        try destruct l;
-        try case nat_eqb eqn:EQ'.
+  1-3 : case (closed (univ n a)) eqn:CuA.
 
-  3,4,7,8,11-13 : 
+  2,4,6,7 : 
       exists (univ n a);
       exact (conj (or_introl eq_refl) eq_refl).
 
-  1-4 : exists A;
+  1,2 : exists A;
         exact (conj IN NAX).
 
-  all : apply in_app_or in IN as [IN1 | IN2].
+  1 : apply in_app_or in IN as [IN1 | IN2].
 
-  1,3 : exists A;
-        exact (conj (in_or_app _ _ _ (or_introl IN1)) NAX).
+  1 : exists A;
+      exact (conj (in_or_app _ _ _ (or_introl IN1)) NAX).
 
-  all : destruct (fun FSUB => IHP1 _ P1SV FSUB A IN2 NAX) as [B1 [INB1 BAX1]];
-        try exists B1;
-        try split;
-        try apply (in_or_app _ _ _ (or_intror INB1));
-        try apply BAX1;
-        try rewrite P1F;
-        try rewrite P2F;
-        unfold ptree_formula in FS;
-        fold ptree_formula in FS;
-        unfold subst_ind_fit;
-        fold subst_ind_fit;
-        try rewrite FS;
-        try rewrite FS';
-        try rewrite FS1;
-        try rewrite FS2;
-        try rewrite non_target_fit;
-        try rewrite non_target_sub_fit;
-        try reflexivity.
+  1 : destruct (fun FSUB => IHP1 _ P1SV FSUB A IN2 NAX) as [B1 [INB1 BAX1]].
+
+  2 : exists B1;
+      split;
+      try apply (in_or_app _ _ _ (or_intror INB1));
+      try apply BAX1.
+
+  1 : rewrite P1F.
+      unfold subst_ind_fit;
+      fold subst_ind_fit.
+      rewrite FS1;
+      apply non_target_sub_fit.
 Qed.
 
 Lemma dub_neg_all_ax_trans : 
@@ -860,9 +851,7 @@ all : unfold node_extract in *; fold node_extract in *;
       fold (dub_neg_sub_formula c E S1) in IN;
       try rewrite <- dub_neg_sub_formula_closed in IN;
       case (closed c) eqn:CC;
-      destruct (free_list a);
-      try destruct l;
-      try case nat_eqb eqn:EQ;
+      case (closed (univ n a)) eqn:CuA;
       try pose proof (PAX _ (or_introl eq_refl)) as FAL;
       try inversion FAL;
       try apply (PAX _ (in_or_app _ _ _ (or_intror IN)));

@@ -199,6 +199,64 @@ intros b INb c INf INc.
       --  apply in_app_iff, or_intror, (IHL _ INb _ INf INc).
 Qed.
 
+Lemma count_occ_app_one_cases {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (a : A) (L1 L2 : list A),
+        count_occ DEC (L1 ++ L2) a = 1 ->
+            {In a L1 /\ ~In a L2} + {In a L2 /\ ~In a L1}.
+Proof.
+intros a L1 L2 ONE.
+case (in_dec DEC a L1) as [IN1 | NIN1];
+case (in_dec DEC a L2) as [IN2 | NIN2].
+- apply (count_occ_In DEC) in IN1.
+  apply (count_occ_In DEC) in IN2.
+  rewrite count_occ_app in ONE.
+  destruct (count_occ DEC L1 a).
+  contradict IN1.
+  intros FAL;
+  inversion FAL.
+  destruct (count_occ DEC L2 a).
+  contradict IN2.
+  intros FAL;
+  inversion FAL.
+  contradict ONE.
+  rewrite <- plus_n_Sm.
+  intros FAL.
+  inversion FAL.
+- left.
+  apply (conj IN1 NIN2).
+- right.
+  apply (conj IN2 NIN1).
+- apply (count_occ_not_In DEC) in NIN1.
+  apply (count_occ_not_In DEC) in NIN2.
+  rewrite count_occ_app, NIN1, NIN2 in ONE.
+  discriminate.
+Qed.
+
+Lemma count_occ_app_one_split {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (a : A) (L1 L2 : list A),
+        count_occ DEC (L1 ++ L2) a = 1 ->
+            {count_occ DEC L1 a = 1 /\ ~In a L2} + {count_occ DEC L2 a = 1 /\ ~In a L1}.
+Proof.
+intros a L1 L2 ONE.
+rewrite count_occ_app in ONE.
+destruct (count_occ DEC L1 a) eqn:O1.
+- right.
+  split.
+  apply ONE.
+  apply (count_occ_not_In DEC), O1.
+- left.
+  rewrite plus_Sn_m in ONE.
+  destruct n.
+  + destruct (count_occ DEC L2 a) eqn:O2.
+    * split.
+      reflexivity.
+      apply (count_occ_not_In DEC), O2.
+    * contradict ONE.
+      discriminate.
+  + contradict ONE.
+    discriminate.
+Qed.
+
 Fixpoint list_eqb (l1 l2 : list nat) : bool :=
 match l1,l2 with
 | [],[] => true

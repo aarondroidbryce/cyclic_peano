@@ -166,13 +166,9 @@ match A with
 | neg B => closed B
 | lor B D => closed B && closed D
 | univ n B =>
-  (match closed B with
-   | true => true
-   | false =>
-    (match free_list B with
-    | [] => false
+  (match free_list B with
+    | [] => true
     | m :: l => nat_eqb m n && list_eqb l []
-    end)
   end)
 end.
 
@@ -315,6 +311,35 @@ try destruct (and_bool_prop _ _ EQ') as [EQ1 EQ2].
   reflexivity.
 - rewrite (nat_eqb_eq _ _ EQ1),(IHA _ EQ2).
   reflexivity.
+Qed.
+
+Lemma not_eq_univ :
+    forall (a : formula) (n : nat),
+        univ n a <> a.
+Proof.
+induction a;
+intros m;
+try discriminate.
+intros FAL.
+inversion FAL as [[EQ FAL']].
+apply (IHa _ FAL').
+Qed.
+
+Lemma not_eqb_univ :
+    forall (a : formula) (n : nat),
+        form_eqb (univ n a) a = false.
+Proof.
+intros a.
+unfold form_eqb;
+fold form_eqb.
+induction a;
+intros m;
+try reflexivity.
+unfold form_eqb;
+fold form_eqb.
+rewrite IHa.
+case nat_eqb;
+reflexivity.
 Qed.
 
 Definition form_eq_dec : forall (a b : formula), {a = b} + {a <> b}.
@@ -685,15 +710,12 @@ unfold free_list in FREE; fold free_list in FREE.
 - rewrite free_list_remove_dups_idem in FREE.
   destruct (remove_n_dups_empty _ _ FREE) as [Ln | LE].
   + rewrite <- free_list_remove_dups_idem in Ln.
-    destruct (closed A) eqn:CA.
-    * reflexivity.
-    * rewrite Ln.
-      rewrite nat_eqb_refl.
-      apply list_eqb_refl.
-  + rewrite IHA.
-    * reflexivity.
-    * rewrite free_list_remove_dups_idem.
-      apply LE.
+    rewrite Ln.
+    rewrite nat_eqb_refl.
+    apply list_eqb_refl.
+  + rewrite free_list_remove_dups_idem.
+    rewrite LE.
+    reflexivity.
 Qed.
 
 Lemma closed_free_list_t :
@@ -743,21 +765,18 @@ unfold free_list; fold free_list.
 - destruct (and_bool_prop _ _ CA) as [CA1 CA2].
   rewrite (IHA1 CA1), (IHA2 CA2).
   reflexivity.
-- destruct (closed A).
-  + rewrite (IHA CA).
-    reflexivity.
-  + destruct (free_list A).
-    * inversion CA.
-    * apply and_bool_prop in CA as [EQ1 EQ2].
-      apply list_eqb_eq in EQ2.
-      rewrite EQ2.
-      unfold remove.
-      apply nat_eqb_eq in EQ1.
-      destruct EQ1.
-      case (nat_eq_dec n0 n0) as [_ | FAL].
-      --  reflexivity.
-      --  contradict FAL.
-          reflexivity.
+- destruct (free_list A).
+  + reflexivity.
+  + apply and_bool_prop in CA as [EQ1 EQ2].
+    apply list_eqb_eq in EQ2.
+    rewrite EQ2.
+    unfold remove.
+    apply nat_eqb_eq in EQ1.
+    destruct EQ1.
+    case (nat_eq_dec n0 n0) as [_ | FAL].
+    * reflexivity.
+    * contradict FAL.
+      reflexivity.
 Qed.
 
 Lemma closed_univ :
@@ -771,6 +790,19 @@ destruct (free_list_univ_empty_cases _ _ (closed_free_list _ CuA)) as [Ln | LE].
   apply Ln.
 - left.
   apply free_list_closed, LE.
+Qed.
+
+Lemma closed_univ_list :
+    forall (A : formula) (n : nat),
+        closed (univ n A) = true ->
+            free_list A = [] \/ free_list A = [n].
+Proof.
+intros A n CuA.
+destruct (free_list_univ_empty_cases _ _ (closed_free_list _ CuA)) as [Ln | LE].
+- right.
+  apply Ln.
+- left.
+  apply LE.
 Qed.
 
 (*Correctness Lemmas*)
@@ -902,14 +934,14 @@ destruct H1.
 - right. rewrite free_list_remove_dups_idem. apply H1.
 Qed.
 
-Lemma closed_lor : forall (B D : formula),
-  closed (lor B D) = true -> closed B = true /\ closed D = true.
+Lemma closed_lor :
+    forall (B D : formula),
+        closed (lor B D) = true <-> (closed B = true /\ closed D = true).
 Proof.
-intros. simpl in H. split.
-- case_eq (closed B); case_eq (closed D); intros; auto;
-  rewrite H0 in H; rewrite H1 in H; inversion H.
-- case_eq (closed B); case_eq (closed D); intros; auto;
-  rewrite H0 in H; rewrite H1 in H; inversion H.
+intros B D.
+split.
+- apply and_bool_prop.
+- apply andb_true_intro.
 Qed.
 
 Lemma closed_subst_eq_aux_t : forall (T : term) (n : nat) (t : term),
@@ -1046,15 +1078,10 @@ Lemma closed_sub_univ : forall (B : formula) (n : nat) (t : term),
             closed (univ n B) = true.
 Proof.
 intros A n t Ct CS.
-case (closed A) eqn:CA.
-- unfold closed.
-  fold closed.
-  rewrite CA.
-  reflexivity.
-- apply closed_free_list in CS.
-  apply free_list_closed.
-  rewrite (subst_remove _ _ _ Ct) in CS.
-  apply CS.
+apply closed_free_list in CS.
+apply free_list_closed.
+rewrite (subst_remove _ _ _ Ct) in CS.
+apply CS.
 Qed.
 
 Lemma closed_univ_sub_repr : forall (B : formula) (n : nat),
