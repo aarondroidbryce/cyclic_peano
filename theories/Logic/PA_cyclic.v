@@ -25,6 +25,8 @@ end.
 
 Definition dist_incr (L : list (formula * ord)) (f : ord -> ord) : list (formula * ord) := combine (fst (split L)) (map f (snd (split L))).
 
+Definition reduce (A : formula) (L : list (formula * ord)) : list (formula * ord) := filter (fun FO => negb (form_eqb (fst FO) A)) L.
+
 Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type :=
 | deg_incr : forall {A : formula} (d d' : nat) {alpha : ord} {L : list (formula * ord)},
     PA_cyclic_pre A d alpha L ->
@@ -69,15 +71,15 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type 
 
 | demorgan1 : forall {A B : formula} {d1 d2 : nat}
                      {alpha1 alpha2 : ord} {L1 L2 : list (formula * ord)},
-    PA_cyclic_pre (neg A) d1 alpha1 (dist_incr L1 ord_succ) ->
-    PA_cyclic_pre (neg B) d2 alpha2 (dist_incr L2 ord_succ) ->
-    PA_cyclic_pre (neg (lor A B)) (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
+    PA_cyclic_pre (neg A) d1 alpha1 L1 ->
+    PA_cyclic_pre (neg B) d2 alpha2 L2 ->
+    PA_cyclic_pre (neg (lor A B)) (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) ((dist_incr L1 ord_succ) ++ (dist_incr L2 ord_succ))
 
 | demorgan2 : forall {A B D : formula} {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list (formula * ord)},
     PA_cyclic_pre (lor (neg A) D) d1 alpha1 L1 ->
     PA_cyclic_pre (lor (neg B) D) d2 alpha2 L2 ->
     PA_cyclic_pre (lor (neg (lor A B)) D)
-                     (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
+                     (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) ((dist_incr L1 ord_succ) ++ (dist_incr L1 ord_succ))
 
 | negation1 : forall {A : formula} {d : nat} {alpha : ord} {L : list (formula * ord)},
     PA_cyclic_pre A d alpha L ->
@@ -97,25 +99,25 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type 
     PA_cyclic_pre (lor (neg (substitution A n (projT1 c))) D) d alpha L ->
     PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) (dist_incr L ord_succ)
 
-| oneloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []),
+| oneloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list (formula * ord)) (LSTC : free_list A = [n] \/ free_list A = []),
     PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((reduce A L2) ++ (dist_incr L1 ord_succ))
 
-| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true),
+| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list (formula * ord)) (LSTC : free_list A = [n] \/ free_list A = []) (CC : closed C = true),
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((reduce A L2) ++ (dist_incr L1 ord_succ))
 
-| multloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : free_list A <> [n] /\ free_list A <> []),
+| multloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list (formula * ord)) (LSTN : free_list A <> [n] /\ free_list A <> []),
     PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((pair (univ n A) Zero) :: reduce A L2) ++ (dist_incr L1 ord_succ))
 
-| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false),
+| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list (formula * ord)) (LSTN : (free_list A <> [n] /\ free_list A <> []) \/ closed C = false),
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((pair (univ n A) Zero) :: reduce A L2) ++ (dist_incr L1 ord_succ))
 
 | cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list (formula * ord)},
     PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
@@ -123,7 +125,7 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type 
     PA_cyclic_pre C
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2)
+                     ((dist_incr L1 ord_succ) ++ (dist_incr L2 ord_succ))
 
 | cut2 : forall (A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list (formula * ord)},
     PA_cyclic_pre A d1 alpha1 L1 ->
@@ -131,7 +133,7 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type 
     PA_cyclic_pre D
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_succ (ord_max alpha1 alpha2)))
-                     (L1 ++ L2)
+                     ((dist_incr L1 ord_succ) ++ (dist_incr L2 ord_succ))
 
 | cut3 : forall (C A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list (formula * ord)},
     PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
@@ -139,12 +141,12 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list (formula * ord) -> Type 
     PA_cyclic_pre (lor C D)
                      (max (max d1 d2) (num_conn (neg A)))
                      (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2).
+                     ((dist_incr L1 ord_succ) ++ (dist_incr L2 ord_succ)).
 
 Inductive PA_cyclic_theorem : formula -> nat -> ord -> Type :=
-| prune : forall {A : formula} {d : nat} {alpha : ord} {L : list (formula * ord)}, PA_cyclic_pre A d alpha L -> (forall (B : formula), In B L -> PA_cyclic_axiom B = true) -> PA_cyclic_theorem A d alpha.
+| prune : forall {A : formula} {d : nat} {alpha : ord} {L : list (formula * ord)}, PA_cyclic_pre A d alpha L -> (forall (B : formula), In B (fst (split L)) -> PA_cyclic_axiom B = true) -> PA_cyclic_theorem A d alpha.
 
-Definition true_theorem {A : formula} {d : nat} {alpha : ord} : PA_cyclic_theorem A d alpha -> {L : list formula & {X : PA_cyclic_pre A d alpha L & (forall (B : formula), In B L -> PA_cyclic_axiom B = true)}}.
+Definition true_theorem {A : formula} {d : nat} {alpha : ord} : PA_cyclic_theorem A d alpha -> {L : list (formula * ord) & {X : PA_cyclic_pre A d alpha L & (forall (B : formula), In B (fst (split L)) -> PA_cyclic_axiom B = true)}}.
 Proof. intros T. inversion T. exists L, X. apply H. Defined.
 
 Lemma associativity1 :
