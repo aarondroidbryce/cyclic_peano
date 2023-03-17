@@ -569,6 +569,7 @@ Proof.
 
 Admitted.
 
+(*
 Lemma node_ax_to_leaves_ax :
     forall (P : ptree),
         struct_valid P ->
@@ -619,7 +620,7 @@ Proof.
         admit.
 
         apply (@in_app_bor _ form_eq_dec) in INA as [INA1 | INA2].
-
+*)
 
 Lemma leaves_ax_to_valid :
     forall (P : ptree),
@@ -633,16 +634,18 @@ Proof.
   induction P;
   unfold leaves, node_extract in *;
   fold leaves node_extract in *.
-  
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
 
-  3 : apply LAX.
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+  1 : apply LAX.
 
   all : try apply (IHP PSV LAX);
         try apply axiom_app_split in LAX as [LAX1 LAX2];
@@ -650,6 +653,23 @@ Proof.
         try split;
         try apply (IHP1 P1SV LAX1);
         try apply (IHP2 P2SV LAX2).
+
+  all : unfold closed;
+        rewrite (closed_free_list _ (axiom_closed _ (IHP2 P2SV LAX2 _ INA))).
+
+  2 : rewrite (proj1 (and_bool_prop _ _ (provable_closed (lor c (substitution a n zero)) d1 alpha1 (existT _ P1 (P1F,(P1SV,(IHP1 P1SV LAX1)),P1D, P1O)))));
+      unfold "&&".
+
+  all : intros B INB;
+        apply in_app_or in INB as [INB1 | INB2].
+  
+  1,3 : apply in_remove in INB1 as [INB1 NE];
+        apply (IHP2 P2SV LAX2 _ INB1).
+  
+  all : apply (IHP1 P1SV LAX1 _ INB2).
+Qed.
+
+  
 
 (*
 Lemma string_tree_node_not_in :
