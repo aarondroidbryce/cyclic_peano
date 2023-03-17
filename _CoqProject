@@ -24,6 +24,7 @@ theories/Logic/substitute.v
 theories/Logic/inverse_neg.v
 theories/Logic/inverse_dem_1.v
 theories/Logic/inverse_dem_2.v
+theories/Logic/string_trees.v
 theories/Logic/inverse_omega.v
 theories/Logic/inverse_quantif.v
 theories/Logic/formula_sub.v

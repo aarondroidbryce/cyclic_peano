@@ -3,7 +3,7 @@ From Cyclic_PA.Maths Require Import ordinals.
 
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
-From Cyclic_PA.Logic Require Import PA_omega.
+From Cyclic_PA.Logic Require Import PA_cyclic.
 From Cyclic_PA.Logic Require Import proof_trees.
 From Cyclic_PA.Logic Require Import substitute.
 
@@ -96,15 +96,14 @@ match P, S with
       n t d alpha
       (formula_sub_ptree_fit P' E F (lor_ind (0) S_D))
 
-| w_rule_a A n d alpha g, _ => P
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2, _ => P
 
-| w_rule_ad A D n d alpha g, lor_ind S_A S_D =>
-    w_rule_ad
-      A
-      (formula_sub_ind_fit D E F S_D)
-      n d alpha
-      (fun (t : c_term) =>
-          formula_sub_ptree_fit (g t) E F (lor_ind (non_target A) S_D))
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_A =>
+    loop_ca
+      (formula_sub_ind_fit C E F S_C) A
+      n d1 d2 alpha1 alpha2
+      (formula_sub_ptree_fit P1 E F (lor_ind S_C (non_target A)))
+      P2
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ =>
     cut_ca
@@ -180,35 +179,36 @@ Qed.
 
 Lemma formula_sub_ptree_formula_atom' :
     forall (P : ptree) (a : atomic_formula) (F : formula),
-        valid P ->
+        struct_valid P ->
             forall (S : subst_ind),
                 subst_ind_fit (ptree_formula P) S = true ->
                     ptree_formula (formula_sub_ptree P (atom a) F S) =
                         formula_sub_ind (ptree_formula P) (atom a) F S.
 Proof.
-intros P a F PV.
+intros P a F PSV.
 induction P; intros S FS;
 unfold formula_sub_ptree;
 rewrite FS;
 unfold formula_sub_ptree_fit;
 fold formula_sub_ptree_fit.
 
-1 : destruct PV as [ID PV].
-
-2 : destruct PV as [[IO PV] NO].
-
-1,2 : unfold ptree_formula in *; fold ptree_formula in *;
-      rewrite (formula_sub_ptree_formula_true _ _ _ _ FS);
-      apply (IHP PV _ FS).
-
 1 : { unfold ptree_formula, formula_sub_ind in *.
       rewrite FS.
       reflexivity. }
 
-1-4,6-15,18 : destruct S; inversion FS as [FS'];
+1 : destruct PSV as [PSV DU].
+
+2 : destruct PSV as [[PSV OU] NO].
+
+1,2 : unfold ptree_formula in *; fold ptree_formula in *;
+      rewrite (formula_sub_ptree_formula_true _ _ _ _ FS);
+      apply (IHP PSV _ FS).
+
+
+1-4,6-13,16-18 : destruct S; inversion FS as [FS'];
               try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
 
-2-4,9,12,15,18 : destruct S1; inversion FS' as [FS''];
+2-4,11,15 : destruct S1; inversion FS' as [FS''];
       try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
 
 4 : destruct S1_1; inversion FS'' as [FS'''];
@@ -228,14 +228,14 @@ Qed.
 
 Lemma formula_sub_ptree_formula_atom :
     forall (P : ptree) (a : atomic_formula) (F : formula),
-        valid P ->
+        struct_valid P ->
             forall (S : subst_ind),
                 ptree_formula (formula_sub_ptree P (atom a) F S) =
                     formula_sub_ind (ptree_formula P) (atom a) F S.
 Proof.
-intros P a F PV S.
+intros P a F PSV S.
 destruct (subst_ind_fit (ptree_formula P) S) eqn:FS.
-- apply (formula_sub_ptree_formula_atom' _ _ _ PV _ FS).
+- apply (formula_sub_ptree_formula_atom' _ _ _ PSV _ FS).
 - unfold formula_sub_ptree, formula_sub_ind.
   rewrite FS.
   reflexivity.
@@ -243,11 +243,11 @@ Qed.
 
 Lemma formula_sub_ptree_deg_atom :
     forall (P : ptree) (a : atomic_formula) (F : formula),
-        valid P ->
+        struct_valid P ->
             forall (S : subst_ind),
                 ptree_deg (formula_sub_ptree P (atom a) F S) = ptree_deg P.
 Proof.
-intros P a F PV.
+intros P a F PSV.
 pose (ptree_formula P) as A.
 induction P; intros S;
 case (subst_ind_fit A S) eqn:FS;
@@ -258,10 +258,10 @@ unfold formula_sub_ptree_fit;
 fold formula_sub_ptree_fit;
 try reflexivity.
 
-1 : destruct PV as [[IO PV] NO].
+1 : destruct PSV as [[PSV OU] NO].
     unfold ptree_formula in *; fold ptree_formula in *.
     rewrite (formula_sub_ptree_formula_true _ _ _ _ FS).
-    apply (IHP PV).
+    apply (IHP PSV).
 
 all : destruct S; inversion FS as [FS'];
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
@@ -278,11 +278,11 @@ Qed.
 
 Lemma formula_sub_ptree_ord_atom :
     forall (P : ptree) (a : atomic_formula) (F : formula),
-        valid P ->
+        struct_valid P ->
             forall (S : subst_ind),
                 ptree_ord (formula_sub_ptree P (atom a) F S) = ptree_ord P.
 Proof.
-intros P a F PV.
+intros P a F PSV.
 pose (ptree_formula P) as A.
 induction P; intros S;
 case (subst_ind_fit A S) eqn:FS;
@@ -293,10 +293,10 @@ unfold formula_sub_ptree_fit;
 fold formula_sub_ptree_fit;
 try reflexivity.
 
-1 : destruct PV as [ID PV].
+1 : destruct PSV as [PSV DU].
     unfold ptree_formula in *; fold ptree_formula in *.
     rewrite (formula_sub_ptree_formula_true _ _ _ _ FS).
-    apply (IHP PV).
+    apply (IHP PSV).
 
 all : destruct S; inversion FS as [FS'];
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
@@ -315,76 +315,66 @@ Lemma formula_sub_valid_atom :
     forall (P : ptree) (a : atomic_formula) (F : formula),
         valid P ->
             correct_a a = false ->
-                closed F =true ->
+                closed F = true ->
                     forall (S : subst_ind),
                         subst_ind_fit (ptree_formula P) S = true ->
                             valid (formula_sub_ptree P (atom a) F S).
 Proof.
-intros P a F PV Aa CF.
+intros P a F [PSV PAX] Aa CF.
 induction P; intros S FS;
 unfold formula_sub_ptree;
 rewrite FS;
 unfold formula_sub_ptree_fit;
 fold formula_sub_ptree_fit.
 
-1 : destruct PV as [ID PV].
-2 : destruct PV as [[IO PV] NO].
-4-9 : destruct PV as [[[PF PV] PD] PO].
-10 : destruct PV as [[[[PF FC] PV] PD] PO].
-11,12 : destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
-13-16 : destruct PV as [[[PF PV] PD] PO].
-19-21 : destruct PV as [[[[[[[P1F P1V] P2F] P2V] P1D] P2D] P1O] P2O].
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
 
-4-7,9,10,12,14,16,18,21 : destruct S; inversion FS as [FS'];
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+4-7,9,11,13,14,16,19,21 : destruct S; inversion FS as [FS'];
                           try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
 
-5-7,9-13 :  destruct S1; inversion FS' as [FS''];
+5-7 :  destruct S1; inversion FS' as [FS''];
             try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
 
 7 : destruct S1_1; inversion FS'' as [FS'''];
     try destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
 
-3 : { unfold valid in *.
-      destruct f.
-      3,4 : inversion PV.
-      2 : unfold formula_sub_ind_fit, form_eqb;
-          apply PV.
+1 : { repeat split.
+      intros A INA.
+      unfold node_extract in INA.
+      destruct INA as [EQ | FAL];
+      try inversion FAL.
+      destruct EQ.
+      destruct a0.
+      3,4 : pose proof (PAX _ (or_introl eq_refl)) as FAL;
+            inversion FAL.
+      all : unfold formula_sub_ind_fit, form_eqb.
+      2 : { destruct a0;
+            pose proof (PAX _ (or_introl eq_refl)) as FAL;
+            inversion FAL.
+            reflexivity. }
       1 : destruct S;
-          unfold formula_sub_ind_fit, form_eqb;
-          fold formula_sub_ind_fit;
           case (atom_eqb a0 a) eqn:EQ;
-          try apply PV.
+          try apply (PAX _ (or_introl eq_refl)).
           apply atom_beq_eq in EQ.
           destruct EQ.
-          unfold PA_omega_axiom in PV.
-          rewrite PV in Aa.
-          inversion Aa. }
-
-16,17 : repeat split;
-        destruct (PV t) as [[[PF PcV] PD] PO];
-        rewrite formula_sub_ptree_formula_true;
-        try rewrite PF;
-        try rewrite formula_sub_ptree_deg_atom;
-        try apply PD;
-        try rewrite formula_sub_ptree_ord_atom;
-        try apply PO;
-        try apply X;
-        try rewrite formula_sub_ptree_formula_atom;
-        try rewrite PF;
-        try apply PV;
-        try rewrite formula_sub_ind_lor;
-        try rewrite (non_target_term_sub _ n (projT1 t));
-        try rewrite non_target_sub;
-        unfold formula_sub_ind;
-        unfold subst_ind_fit; fold subst_ind_fit;
-        try rewrite FS;
-        try rewrite FS1;
-        try rewrite FS2;
-        try rewrite non_target_fit;
-        reflexivity.
+          pose proof (PAX _ (or_introl eq_refl)) as FAL.
+          unfold PA_cyclic_axiom in FAL.
+          rewrite Aa in FAL.
+          inversion FAL. }
 
 all : repeat rewrite formula_sub_ptree_formula_true;
       unfold ptree_formula in FS; fold ptree_formula in FS;
+      try apply axiom_app_split in PAX as [PAX1 PAX2];
+      unfold node_extract in *;
+      fold node_extract in *;
       try rewrite PF;
       try rewrite P1F;
       try rewrite P2F;
@@ -401,14 +391,28 @@ all : repeat rewrite formula_sub_ptree_formula_true;
       try apply IHP1;
       try apply IHP2;
       try rewrite formula_sub_ptree_formula_atom;
-      try apply PV;
-      try apply P1V;
-      try apply P2V;
+      try apply PSV;
+      try apply P1SV;
+      try apply P2SV;
+      try apply DU;
+      try apply OU;
+      try apply NO;
+      unfold node_extract in *;
+      fold node_extract in *;
+      try apply axiom_app_merge;
+      try split;
+      try apply (IHP1 P1SV);
+      try apply (IHP2 P2SV);
+      try apply PAX;
+      try apply PAX1;
+      try apply PAX2;
+      try apply INA;
       try rewrite PF;
       try rewrite P1F;
       try rewrite P2F;
       try rewrite formula_sub_ind_lor;
       try rewrite non_target_sub;
+      try rewrite non_target_sub_term;
       unfold formula_sub_ind;
       unfold subst_ind_fit; fold subst_ind_fit;
       try rewrite FS;
@@ -419,17 +423,14 @@ all : repeat rewrite formula_sub_ptree_formula_true;
       try rewrite FS1_1_1;
       try rewrite FS1_1_2;
       try rewrite non_target_fit;
+      try rewrite non_target_sub_fit;
       unfold "&&";
-      try reflexivity;
-      try apply ID;
-      try apply IO;
-      try apply NO.
+      try reflexivity.
 
-all : refine (formula_sub_ind_fit_closed _ _ _ FC _ _ FS1);
-      intros Caa;
-      apply CF.
-Qed.
+1 : admit.
+Admitted.
 
+(*
 Lemma formula_sub_ptree_formula_neg' :
     forall (P : ptree) (a : atomic_formula) (F : formula),
         valid P ->
@@ -682,3 +683,4 @@ all : refine (formula_sub_ind_fit_closed _ _ _ FC _ _ FS1);
       intros Caa;
       apply CF.
 Qed.
+*)

@@ -7,164 +7,171 @@ From Cyclic_PA.Logic Require Import fol.
 From Cyclic_PA.Logic Require Import PA_cyclic.
 From Cyclic_PA.Logic Require Import proof_trees.
 From Cyclic_PA.Logic Require Import substitute.
+From Cyclic_PA.Logic Require Import string_trees.
+
 Require Import Lia.
 
 Definition loop_sub_formula
-  (A E : formula) (n : nat) (c : c_term) (S : subst_ind) : formula :=
-  formula_sub_ind A (univ n E) (substitution E n (projT1 c)) S.
+  (A E : formula) (n m : nat) (S : subst_ind) : formula :=
+  formula_sub_ind A (univ n E) (substitution E n (represent m)) S.
 
 Lemma loop_sub_formula_closed :
     forall (A : formula),
         closed A = true ->
-            forall (E : formula) (n : nat) (c : c_term) (S : subst_ind),
-                closed (loop_sub_formula A E n c S) = true.
+            forall (E : formula) (n m : nat) (S : subst_ind),
+                closed (loop_sub_formula A E n m S) = true.
 Proof.
-intros A CA E n c S.
+intros A CA E n m S.
 unfold loop_sub_formula.
 apply (formula_sub_ind_closed _ _ _ CA).
 intros CuE.
-apply (closed_univ_sub E n CuE (projT1 c)).
-destruct c as [t Ct].
-apply Ct.
+apply (closed_univ_sub E n CuE (represent m)).
+apply represent_closed.
 Qed.
 
-Fixpoint loop_sub_ptree_fit
-  (P : ptree) (E : formula) (n : nat) (c : c_term) (S : subst_ind) : ptree :=
-match P, S with
-| deg_up d P', _ => deg_up d (loop_sub_ptree_fit P' E n c S)
+Fixpoint unlooper 
+(P1 P2 : ptree) (n m : nat) : ptree :=
+match m with
+| 0 => P1
+| S m' => string_tree (substitute P2 (represent S m)) (unloop P1 P2 n m')
+end.
 
-| ord_up alpha P', _ => ord_up alpha (loop_sub_ptree_fit P' E n c S)
+Fixpoint loop_sub_ptree_fit
+  (P : ptree) (E : formula) (n m : nat) (S : subst_ind) : ptree :=
+match P, S with
+| deg_up d P', _ => deg_up d (loop_sub_ptree_fit P' E n m S)
+
+| ord_up alpha P', _ => ord_up alpha (loop_sub_ptree_fit P' E n m S)
 
 | node A, _ => P
 
 | exchange_ab A B d alpha P', lor_ind S_B S_A =>
     exchange_ab
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula B E n c S_B)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula B E n m S_B)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind S_A S_B))
+      (loop_sub_ptree_fit P' E n m (lor_ind S_A S_B))
 
 | exchange_cab C A B d alpha P', lor_ind (lor_ind S_C S_B) S_A =>
     exchange_cab
-      (loop_sub_formula C E n c S_C)
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula B E n c S_B)
+      (loop_sub_formula C E n m S_C)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula B E n m S_B)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind (lor_ind S_C S_A) S_B))
+      (loop_sub_ptree_fit P' E n m (lor_ind (lor_ind S_C S_A) S_B))
 
 | exchange_abd A B D d alpha P', lor_ind (lor_ind S_B S_A) S_D =>
     exchange_abd
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula B E n c S_B)
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula B E n m S_B)
+      (loop_sub_formula D E n m S_D)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind (lor_ind S_A S_B) S_D))
+      (loop_sub_ptree_fit P' E n m (lor_ind (lor_ind S_A S_B) S_D))
 
 | exchange_cabd C A B D d alpha P', lor_ind (lor_ind (lor_ind S_C S_B) S_A) S_D =>
     exchange_cabd
-      (loop_sub_formula C E n c S_C)
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula B E n c S_B)
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula C E n m S_C)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula B E n m S_B)
+      (loop_sub_formula D E n m S_D)
       d alpha
       (loop_sub_ptree_fit
-        P' E n c
+        P' E n m
         (lor_ind (lor_ind (lor_ind S_C S_A) S_B) S_D))
 
 | contraction_a A d alpha P', _ =>
     contraction_a
-      (loop_sub_formula A E n c S)
+      (loop_sub_formula A E n m S)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind S S))
+      (loop_sub_ptree_fit P' E n m (lor_ind S S))
 
 | contraction_ad A D d alpha P', lor_ind S_A S_D =>
     contraction_ad
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula D E n m S_D)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind (lor_ind S_A S_A) S_D))
+      (loop_sub_ptree_fit P' E n m (lor_ind (lor_ind S_A S_A) S_D))
 
 | weakening_ad A D d alpha P', lor_ind S_A S_D =>
     weakening_ad
-      (loop_sub_formula A E n c S_A)
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula A E n m S_A)
+      (loop_sub_formula D E n m S_D)
       d alpha
-      (loop_sub_ptree_fit P' E n c S_D)
+      (loop_sub_ptree_fit P' E n m S_D)
 
 | demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2, _ => P
 
 | demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_AB S_D =>
     demorgan_abd
       A B
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula D E n m S_D)
       d1 d2 alpha1 alpha2
-      (loop_sub_ptree_fit P1 E n c (lor_ind (0) S_D))
-      (loop_sub_ptree_fit P2 E n c (lor_ind (0) S_D))
+      (loop_sub_ptree_fit P1 E n m (lor_ind (0) S_D))
+      (loop_sub_ptree_fit P2 E n m (lor_ind (0) S_D))
 
 | negation_a A d alpha P', _ => P
 
 | negation_ad A D d alpha P', lor_ind S_A S_D =>
     negation_ad
       A
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula D E n m S_D)
       d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind (non_target A) S_D))
+      (loop_sub_ptree_fit P' E n m (lor_ind (non_target A) S_D))
 
 | quantification_a A k t d alpha P', _ => P
 
 | quantification_ad A D k t d alpha P', lor_ind S_A S_D =>
     quantification_ad
       A
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula D E n m S_D)
       k t d alpha
-      (loop_sub_ptree_fit P' E n c (lor_ind (0) S_D))
+      (loop_sub_ptree_fit P' E n m (lor_ind (0) S_D))
 
 | loop_a A k d1 d2 alpha1 alpha2 P1 P2, _ =>
-    (match form_eqb A E, nat_eqb d (ptree_deg (g c)), nat_eqb k n, S with
-    | true, true, true, (1) => ord_up (ord_succ alpha) (g c)
-    | true, false, true, (1) => deg_up d (ord_up (ord_succ alpha) (g c))
-    | _, _, _, _ => P
-    end)
+    match m with
+    | 0 => P1
+    | S m => unlooper
+    end
 
 | loop_ad A D k d alpha g, lor_ind S_A S_D =>
     (match form_eqb A E, nat_eqb d (ptree_deg (g c)), nat_eqb k n, S_A with
     | true, true, true, (1) =>
-        ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n c (lor_ind (non_target A) S_D))
+        ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n m (lor_ind (non_target A) S_D))
     | true, false, true, (1) =>
-        deg_up d (ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n c (lor_ind (non_target A) S_D)))
+        deg_up d (ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n m (lor_ind (non_target A) S_D)))
     
     | _, _, _, _ => 
         loop_ad
           A
-          (loop_sub_formula D E n c S_D)
+          (loop_sub_formula D E n m S_D)
           k d alpha
           (fun (t : c_term) =>
-            loop_sub_ptree_fit (g t) E n c (lor_ind (non_target A) S_D))
+            loop_sub_ptree_fit (g t) E n m (lor_ind (non_target A) S_D))
     end)
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ =>
     cut_ca
-      (loop_sub_formula C E n c S)
+      (loop_sub_formula C E n m S)
       A d1 d2 alpha1 alpha2
-      (loop_sub_ptree_fit P1 E n c (lor_ind S (non_target A)))
+      (loop_sub_ptree_fit P1 E n m (lor_ind S (non_target A)))
       P2
 
 | cut_ad A D d1 d2 alpha1 alpha2 P1 P2, _ =>
     cut_ad
       A
-      (loop_sub_formula D E n c S)
+      (loop_sub_formula D E n m S)
       d1 d2 alpha1 alpha2
       P1
-      (loop_sub_ptree_fit P2 E n c (lor_ind (0) S))
+      (loop_sub_ptree_fit P2 E n m (lor_ind (0) S))
 
 | cut_cad C A D d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_D =>
     cut_cad
-      (loop_sub_formula C E n c S_C)
+      (loop_sub_formula C E n m S_C)
       A
-      (loop_sub_formula D E n c S_D)
+      (loop_sub_formula D E n m S_D)
       d1 d2 alpha1 alpha2
-      (loop_sub_ptree_fit P1 E n c (lor_ind S_C (non_target A)))
-      (loop_sub_ptree_fit P2 E n c (lor_ind (0) S_D))
+      (loop_sub_ptree_fit P1 E n m (lor_ind S_C (non_target A)))
+      (loop_sub_ptree_fit P2 E n m (lor_ind (0) S_D))
 
 | _, _ => P
 end.
@@ -173,15 +180,15 @@ Definition loop_sub_ptree
   (P : ptree) (E : formula) (n : nat) (c : c_term) (S : subst_ind) : ptree :=
 match subst_ind_fit (ptree_formula P) S with
 | false => P
-| true => loop_sub_ptree_fit P E n c S
+| true => loop_sub_ptree_fit P E n m S
 end.
 
 Lemma loop_ptree_formula_true :
     forall (P : ptree) (E : formula) (n : nat) (c : c_term) (S : subst_ind),
         subst_ind_fit (ptree_formula P) S = true ->
-            loop_sub_ptree_fit P E n c S = loop_sub_ptree P E n c S.
+            loop_sub_ptree_fit P E n m S = loop_sub_ptree P E n m S.
 Proof.
-intros P E n c S FS.
+intros P E n m S FS.
 unfold loop_sub_ptree.
 rewrite FS.
 reflexivity.
@@ -192,8 +199,8 @@ Lemma loop_ptree_formula' :
         valid P ->
             forall (S : subst_ind),
                 subst_ind_fit (ptree_formula P) S = true ->
-                    ptree_formula (loop_sub_ptree P E n c S) =
-                        loop_sub_formula (ptree_formula P) E n c S.
+                    ptree_formula (loop_sub_ptree P E n m S) =
+                        loop_sub_formula (ptree_formula P) E n m S.
 Proof.
 intros P E n c.
 induction P; try intros PV S FS;
@@ -315,10 +322,10 @@ Lemma loop_ptree_formula :
     forall (P : ptree) (E : formula) (n : nat) (c : c_term),
         valid P ->
             forall (S : subst_ind),
-                ptree_formula (loop_sub_ptree P E n c S) =
-                    loop_sub_formula (ptree_formula P) E n c S.
+                ptree_formula (loop_sub_ptree P E n m S) =
+                    loop_sub_formula (ptree_formula P) E n m S.
 Proof.
-intros P E n c VP S.
+intros P E n m VP S.
 destruct (subst_ind_fit (ptree_formula P) S) eqn:FS.
 - apply (loop_ptree_formula' _ _ _ _ VP _ FS).
 - unfold loop_sub_ptree, loop_sub_formula, formula_sub_ind.
@@ -330,9 +337,9 @@ Lemma loop_ptree_deg :
     forall (P : ptree) (E : formula) (n : nat) (c : c_term),
         valid P ->
             forall (S : subst_ind),
-                ptree_deg (loop_sub_ptree P E n c S) = ptree_deg P.
+                ptree_deg (loop_sub_ptree P E n m S) = ptree_deg P.
 Proof.
-intros P E n c PV.
+intros P E n m PV.
 unfold loop_sub_ptree.
 pose (ptree_formula P) as A.
 induction P; intros S;
@@ -387,9 +394,9 @@ Lemma loop_ptree_ord :
     forall (P : ptree) (E : formula) (n : nat) (c : c_term),
         valid P ->
             forall (S : subst_ind),
-                ptree_ord (loop_sub_ptree P E n c S) = ptree_ord P.
+                ptree_ord (loop_sub_ptree P E n m S) = ptree_ord P.
 Proof.
-intros P E n c PV.
+intros P E n m PV.
 unfold loop_sub_ptree.
 pose (ptree_formula P) as A.
 induction P; intros S;
@@ -435,9 +442,9 @@ Lemma loop_valid :
         valid P ->
             forall (S : subst_ind),
                 subst_ind_fit (ptree_formula P) S = true ->
-                    valid (loop_sub_ptree P E n c S).
+                    valid (loop_sub_ptree P E n m S).
 Proof.
-intros P E n c PV.
+intros P E n m PV.
 induction P; try intros S FS;
 unfold loop_sub_ptree;
 rewrite FS;
@@ -456,7 +463,7 @@ all : try apply PV.
 3,4,5,6,8,9,10,13,14,15,16,17 : destruct S; inversion FS as [FS'];
                                 try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
 
-15 :  assert (valid (loop_ad f (loop_sub_formula f0 E n c S2) n0 n1 o (fun t : c_term => loop_sub_ptree_fit (p t) E n c (lor_ind (non_target f) S2)))) as VSC.
+15 :  assert (valid (loop_ad f (loop_sub_formula f0 E n m S2) n0 n1 o (fun t : c_term => loop_sub_ptree_fit (p t) E n m (lor_ind (non_target f) S2)))) as VSC.
 15 :  { assert (forall t, subst_ind_fit (ptree_formula (p t)) (lor_ind (non_target f) S2) = true) as FSt.
         { intros t.
           destruct (PV t) as [[[PF PTV] PD] PO].
@@ -489,7 +496,7 @@ all : try apply PV.
 10 :  assert (closed (univ n E) = true -> closed (substitution E n (projT1 c)) = true) as CIMP.
 10 :  { intros CE.
         apply (closed_univ_sub _ _ CE).
-        destruct c as [t Ct].
+        destruct m as [t Ct].
         apply Ct. }
 
 7,8,15,16 : destruct (PV c) as [[[PF PCV] PD] PO].
