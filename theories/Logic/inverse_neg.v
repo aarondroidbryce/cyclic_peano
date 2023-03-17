@@ -473,8 +473,11 @@ Proof.
         try reflexivity.
 
   all : try case form_eqb eqn:EQ;
+        try case (closed (univ n a)) eqn:CuA;
+        unfold flat_map;
+        fold (flat_map free_list);
         repeat rewrite flat_map_app;
-        try apply incl_app_app;
+        repeat apply incl_app_app;
         try apply incl_refl;
         try apply (fun FSUB => IHP _ PSV FSUB);
         try apply (fun FSUB => IHP1 _ P1SV FSUB);
@@ -495,29 +498,6 @@ Proof.
         try rewrite FS1_1_1;
         try rewrite FS1_1_2;
         try rewrite non_target_fit;
-        try rewrite non_target_sub_fit;
-        try reflexivity.
-
-  1 : repeat rewrite <- dub_neg_sub_formula_closed;
-      case (closed c) eqn:CC;
-      unfold "&&".
-  1 : case (closed (univ n a)) eqn:CuA.
-
-  all : unfold flat_map;
-        fold (flat_map free_list);
-        repeat rewrite flat_map_app;
-        repeat apply incl_app_app;
-        try apply incl_refl;
-        try apply (fun FSUB => IHP1 _ P1SV FSUB);
-        try rewrite P1F;
-        unfold ptree_formula in FS;
-        fold ptree_formula in FS;
-        unfold subst_ind_fit;
-        fold subst_ind_fit;
-        try rewrite FS;
-        try rewrite FS';
-        try rewrite FS1;
-        try rewrite FS2;
         try rewrite non_target_sub_fit;
         try reflexivity.
 Qed.
@@ -665,13 +645,10 @@ Proof.
       try rewrite non_target_fit;
       try reflexivity.
 
-  rewrite <- dub_neg_sub_formula_closed in *.
-  case (closed c) eqn:CC;
-  unfold "&&" in *.
   case (closed (univ n a)) eqn:CuA.
 
-  2,3 : exists (univ n a);
-        exact (conj (or_introl eq_refl) eq_refl).
+  2 : exists (univ n a);
+      exact (conj (or_introl eq_refl) eq_refl).
 
   apply in_app_or in IN as [IN1 | IN2].
 
@@ -844,9 +821,6 @@ all : intros A IN;
       try apply (or_intror IN2).
 
 all : unfold node_extract in *; fold node_extract in *;
-      fold (dub_neg_sub_formula c E S1) in IN;
-      try rewrite <- dub_neg_sub_formula_closed in IN;
-      case (closed c) eqn:CC;
       case (closed (univ n a)) eqn:CuA;
       try pose proof (PAX _ (or_introl eq_refl)) as FAL;
       try inversion FAL;

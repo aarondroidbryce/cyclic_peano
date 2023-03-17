@@ -385,25 +385,6 @@ Proof.
 Qed.
 *)
 
-Lemma axiom_app_split :
-    forall (L1 L2 : list formula),
-        (forall B, In B (L1 ++ L2) -> PA_cyclic_axiom B = true) -> 
-            (forall B, In B L1 -> PA_cyclic_axiom B = true) /\ (forall B, In B L2 -> PA_cyclic_axiom B = true).
-Proof.
-intros L1 L2.
-exact (fun AX => conj (fun B INB => AX B (in_or_app _ _ _ (or_introl INB))) (fun B INB => AX B (in_or_app _ _ _ (or_intror INB)))).
-Qed.
-
-Lemma axiom_app_merge :
-    forall (L1 L2 : list formula), 
-        (forall B, In B L1 -> PA_cyclic_axiom B = true) /\ (forall B, In B L2 -> PA_cyclic_axiom B = true) ->
-            (forall B, In B (L1 ++ L2) -> PA_cyclic_axiom B = true).
-Proof.
-intros L1 L2 [AX1 AX2] B INB.
-apply in_app_or in INB as [IN1 | IN2].
-apply (AX1 _ IN1).
-apply (AX2 _ IN2).
-Qed.
 
 Lemma string_tree_leaves_not_in :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
@@ -657,9 +638,6 @@ Proof.
   all : unfold closed;
         rewrite (closed_free_list _ (axiom_closed _ (IHP2 P2SV LAX2 _ INA))).
 
-  2 : rewrite (proj1 (and_bool_prop _ _ (provable_closed (lor c (substitution a n zero)) d1 alpha1 (existT _ P1 (P1F,(P1SV,(IHP1 P1SV LAX1)),P1D, P1O)))));
-      unfold "&&".
-
   all : intros B INB;
         apply in_app_or in INB as [INB1 | INB2].
   
@@ -669,37 +647,33 @@ Proof.
   all : apply (IHP1 P1SV LAX1 _ INB2).
 Qed.
 
-  
-
-(*
 Lemma string_tree_node_not_in :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
-            ~ In A (node_extract P) ->
+            ~ In A (leaves P) ->
                 (node_extract (string_tree P Q QP NAX)) = (node_extract P).
 Proof.
   intros P Q A dQ beta [[[QF [QSV QAX]] QD] QO] NAX PSV NIN.
   induction P;
   unfold string_tree;
   fold string_tree;
-  unfold node_extract in *;
-  fold node_extract in *.
-  
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+  unfold leaves, node_extract in *;
+  fold leaves node_extract in *.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
   all : try case (nat_ltb dQ d') eqn:LT;
         try case (ord_ltb _ beta0) eqn:IE;
-        try case (form_eqb A (univ n a)) eqn:FEQ;
         unfold node_extract;
-        try case (closed c) eqn:CC;
         fold node_extract;
-        unfold "&&" in *;
         try apply (IHP PSV NIN);
         try apply (nin_split form_eq_dec) in NIN as [NIN1 NIN2];
         try split;
@@ -708,25 +682,12 @@ Proof.
         try reflexivity.
 
   1 : { try case (form_eqb A a) eqn:FEQ.
-        2 : destruct dQ;
-            reflexivity.
-        1 : apply form_eqb_eq in FEQ.
-            destruct FEQ.
-            contradict (NIN (or_introl eq_refl)). }
-
-  1,2,3,5 : case (closed (univ n a)) eqn:UnA.
-
-  all : try apply not_in_cons in NIN as [NE NIN];
-        try apply (nin_split form_eq_dec) in NIN as [NIN1 NIN2];
-        try rewrite (IHP1 P1SV NIN2);
-        try rewrite (IHP2 P1SV NIN2);
-        try reflexivity.
-
-        admit.
-        admit.
+        - apply form_eqb_eq in FEQ.
+          destruct FEQ.
+          contradict (NIN (or_introl eq_refl)).
+        - destruct dQ;
+          reflexivity. }
 Qed.
-*)
-
 
 (*
 Lemma string_tree_node_remove :
@@ -911,32 +872,15 @@ Proof.
   unfold ptree_ord;
   fold ptree_ord.
 
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
 
-  1 : { destruct (nat_semiconnex_type dQ d') as [[GT | EQ] | LT];
-        try apply nat_lt_ltb in LT;
-        try apply nat_lt_ltb in GT;
-        try destruct EQ;
-        try rewrite nat_ltb_irrefl;
-        try rewrite LT;
-        try rewrite (nat_ltb_asymm _ _ GT);
-        repeat split;
-        try apply (IHP PSV NINA LAX);
-        try rewrite (string_tree_deg _ _ _ _ PSV).
-        apply nat_ltb_lt in LT.
-        lia. }
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-  1 : { case ord_ltb eqn:LT;
-        repeat split;
-        try apply (IHP PSV NINA LAX).
-        - apply ord_ltb_lt, LT.
-        - apply NO. }
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
   1 : { case (form_eqb A a) eqn:EQ.
         1 : apply (QSV, QAX).
@@ -963,42 +907,64 @@ Proof.
           try inversion EQ;
           try apply (or_introl eq_refl). }
 
-    11 : case (form_eqb A (univ n a)) eqn:FEQ.
+  1 : { destruct (nat_semiconnex_type dQ d') as [[GT | EQ] | LT];
+        try apply nat_lt_ltb in LT;
+        try apply nat_lt_ltb in GT;
+        try destruct EQ;
+        try rewrite nat_ltb_irrefl;
+        try rewrite LT;
+        try rewrite (nat_ltb_asymm _ _ GT);
+        repeat split;
+        try apply (IHP PSV NINA LAX);
+        try rewrite (string_tree_deg _ _ _ _ PSV).
+        apply nat_ltb_lt in LT.
+        lia. }
 
-    all : unfold leaves in *;
-          fold leaves in *;
-          try rewrite remove_app in LAX;
-          try destruct (axiom_app_split _ _ LAX) as [LAX1 LAX2];
-          try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
-          repeat split;
-          try apply axiom_app_merge;
-          try split;
-          fold leaves;
-          try apply (IHP PSV NINA LAX);
-          try apply (IHP1 P1SV NINA1 LAX1);
-          try apply (IHP2 P2SV NINA2 LAX2);
-          try rewrite string_tree_formula;
-          try rewrite string_tree_ord;
-          try apply PF;
-          try apply P1F;
-          try apply P2F;
-          try rewrite PO;
-          try rewrite P1O;
-          try rewrite P2O;
-          try apply P2D;
-          try apply PSV;
-          try apply P1SV;
-          try apply P2SV;
-          try reflexivity.
+  1 : { case ord_ltb eqn:LT;
+        repeat split;
+        try apply (IHP PSV NINA LAX).
+        - apply ord_ltb_lt, LT.
+        - apply NO. }
+
+  all : unfold leaves in *;
+        fold leaves in *;
+        try rewrite remove_app in LAX;
+        try destruct (axiom_app_split _ _ LAX) as [LAX1 LAX2];
+        try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
+        repeat split;
+        try apply axiom_app_merge;
+        try split;
+        fold leaves;
+        try apply (IHP PSV NINA LAX);
+        try apply (IHP1 P1SV NINA1 LAX1);
+        (*try apply (IHP2 P2SV NINA2 LAX2);*)
+        try rewrite string_tree_formula;
+        try rewrite string_tree_ord;
+        try apply PF;
+        try apply P1F;
+        try apply P2F;
+        try rewrite PO;
+        try rewrite P1O;
+        try rewrite P2O;
+        try apply P2D;
+        try apply PSV;
+        try apply P1SV;
+        try apply P2SV;
+        try reflexivity.
 
     1 : { (*rewrite (string_tree_node_not_in _ _ _ _ PSV NINA).
           apply FC. *) admit. }
 
+    1-11,14 : try apply (IHP2 P2SV NINA2 LAX2).
+
     all : unfold node_extract;
           fold node_extract;
-          try case (closed c) eqn:CC;
-          unfold "&&" in *;
+          rewrite (string_tree_node_not_in _ _ _ _ P2SV NINA2);
+          try apply INA;
           case (closed (univ n a)) eqn:CuA.
+          admit.
+          admit.
+          admit.
           try apply not_in_cons in NINA as [NE NINA];
           try rewrite (remove_not_head _ _ _ NE) in LAX;
           try rewrite remove_app in LAX;
@@ -1007,7 +973,7 @@ Proof.
           try apply (IHP1 P1SV NINA2 LAX2);
           try apply (IHP2 P2SV NINA1 LAX1);
           try apply string_tree_struct;
-          try apply P2SV.
+          try apply P2SV;
           try pose proof (PAX _ (or_introl eq_refl)) as FAL;
           try inversion FAL;
           try apply axiom_app_merge;
@@ -1019,6 +985,7 @@ Proof.
           try apply PAX1;
           try apply PAX2.
 Qed.
+*)
 
 Lemma open_loop_ax_head_one_empty_nodes :
     forall {P1 P2 : ptree} {a A : formula} {n : nat},
@@ -1048,6 +1015,7 @@ try rewrite plus_Sn_m in ONE';
 inversion ONE'.
 Qed.
 
+(*
 Lemma string_tree_nin_valid_strong :
     forall (P Q : ptree) {A : formula} {dQ : nat} {beta : ord} (QP : P_proves Q A dQ beta) (NAX : PA_cyclic_axiom A = false),
         struct_valid P ->
@@ -1062,13 +1030,27 @@ Proof.
   unfold ptree_ord;
   fold ptree_ord.
 
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+  1 : { case (form_eqb A a) eqn:EQ.
+        - apply (QSV, QAX).
+        - destruct beta;
+          destruct dQ;
+          repeat split;
+          unfold ptree_ord;
+          try apply zero_lt;
+          try apply PAX;
+          try apply (ptree_ord_nf_struct_hyp _ _ QO QSV);
+          unfold node_extract, ptree_deg;
+          try lia. }
 
   1 : { destruct (nat_semiconnex_type dQ d') as [[GT | EQ] | LT];
         try apply nat_lt_ltb in LT;
@@ -1083,59 +1065,43 @@ Proof.
         apply nat_ltb_lt in LT.
         lia. }
 
-  1 : { repeat split;
+  1 : { case ord_ltb eqn:LT;
+        repeat split;
         try apply (IHP PSV NINA PAX).
-        - rewrite (string_tree_ord _ _ _ _ PSV).
-          apply add_right_incr, IO.
-        - apply (nf_add _ _ (ptree_ord_nf_struct_hyp _ _ QO QSV) NO). }
+        - apply ord_ltb_lt, LT.
+        - apply NO. }
 
-  1 : { case (form_eqb A a) eqn:EQ.
-        1 : apply (QSV, QAX).
-        1 : destruct beta;
-          destruct dQ;
-          repeat split;
-          unfold ptree_ord;
-          try apply zero_lt;
-          try apply PAX;
-          try apply (ptree_ord_nf_struct_hyp _ _ QO QSV);
-          unfold node_extract, ptree_deg;
-          try lia. }
+  all : unfold node_extract in *;
+        fold node_extract in *;
+        try rewrite remove_app in PAX;
+        try destruct (axiom_app_split _ _ PAX) as [PAX1 PAX2];
+        try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
+        repeat split;
+        try apply axiom_app_merge;
+        try split;
+        fold node_extract;
+        try apply (IHP PSV NINA PAX);
+        try apply (IHP1 P1SV NINA1 PAX1);
+        try apply (IHP2 P2SV NINA2 PAX2);
+        try rewrite string_tree_formula;
+        try rewrite string_tree_ord;
+        try apply PF;
+        try apply P1F;
+        try apply P2F;
+        try rewrite PO;
+        try rewrite P1O;
+        try rewrite P2O;
+        try apply P2D;
+        try apply PSV;
+        try apply P1SV;
+        try apply P2SV;
+        try reflexivity.
 
-    11 : case (form_eqb A (univ n a)) eqn:FEQ.
-
-    all : unfold node_extract in *;
-          fold node_extract in *;
-          try rewrite remove_app in PAX;
-          try destruct (axiom_app_split _ _ PAX) as [PAX1 PAX2];
-          try apply (nin_split form_eq_dec) in NINA as [NINA1 NINA2];
-          repeat split;
-          try apply axiom_app_merge;
-          try split;
-          fold node_extract;
-          try apply (IHP PSV NINA PAX);
-          try apply (IHP1 P1SV NINA1 PAX1);
-          try apply (IHP2 P2SV NINA2 PAX2);
-          try rewrite string_tree_formula;
-          try rewrite string_tree_ord;
-          try apply PF;
-          try apply P1F;
-          try apply P2F;
-          try rewrite PO;
-          try rewrite P1O;
-          try rewrite P2O;
-          try apply P2D;
-          try apply PSV;
-          try apply P1SV;
-          try apply P2SV;
-          try reflexivity.
-
-    1 : { rewrite (string_tree_node_not_in _ _ _ _ PSV NINA).
-          apply FC. }
+    1 : {  admit. (* rewrite (string_tree_node_not_in _ _ _ _ PSV NINA).
+          apply FC.*) }
 
     all : unfold node_extract;
           fold node_extract;
-          try case (closed c) eqn:CC;
-          unfold "&&" in *;
           case (closed (univ n a)) eqn:CuA;
           try apply not_in_cons in NINA as [NE NINA];
           try rewrite (remove_not_head _ _ _ NE) in PAX;
@@ -1146,12 +1112,15 @@ Proof.
           try apply (IHP2 P2SV NINA1 PAX1);
           try pose proof (PAX _ (or_introl eq_refl)) as FAL;
           try inversion FAL;
-          try apply axiom_app_merge;
-          split;
+          try apply axiom_app_merge.
+
+          admit.
+          try split;
           try apply (IHP1 P1SV NINA2 PAX2);
           try rewrite (notin_remove _ _ _ NINA1) in PAX1;
           try apply PAX1.
 Qed.
+*)
 
 Lemma open_loop_ax_head_one_split :
     forall {P1 P2 : ptree} {a A : formula} {n : nat},
@@ -1187,37 +1156,20 @@ Proof.
   fold string_tree;
   unfold ptree_ord;
   fold ptree_ord.
-  
-  1 : destruct PSV as [ID PSV].
-  2 : destruct PSV as [[IO PSV] NO].
-  3 : destruct PSV.
-  4-9 : destruct PSV as [[[PF PSV] PD] PO].
-  10 : destruct PSV as [[[[PF FC] PSV] PD] PO].
-  13-16 : destruct PSV as [[[PF PSV] PD] PO].
-  11,12,17-21: destruct PSV as [[[[[[[P1F P1SV] P2F] P2SV] P1D] P2D] P1O] P2O].
 
-  1 : { destruct (nat_semiconnex_type dQ d') as [[GT | EQ] | LT];
-        try apply nat_lt_ltb in LT;
-        try apply nat_lt_ltb in GT;
-        try destruct EQ;
-        try rewrite nat_ltb_irrefl;
-        try rewrite LT;
-        try rewrite (nat_ltb_asymm _ _ GT);
-        repeat split;
-        try apply (IHP PSV ONE PAX);
-        try rewrite (string_tree_deg _ _ _ _ PSV).
-        apply nat_ltb_lt in LT.
-        lia. }
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
 
-  1 : { repeat split;
-        try apply (IHP PSV ONE PAX).
-        - rewrite (string_tree_ord _ _ _ _ PSV).
-          apply add_right_incr, IO.
-        - apply (nf_add _ _ (ptree_ord_nf_struct_hyp _ _ QO QSV) NO). }
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
   1 : { case (form_eqb A a) eqn:EQ.
-        1 : apply (QSV, QAX).
-        1 : destruct beta;
+        - apply (QSV, QAX).
+        - destruct beta;
           destruct dQ;
           repeat split;
           unfold ptree_ord;
@@ -1240,7 +1192,24 @@ Proof.
           try inversion EQ;
           try apply (or_introl eq_refl). }
 
-(*  11 : case (form_eqb A (univ n a)) eqn:FEQ.*)
+  1 : { destruct (nat_semiconnex_type dQ d') as [[GT | EQ] | LT];
+        try apply nat_lt_ltb in LT;
+        try apply nat_lt_ltb in GT;
+        try destruct EQ;
+        try rewrite nat_ltb_irrefl;
+        try rewrite LT;
+        try rewrite (nat_ltb_asymm _ _ GT);
+        repeat split;
+        try apply (IHP PSV ONE PAX);
+        try rewrite (string_tree_deg _ _ _ _ PSV).
+        apply nat_ltb_lt in LT.
+        lia. }
+
+  1 : { case ord_ltb eqn:LT;
+        repeat split;
+        try apply (IHP PSV ONE PAX).
+        - apply ord_ltb_lt, LT.
+        - apply NO. }
 
   all : unfold node_extract in *;
         fold node_extract in *;
@@ -1269,10 +1238,10 @@ Proof.
       { rewrite ONE.
         apply le_n. }
       apply count_occ_In in INA.
-      pose proof (incl_tran FC (free_list_remove_non_ax_sub _ _ INA PAX)).
+      pose proof (incl_tran CPF (free_list_remove_non_ax_sub _ _ INA PAX)).
       admit. }
 
-  1-8,13-24 :
+  1-20 :
       destruct (count_occ_app_one_split _ _ _ ONE) as [[ONE1 NIN2] | [ONE2 NIN1]];
       try apply (IHP1 P1SV ONE1 PAX1);
       try apply (IHP2 P2SV ONE2 PAX2);
@@ -1281,8 +1250,6 @@ Proof.
 
   all : unfold node_extract;
       fold node_extract;
-      try case (closed c) eqn:CC;
-      unfold "&&" in *;
       try case (closed (univ n a)) eqn:CuA;
       try rewrite remove_app in PAX;
       try destruct (axiom_app_split _ _ PAX) as [PAX1 PAX2].

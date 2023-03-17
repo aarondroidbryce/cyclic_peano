@@ -101,7 +101,7 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
     PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
 
-| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [] \/ free_list A = [n]) (CC : closed C = true),
+| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [] \/ free_list A = [n]),
     In A L2 ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
@@ -113,7 +113,7 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
     PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
 
-| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : (free_list A <> [] /\ free_list A <> [n]) \/ closed C = false),
+| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : free_list A <> [] /\ free_list A <> [n]),
     In A L2 ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
@@ -307,6 +307,27 @@ intros AX.
   + apply axiom_closed, AX, or_introl, eq_refl.
 Qed.
 
+Lemma axiom_app_split :
+    forall (L1 L2 : list formula),
+        (forall B, In B (L1 ++ L2) -> PA_cyclic_axiom B = true) -> 
+            (forall B, In B L1 -> PA_cyclic_axiom B = true) /\ (forall B, In B L2 -> PA_cyclic_axiom B = true).
+Proof.
+intros L1 L2.
+exact (fun AX => conj (fun B INB => AX B (in_or_app _ _ _ (or_introl INB))) (fun B INB => AX B (in_or_app _ _ _ (or_intror INB)))).
+Qed.
+
+Lemma axiom_app_merge :
+    forall (L1 L2 : list formula), 
+        (forall B, In B L1 -> PA_cyclic_axiom B = true) /\ (forall B, In B L2 -> PA_cyclic_axiom B = true) ->
+            (forall B, In B (L1 ++ L2) -> PA_cyclic_axiom B = true).
+Proof.
+intros L1 L2 [AX1 AX2] B INB.
+apply in_app_or in INB as [IN1 | IN2].
+apply (AX1 _ IN1).
+apply (AX2 _ IN2).
+Qed.
+
+
 Lemma valid_closed_formula : 
     forall {L : list formula} {A : formula},
         (forall B, In B L -> PA_cyclic_axiom B = true) ->
@@ -361,6 +382,9 @@ auto.
     reflexivity.
   
 
+- apply axiom_app_split in AX as [AX1 AX2].
+  apply (proj1 (and_bool_prop _ _ (IHTS1 AX2))).
+
 - destruct LSTC as [LSTe | LSTn].
   + rewrite LSTe.
     reflexivity.
@@ -413,6 +437,9 @@ auto.
   + rewrite LSTn.
     rewrite nat_eqb_refl, list_eqb_refl.
     reflexivity.
+
+- apply axiom_app_split in TAX as [TAX1 TAX2].
+  apply (proj1 (and_bool_prop _ _ (IHTS1 TAX2))).
 
 - destruct LSTC as [LSTe | LSTn].
   + rewrite LSTe.

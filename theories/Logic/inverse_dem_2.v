@@ -593,17 +593,13 @@ Proof.
       try rewrite non_target_sub_fit;
       try reflexivity.
 
-  case (closed c) eqn:CC;
-  try rewrite (demorgan2_sub_formula_closed _ CC) in IN;
-  unfold "&&" in *.
-
-  1,3 : case (closed (univ n a)) eqn:CuA.
+  1,2 : case (closed (univ n a)) eqn:CuA.
 
   3 : exists A;
       exact (conj IN NAX).
 
 
-  2-4 : exists (univ n a);
+  2-3 : exists (univ n a);
         exact (conj (or_introl eq_refl) eq_refl).
 
   apply in_app_or in IN as [IN1 | IN2].
@@ -778,11 +774,7 @@ all : unfold node_extract in *;
         try rewrite non_target_fit;
         try reflexivity.
 
-  all : case (closed c) eqn:CC;
-        unfold "&&" in *;
-        fold (demorgan2_sub_formula c E F S1) in IN;
-        try rewrite (demorgan2_sub_formula_closed _ CC) in IN;
-        try case (closed (univ n a)) eqn:CuA;
+  all : try case (closed (univ n a)) eqn:CuA;
         try pose proof (PAX _ (or_introl eq_refl)) as FAL;
         try inversion FAL;
         try apply (PAX _ (in_or_app _ _ _ (or_intror IN)));
