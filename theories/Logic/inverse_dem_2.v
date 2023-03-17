@@ -554,7 +554,7 @@ Proof.
 
   5,13 : case (nat_eqb d2 (max d1 d2)) eqn:EQ.
 
-  1-19,21-22 :
+  1-19,21-23 :
       unfold node_extract in *;
       fold node_extract in *;
       try apply in_app_or in IN as [IN1 | IN2];
@@ -592,15 +592,6 @@ Proof.
       try rewrite non_target_fit;
       try rewrite non_target_sub_fit;
       try reflexivity.
-
-  1,2 : case (closed (univ n a)) eqn:CuA.
-
-  3 : exists A;
-      exact (conj IN NAX).
-
-
-  2-3 : exists (univ n a);
-        exact (conj (or_introl eq_refl) eq_refl).
 
   apply in_app_or in IN as [IN1 | IN2].
 
@@ -774,10 +765,7 @@ all : unfold node_extract in *;
         try rewrite non_target_fit;
         try reflexivity.
 
-  all : try case (closed (univ n a)) eqn:CuA;
-        try pose proof (PAX _ (or_introl eq_refl)) as FAL;
-        try inversion FAL;
-        try apply (PAX _ (in_or_app _ _ _ (or_intror IN)));
+  all : try apply (PAX _ (in_or_app _ _ _ (or_intror IN)));
         try apply in_app_or in IN as [IN1 | IN2];
         try apply (PAX _ (in_or_app _ _ _ (or_introl IN1)));
         try apply (fun FSUB => dem2_all_ax_trans _ _ _ _ P1SV FSUB (fun B INB => PAX B (in_or_app _ _ _ (or_intror INB))) _ IN2);

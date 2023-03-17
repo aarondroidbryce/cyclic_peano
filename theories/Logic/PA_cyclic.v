@@ -95,29 +95,17 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (lor (neg (substitution A n (projT1 c))) D) d alpha L ->
     PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) L
 
-| oneloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [] \/ free_list A = [n]),
+| loop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
     In A L2 ->
     PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
     PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
 
-| oneloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTC : free_list A = [] \/ free_list A = [n]),
+| loop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
     In A L2 ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
     PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
-
-| multloop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : free_list A <> [] /\ free_list A <> [n]),
-    In A L2 ->
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
-
-| multloop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula) (LSTN : free_list A <> [] /\ free_list A <> [n]),
-    In A L2 ->
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (((univ n A) :: remove form_eq_dec A L2) ++ L1)
 
 | cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
     PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
@@ -374,32 +362,14 @@ auto.
 
 - apply (closed_sub_univ _ _ _ (projT2 c) IHC).
 
-- destruct LSTC as [LSTe | LSTn].
-  + rewrite LSTe.
-    reflexivity.
-  + rewrite LSTn.
-    rewrite nat_eqb_refl, list_eqb_refl.
-    reflexivity.
-  
+- apply axiom_app_split in AX as [AX1 AX2].
+  apply (closed_sub_univ _ _ _ (projT2 czero) (IHTS1 AX2)) .
 
 - apply axiom_app_split in AX as [AX1 AX2].
   apply (proj1 (and_bool_prop _ _ (IHTS1 AX2))).
 
-- destruct LSTC as [LSTe | LSTn].
-  + rewrite LSTe.
-    reflexivity.
-  + rewrite LSTn.
-    rewrite nat_eqb_refl, list_eqb_refl.
-    reflexivity.
-
-- pose proof (AX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-
-- pose proof (AX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-
-- pose proof (AX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
+- apply axiom_app_split in AX as [AX1 AX2].
+  apply (closed_sub_univ _ _ _ (projT2 czero) (proj2 (and_bool_prop _ _ (IHTS1 AX2)))).
 Qed.
 
 Lemma theorem_closed : forall (A : formula) (d : nat) (alpha : ord),
@@ -431,32 +401,15 @@ auto.
 
 - apply (closed_sub_univ _ _ _ (projT2 c) IHC).
 
-- destruct LSTC as [LSTe | LSTn].
-  + rewrite LSTe.
-    reflexivity.
-  + rewrite LSTn.
-    rewrite nat_eqb_refl, list_eqb_refl.
-    reflexivity.
+- apply axiom_app_split in TAX as [TAX1 TAX2].
+  apply (closed_sub_univ _ _ _ (projT2 czero) (IHTS1 TAX2)).
 
 - apply axiom_app_split in TAX as [TAX1 TAX2].
   apply (proj1 (and_bool_prop _ _ (IHTS1 TAX2))).
 
-- destruct LSTC as [LSTe | LSTn].
-  + rewrite LSTe.
-    reflexivity.
-  + rewrite LSTn.
-    rewrite nat_eqb_refl, list_eqb_refl.
-    reflexivity.
 
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-
+- apply axiom_app_split in TAX as [TAX1 TAX2].
+  apply (closed_sub_univ _ _ _ (projT2 czero) (proj2 (and_bool_prop _ _ (IHTS1 TAX2)))).
 Qed.
 
 Lemma closed_sub_theorem :

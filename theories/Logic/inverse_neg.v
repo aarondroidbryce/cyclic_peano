@@ -645,11 +645,6 @@ Proof.
       try rewrite non_target_fit;
       try reflexivity.
 
-  case (closed (univ n a)) eqn:CuA.
-
-  2 : exists (univ n a);
-      exact (conj (or_introl eq_refl) eq_refl).
-
   apply in_app_or in IN as [IN1 | IN2].
 
   { exists A.
@@ -821,9 +816,6 @@ all : intros A IN;
       try apply (or_intror IN2).
 
 all : unfold node_extract in *; fold node_extract in *;
-      case (closed (univ n a)) eqn:CuA;
-      try pose proof (PAX _ (or_introl eq_refl)) as FAL;
-      try inversion FAL;
       try apply (PAX _ (in_or_app _ _ _ (or_intror IN)));
       try apply in_app_or in IN as [IN1 | IN2];
       try apply (PAX _ (in_or_app _ _ _ (or_introl IN1)));

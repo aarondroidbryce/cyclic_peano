@@ -313,6 +313,28 @@ try destruct (and_bool_prop _ _ EQ') as [EQ1 EQ2].
   reflexivity.
 Qed.
 
+Lemma form_neb_ne :
+    forall (A B : formula),
+        form_eqb A B = false ->
+            A <> B.
+Proof.
+intros A B NE FAL.
+destruct FAL.
+rewrite form_eqb_refl in NE.
+inversion NE.
+Qed.
+
+Lemma form_neb_ne_symm :
+    forall (A B : formula),
+        form_eqb A B = false ->
+            B <> A.
+Proof.
+intros A B NE FAL.
+destruct FAL.
+rewrite form_eqb_refl in NE.
+inversion NE.
+Qed.
+
 Lemma not_eq_univ :
     forall (a : formula) (n : nat),
         univ n a <> a.

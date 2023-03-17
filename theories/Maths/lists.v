@@ -87,6 +87,14 @@ destruct IN as [EQ | IN].
 - apply (or_intror (SUB _ IN)).
 Qed.
 
+Lemma incl_remove {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+    forall (a : A) (L : list A),
+        incl (remove DEC a L) L.
+Proof.
+intros a L b.
+apply (fun INB => proj1 (in_remove DEC _ _ _ INB)).
+Qed.
+
 Lemma remove_not_head {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (a b : A) (L : list A),
         a <> b ->
@@ -211,6 +219,40 @@ intros b INb c INf INc.
       --  destruct EQ.
           apply in_app_iff, or_introl, INf.
       --  apply in_app_iff, or_intror, (IHL _ INb _ INf INc).
+Qed.
+
+Lemma map_nil_remove_flat {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (a : A) (L : list A),
+        f a = [] ->
+            (flat_map f L) = (flat_map f (remove DECA a L)).
+Proof.
+intros f a L NIL.
+induction L.
+- reflexivity.
+- unfold remove;
+  fold (remove DECA).
+  unfold flat_map;
+  fold (flat_map f).
+  case (DECA a a0) as [EQ | NE].
+  + destruct EQ.
+    rewrite NIL.
+    apply IHL.
+  + unfold flat_map.
+    fold (flat_map f).
+    rewrite IHL.
+    reflexivity.
+Qed.
+
+Lemma flat_map_incl {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+    forall (f : A -> list B) (L1 L2 : list A),
+        incl L1 L2 ->
+            incl (flat_map f L1) (flat_map f L2).
+Proof.
+intros f L1 L2 SUB b INB.
+apply in_flat_map in INB as [a [INA INB]].
+apply in_flat_map.
+exists a.
+apply (conj (SUB _ INA) INB).
 Qed.
 
 Lemma count_occ_app_one_cases {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :

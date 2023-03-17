@@ -221,17 +221,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => node_extract P'
 
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2 =>
-    match closed (univ n A) with
-    | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-    | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-    end
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => 
-    match (closed (univ n A)) with
-        | true => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-        | false => (univ n A) :: (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
-        end
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>  (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
 
@@ -377,69 +369,13 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
   + rewrite P2N.
     apply i.
   + rewrite P2N,P1N.
-    destruct LSTC as [LSTe | LSTn].
-    * rewrite LSTe.
-      reflexivity.
-    * rewrite LSTn, nat_eqb_refl, list_eqb_refl.
-      unfold "&&".
-      case (closed A);
-      reflexivity.
+    reflexivity.
 - exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + rewrite P2N.
     apply i.
   + rewrite P2N, P1N.
-    destruct LSTC as [LSTe | LSTn].
-      * rewrite LSTe.
-        reflexivity.
-      * rewrite LSTn, nat_eqb_refl, list_eqb_refl.
-        unfold "&&".
-        case (closed A);
-        reflexivity.
-- exists (loop_a A n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  + rewrite P2N.
-    apply i.
-  + rewrite P2N, P1N.
-    destruct LSTN as [LSTe LSTn].
-    destruct (free_list A) as [| m FLA] eqn:FL.
-    * contradict LSTe.
-      reflexivity.
-    * case (closed A) eqn:CA.
-      --  apply closed_free_list in CA.
-          rewrite CA in FL.
-          inversion FL.
-      --  destruct FLA.
-          ++  case (nat_eqb m n) eqn:EQ.
-              **  apply nat_eqb_eq in EQ.
-                  destruct EQ.
-                  contradict LSTn.
-                  reflexivity.
-              **  unfold "&&".
-                  reflexivity.
-          ++  unfold list_eqb, "&&".
-              case nat_eqb;
-              reflexivity.
-- exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
-  repeat split; simpl; auto.
-  + rewrite P2N.
-    apply i.
-  + rewrite P2N, P1N.
-    destruct LSTN as [LSTe LSTn].
-    destruct (free_list A) as [| m FLA] eqn:FL.
-    * contradict LSTe.
-      reflexivity.
-    * destruct FLA.
-      --  case (nat_eqb m n) eqn:EQ.
-          ++  apply nat_eqb_eq in EQ.
-              destruct EQ.
-              contradict LSTn.
-              reflexivity.
-          ++  case (closed C);
-              reflexivity.
-      --  unfold list_eqb, "&&".
-          case (closed C), (nat_eqb m n);
-          try reflexivity.
+    reflexivity.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (cut_cad C A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
@@ -506,12 +442,7 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
     apply i.
   + intros B INB.
     rewrite P2L, P1L in INB.
-    destruct LSTC as [LSTe | LSTn].
-    * rewrite LSTe in INB.
-      apply TAX, INB.
-    * rewrite LSTn, nat_eqb_refl, list_eqb_refl in INB.
-      unfold "&&" in INB.
-      apply TAX, INB.
+    apply TAX, INB.
 - pose proof (structural_pre_theorem TS1) as [P1 [[[[P1F P1SV] P1D] P1O] P1L]].
   pose proof (structural_pre_theorem TS2) as [P2 [[[[P2F P2SV] P2D] P2O] P2L]].
   exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
@@ -520,16 +451,7 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
     apply i.
   + intros B INB.
     rewrite P2L, P1L in INB.
-    destruct LSTC as [LSTe | LSTn].
-    * rewrite LSTe in INB.
-      apply TAX, INB.
-    * rewrite LSTn, nat_eqb_refl, list_eqb_refl in INB.
-      unfold "&&" in INB.
-      apply TAX, INB.
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
-- pose proof (TAX _ (or_introl eq_refl)) as FAL.
-  inversion FAL.
+    apply TAX, INB.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   + intros A' IN. apply in_app_iff in IN as [IN1 | IN2].
@@ -588,15 +510,8 @@ apply (demorgan2 P1' P2').
 apply (cut1 _ _ P1' P2').
 apply (cut2 _ _ P1' P2').
 apply (cut3 _ _ _ P1' P2').
-
-all : unfold node_extract;
-      fold node_extract;
-      case (closed (univ n a)) eqn:CuA.
-
-1 : apply (oneloop1 _ _ (closed_univ_list _ _ CuA) INA (IHP1 P1SV) (IHP2 P2SV)).
-1 : apply (multloop1 _ _ (not_closed_univ_list _ _  CuA) INA (IHP1 P1SV) (IHP2 P2SV)).
-1 : apply (oneloop2 _ _ (closed_univ_list _ _ CuA) INA (IHP1 P1SV) (IHP2 P2SV)).
-1 : apply (multloop2 _ _ (not_closed_univ_list _ _ CuA) INA (IHP1 P1SV) (IHP2 P2SV)).
+1 : apply (loop1 _ _ INA (IHP1 P1SV) (IHP2 P2SV)).
+1 : apply (loop2 _ _ INA (IHP1 P1SV) (IHP2 P2SV)).
 Qed.
 
 Lemma theorem_provable' :
@@ -658,17 +573,9 @@ induction P.
       rewrite P1F, <-P1D, <-P1O in P1';
       rewrite P2F, <-P2D, <-P2O in P2'.
 
-2 : refine (prune (oneloop2 _ _ _ INA P1' P2') _).
+2 : apply (prune (loop2 _ _ INA P1' P2') PAX).
 
-1 : refine (prune (oneloop1 _ _ _ INA P1' P2') _).
-
-all : unfold node_extract in PAX; fold node_extract in PAX;
-      case (closed (univ n a)) eqn:CuA;
-      try apply (closed_univ_list _ _ CuA);
-      try pose proof (PAX _ (or_introl eq_refl)) as FAL;
-      try inversion FAL;
-      try apply PAX;
-      try reflexivity.
+1 : apply (prune (loop1 _ _ INA P1' P2') PAX).
 Qed.
 
 Lemma theorem_provable :
