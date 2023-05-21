@@ -10,6 +10,7 @@ From Cyclic_PA.Logic Require Import substitute.
 From Cyclic_PA.Logic Require Import string_trees.
 
 Require Import Lia.
+Require Import List.
 
 Definition loop_sub_formula
   (A E : formula) (n m : nat) (S : subst_ind) : formula :=
@@ -29,11 +30,390 @@ apply (closed_univ_sub E n CuE (represent m)).
 apply represent_closed.
 Qed.
 
+Fixpoint number_sub_ptree
+  (P : ptree) (n m : nat) : ptree :=
+match P with
+| deg_up d P' => deg_up d (number_sub_ptree P' n m)
+
+| ord_up alpha P' => ord_up alpha (number_sub_ptree P' n m)
+
+| node A => node (substitution A n (represent m))
+
+| exchange_ab A B d alpha P' =>
+    exchange_ab
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| exchange_cab C A B d alpha P' =>
+    exchange_cab
+      (substitution C n (represent m))
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| exchange_abd A B D d alpha P' =>
+    exchange_abd
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      (substitution D n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| exchange_cabd C A B D d alpha P' =>
+    exchange_cabd
+      (substitution C n (represent m))
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      (substitution D n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| contraction_a A d alpha P' =>
+    contraction_a
+      (substitution A n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| contraction_ad A D d alpha P' =>
+    contraction_ad
+      (substitution A n (represent m))
+      (substitution D n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| weakening_ad A D d alpha P' =>
+    weakening_ad
+      (substitution A n (represent m))
+      (substitution D n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => 
+    demorgan_ab
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 =>
+    demorgan_abd
+      (substitution A n (represent m))
+      (substitution B n (represent m))
+      (substitution D n (represent m))
+      d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+
+| negation_a A d alpha P' =>
+    negation_a
+      (substitution A n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| negation_ad A D d alpha P' =>
+    negation_ad
+      (substitution A n (represent m))
+      (substitution D n (represent m))
+      d alpha
+      (number_sub_ptree P' n m)
+
+| quantification_a A v t d alpha P' => 
+    match nat_eqb v n with
+    | true => P
+    | false =>
+    quantification_a
+      (substitution A n (represent m))
+      v t d alpha
+      (number_sub_ptree P' n m)
+    end
+
+| quantification_ad A D v t d alpha P' =>
+    match nat_eqb v n with
+    | true =>
+        quantification_ad
+          A
+          (substitution D n (represent m))
+          v t d alpha
+          (number_sub_ptree P' n m)
+    | false =>  
+        quantification_ad
+          (substitution A n (represent m))
+          (substitution D n (represent m))
+          v t d alpha
+          (number_sub_ptree P' n m)
+    end
+
+| loop_a A v d1 d2 alpha1 alpha2 P1 P2 =>
+    match nat_eqb v n with
+    | true => P
+    | false => loop_a
+      (substitution A n (represent m))
+      v d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+    end
+
+| loop_ca C A v d1 d2 alpha1 alpha2 P1 P2 =>
+    match nat_eqb v n with
+    | true => 
+        loop_ca
+          (substitution C n (represent m))
+          A
+          v d1 d2 alpha1 alpha2
+          (number_sub_ptree P1 n m)
+          P2
+    | false => 
+        loop_ca
+          (substitution C n (represent m))
+          (substitution A n (represent m))
+          v d1 d2 alpha1 alpha2
+          (number_sub_ptree P1 n m)
+          (number_sub_ptree P2 n m)
+    end
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 =>
+    cut_ca
+      (substitution C n (represent m))
+      (substitution A n (represent m))
+      d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 =>
+    cut_ad
+      (substitution A n (represent m))
+      (substitution D n (represent m))
+      d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 =>
+    cut_cad
+      (substitution C n (represent m))
+      (substitution A n (represent m))
+      (substitution D n (represent m))
+      d1 d2 alpha1 alpha2
+      (number_sub_ptree P1 n m)
+      (number_sub_ptree P2 n m)
+end.
+
+Lemma number_sub_ptree_formula :
+    forall (P : ptree) (n m : nat),
+        struct_valid P -> 
+            ptree_formula (number_sub_ptree P n m) =
+                substitution (ptree_formula P) n (represent m).
+Proof.
+intros P n m PSV.
+induction P;
+unfold number_sub_ptree, ptree_formula;
+fold number_sub_ptree ptree_formula.
+
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+all : try reflexivity.
+
+1,2 : apply IHP, PSV.
+
+all : case nat_eqb eqn:EQ;
+      unfold ptree_formula, substitution;
+      fold substitution;
+      rewrite EQ;
+      reflexivity.
+Qed.
+
+Lemma number_sub_ptree_deg :
+    forall (P : ptree) (n m : nat),
+        ptree_deg (number_sub_ptree P n m) = ptree_deg P.
+Proof.
+intros P n m.
+induction P;
+unfold number_sub_ptree, ptree_deg;
+fold number_sub_ptree ptree_deg;
+try reflexivity.
+
+1 : apply IHP.
+
+1,2,6,7 : case nat_eqb;
+          reflexivity.
+
+all : unfold num_conn; fold num_conn;
+      rewrite num_conn_sub;
+      reflexivity.
+Qed.
+
+Lemma number_sub_ptree_ord :
+    forall (P : ptree) (n m : nat),
+        ptree_ord (number_sub_ptree P n m) = ptree_ord P.
+Proof.
+intros P n m.
+induction P;
+unfold number_sub_ptree, ptree_ord;
+fold number_sub_ptree ptree_ord;
+try reflexivity.
+
+1 : apply IHP.
+
+all : case nat_eqb;
+      reflexivity.
+Qed.
+
+(*
+Lemma number_sub_node :
+    forall (P : ptree) (n m : nat),
+        struct_valid P ->
+            forall (A : formula),
+                In A (node_extract P) -> In (substitution A n (represent m)) (node_extract (number_sub_ptree P n m)).
+Proof.
+intros P n m PSV.
+induction P;
+intros B INB;
+unfold number_sub_ptree;
+fold number_sub_ptree.
+
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+all : unfold node_extract in *;
+      fold node_extract in *.
+
+1 : { inversion INB as [EQ | FAL].
+      - destruct EQ.
+        apply or_introl, eq_refl.
+      - inversion FAL. }
+
+all : try case nat_eqb eqn:EQ;
+      unfold node_extract;
+      fold node_extract;
+      try apply (IHP PSV _ INB).
+
+1 : { admit. }
+
+all : apply in_app_or in INB as [IN1 | IN2];
+      try apply in_remove in IN1 as [IN1 NE];
+      try apply (in_or_app _ _ _ (or_introl (IHP1 P1SV _ IN1)));
+      try apply (in_or_app _ _ _ (or_intror (IHP1 P1SV _ IN2)));
+      try apply (in_or_app _ _ _ (or_intror (IHP2 P2SV _ IN2))).
+
+      admit.
+      admit.
+      admit.
+      admit.
+      admit.
+
+      try apply (in_or_app _ _ _ (or_introl (IHP2 P2SV _ (in_in_remove _ _ _ NE IN1)))).
+
+      refine (in_or_app _ _ _ (or_introl (in_in_remove _ _ _ (IHP2 P2SV _ IN1)))).
+
+      
+
+      admit.
+
+
+
+Lemma number_sub_struct :
+    forall (P : ptree) (n m : nat),
+        struct_valid P ->
+            struct_valid (number_sub_ptree P n m).
+Proof.
+intros P n m PSV.
+induction P;
+unfold number_sub_ptree;
+fold number_sub_ptree.
+
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+1 : split.
+
+1 : { repeat split.
+      - apply IHP, PSV.
+      - rewrite number_sub_ptree_deg.
+        apply DU. }
+
+1 : { repeat split.
+      - apply IHP, PSV.
+      - rewrite number_sub_ptree_ord.
+        apply OU.
+      - apply NO. }
+
+9,10,17,18 : case nat_eqb eqn:EQ.
+
+9,11,13,15 : apply nat_eqb_eq in EQ;
+             destruct EQ.
+
+all : repeat split;
+      try apply IHP, PSV;
+      try apply IHP1, P1SV;
+      try apply IHP2, P2SV;
+      try rewrite number_sub_ptree_deg;
+      try apply PD;
+      try apply P1D;
+      try apply P2D;
+      try rewrite number_sub_ptree_ord;
+      try apply PO;
+      try apply P1O;
+      try apply P2O;
+      try rewrite number_sub_ptree_formula;
+      try apply PSV;
+      try apply P1SV;
+      try apply P2SV;
+      try rewrite PF;
+      try rewrite P1F;
+      try rewrite P2F;
+      try apply INA;
+      try reflexivity.
+
+1,2 : unfold substitution;
+      fold substitution;
+      rewrite (closed_subst_eq_aux (substitution _ _ _));
+      try reflexivity;
+      try rewrite (subst_remove _ _ _ (projT2 czero));
+      try rewrite (subst_remove _ _ _ (projT2 t));
+      apply remove_not_member.
+
+all : try rewrite substitution_order_succ_closed;
+      try reflexivity;
+      try rewrite substitution_order;
+      try apply represent_closed;
+      try apply (projT2 t);
+      try reflexivity;
+      try apply EQ;
+      try rewrite nat_eqb_symm;
+      try apply EQ.
+Admitted.
+*)
+
 Fixpoint unlooper 
 (P1 P2 : ptree) (n m : nat) : ptree :=
 match m with
 | 0 => P1
-| S m' => string_tree (substitute P2 (represent S m)) (unloop P1 P2 n m')
+| S m' => string_tree (number_sub_ptree P2 n m') (unlooper P1 P2 n m')
 end.
 
 Fixpoint loop_sub_ptree_fit
@@ -127,26 +507,22 @@ match P, S with
       k t d alpha
       (loop_sub_ptree_fit P' E n m (lor_ind (0) S_D))
 
-| loop_a A k d1 d2 alpha1 alpha2 P1 P2, _ =>
-    match m with
-    | 0 => P1
-    | S m => unlooper
+| loop_a A k d1 d2 alpha1 alpha2 P1 P2, (1) =>
+    match form_eqb A E, nat_eqb k n with
+    | true, true => unlooper P1 P2 n m
+    | _, _ => P
     end
 
-| loop_ad A D k d alpha g, lor_ind S_A S_D =>
-    (match form_eqb A E, nat_eqb d (ptree_deg (g c)), nat_eqb k n, S_A with
-    | true, true, true, (1) =>
-        ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n m (lor_ind (non_target A) S_D))
-    | true, false, true, (1) =>
-        deg_up d (ord_up (ord_succ alpha) (loop_sub_ptree_fit (g c) E n m (lor_ind (non_target A) S_D)))
-    
-    | _, _, _, _ => 
-        loop_ad
+| loop_ca C A k d1 d2 alpha1 alpha2 P1 P2, lor_ind S_C S_A =>
+    (match form_eqb (univ k A) (univ n E), S_A with
+    | true, (1) => unlooper P1 P2 n m
+    | _, _ => 
+        loop_ca
+          (loop_sub_formula C E n m S_C)
           A
-          (loop_sub_formula D E n m S_D)
-          k d alpha
-          (fun (t : c_term) =>
-            loop_sub_ptree_fit (g t) E n m (lor_ind (non_target A) S_D))
+          k d1 d2 alpha1 alpha2
+          (loop_sub_ptree_fit P1 E n m (lor_ind S_C (non_target A)))
+          (loop_sub_ptree_fit P2 E n m (non_target A))
     end)
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ =>
@@ -177,14 +553,14 @@ match P, S with
 end.
 
 Definition loop_sub_ptree
-  (P : ptree) (E : formula) (n : nat) (c : c_term) (S : subst_ind) : ptree :=
+  (P : ptree) (E : formula) (n m : nat) (S : subst_ind) : ptree :=
 match subst_ind_fit (ptree_formula P) S with
 | false => P
 | true => loop_sub_ptree_fit P E n m S
 end.
 
 Lemma loop_ptree_formula_true :
-    forall (P : ptree) (E : formula) (n : nat) (c : c_term) (S : subst_ind),
+    forall (P : ptree) (E : formula) (n m : nat) (S : subst_ind),
         subst_ind_fit (ptree_formula P) S = true ->
             loop_sub_ptree_fit P E n m S = loop_sub_ptree P E n m S.
 Proof.
@@ -195,46 +571,124 @@ reflexivity.
 Qed.
 
 Lemma loop_ptree_formula' :
-    forall (P : ptree) (E : formula) (n : nat) (c : c_term),
+    forall (P : ptree) (E : formula) (n m : nat),
         valid P ->
             forall (S : subst_ind),
                 subst_ind_fit (ptree_formula P) S = true ->
                     ptree_formula (loop_sub_ptree P E n m S) =
                         loop_sub_formula (ptree_formula P) E n m S.
 Proof.
-intros P E n c.
+intros P E n m.
 induction P; try intros PV S FS;
 unfold loop_sub_ptree;
 rewrite FS;
 unfold ptree_formula in *; fold ptree_formula in *;
 unfold loop_sub_ptree_fit; fold loop_sub_ptree_fit.
-  
-1 : destruct PV as [ID PV].
-2 : destruct PV as [[IO PV] NO].
 
-1-2 : rewrite (loop_ptree_formula_true _ _ _ _ _ FS);
-      unfold ptree_formula; fold ptree_formula;
-      apply (IHP PV _ FS).
+all : destruct PV as [PSV PAX].
 
-1 : { inversion PV as [PX].
-      unfold loop_sub_ptree, loop_sub_formula, formula_sub_ind.
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+1 : { unfold loop_sub_ptree, loop_sub_formula, formula_sub_ind.
       rewrite FS.
       unfold ptree_formula; fold ptree_formula.
-      destruct (axiom_atomic _ PX) as [[a fa] | [a fa]];
-      rewrite fa;
+      destruct (axiom_atomic _ (PAX _ (or_introl eq_refl))) as [[b fb] | [b fb]];
+      rewrite fb;
       unfold formula_sub_ind_fit; fold formula_sub_ind_fit;
       unfold form_eqb;
       reflexivity. }
 
+1-2 : rewrite (loop_ptree_formula_true _ _ _ _ _ FS);
+      unfold ptree_formula; fold ptree_formula;
+      apply (IHP (PSV, PAX) _ FS).
+
 all : destruct S; inversion FS as [FS'];
+      try reflexivity;
+      try apply and_bool_prop in FS' as [FS1 FS2].
+
+2,3,4 : destruct S1;
+        inversion FS1 as [FS''];
+        try apply and_bool_prop in FS'' as [FS1_1 FS1_2].
+
+4 : destruct S1_1;
+    inversion FS1_1 as [FS'''];
+    try apply and_bool_prop in FS''' as [FS1_1_1 FS1_1_2].
+
+all : unfold ptree_formula, loop_sub_formula, formula_sub_ind, formula_sub_ind_fit;
+      fold formula_sub_ind_fit ptree_formula;
+      try rewrite FS;
+      try rewrite FS1;
+      try rewrite FS2;
+      try rewrite FS1_1;
+      try rewrite FS1_2;
+      try rewrite FS1_1_1;
+      try rewrite FS1_1_2;
       try reflexivity.
 
-1,5,6,13 :  apply and_bool_prop in FS';
-            destruct FS' as [FS1 FS2];
-            unfold ptree_formula, loop_sub_formula, formula_sub_ind, formula_sub_ind_fit;
-            fold formula_sub_ind_fit;
-            rewrite FS,FS1,FS2;
-            reflexivity.
+1 : case form_eqb eqn:EQ;
+    reflexivity.
+
+1 : case form_eqb eqn:EQ.
+    apply form_eqb_eq in EQ.
+    destruct EQ.
+    unfold form_eqb;
+    fold form_eqb.
+    rewrite form_eqb_refl.
+    case nat_eqb eqn:EQ;
+    unfold "&&".
+
+2,3 : unfold ptree_formula, form_eqb;
+      fold form_eqb;
+      try rewrite EQ;
+      case nat_eqb eqn:EQN;
+      reflexivity.
+
+1 : { apply nat_eqb_eq in EQ.
+      destruct EQ.
+      destruct m;
+      unfold unlooper;
+      fold unlooper.
+      - apply P1F.
+      - rewrite string_tree_formula.
+        rewrite number_sub_ptree_formula.
+        rewrite P2F.
+        rewrite sub_succ_self.
+        reflexivity.
+        apply P2SV. }
+
+1 : { destruct S2;
+      inversion FS2 as [FS'];
+      case form_eqb eqn:EQ;
+      unfold ptree_formula;
+      fold ptree_formula;
+      try reflexivity.
+      apply form_eqb_eq in EQ.
+      inversion EQ as [[EQ1 EQ2]].
+      destruct EQ1, EQ2.
+      destruct m;
+      unfold unlooper;
+      fold unlooper.
+      - rewrite P1F.
+        rewrite <- (sub_fit_true _ _ _ _ FS1).
+        admit.
+
+
+      - rewrite string_tree_formula.
+        rewrite number_sub_ptree_formula.
+        rewrite P2F.
+        rewrite sub_succ_self.
+        reflexivity.
+        apply P2SV.
+
+ }
 
 9 : destruct (PV c) as [[[PF PCV ] PD] PO];
     assert (subst_ind_fit (ptree_formula (p c)) (lor_ind (non_target f) S2) = true) as FSP.

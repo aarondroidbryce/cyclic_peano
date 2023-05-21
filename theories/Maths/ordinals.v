@@ -13,14 +13,21 @@ Inductive ord : Set :=
 Declare Scope cantor_scope.
 
 Inductive ord_lt : ord -> ord -> Prop :=
-|  zero_lt : forall a n b, Zero < wcon a n b
+|  zero_lt :
+    forall a n b,
+        Zero < wcon a n b
 |  head_lt :
-    forall a a' n n' b b', a < a' ->
-                           wcon a n b < wcon a' n' b'
-|  coeff_lt : forall a n n' b b', (n < n')%nat ->
-                                 wcon a n b < wcon a n' b'
-|  tail_lt : forall a n b b', b < b' ->
-                             wcon a n b < wcon a n b'
+    forall a a' n n' b b',
+        a < a' ->
+            wcon a n b < wcon a' n' b'
+|  coeff_lt :
+    forall a n n' b b',
+        (n < n')%nat ->
+            wcon a n b < wcon a n' b'
+|  tail_lt :
+    forall a n b b',
+        b < b' ->
+            wcon a n b < wcon a n b'
 where "o < o'" := (ord_lt o o') : cantor_scope.
 
 Open Scope cantor_scope.

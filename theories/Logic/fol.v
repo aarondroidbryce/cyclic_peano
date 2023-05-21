@@ -1166,6 +1166,44 @@ intros T m n s t Hs Ht Hmn. induction T; auto; simpl.
     * rewrite Hn. auto.
 Qed.
 
+Lemma substitution_order_t_succ_closed : forall (s t : term) (m n : nat),
+  nat_eqb m n = false ->
+  closed_t t = true ->
+  substitution_t (substitution_t s n (succ (var n))) m t =
+  substitution_t (substitution_t s m t) n (succ (var n)).
+Proof.
+intros s t m n NE Ct.
+induction s;
+unfold substitution_t;
+fold substitution_t.
+- reflexivity.
+- rewrite IHs.
+  reflexivity.
+- rewrite IHs1, IHs2.
+  reflexivity.
+- rewrite IHs1, IHs2.
+  reflexivity.
+- case (nat_eqb n0 n) eqn:EQ1.
+  + apply nat_eqb_eq in EQ1.
+    destruct EQ1.
+    rewrite nat_eqb_symm in NE.
+    rewrite NE.
+    unfold substitution_t;
+    fold substitution_t.
+    rewrite NE, nat_eqb_refl.
+    reflexivity.
+  + case (nat_eqb n0 m) eqn:EQ2.
+    * unfold substitution_t;
+      fold substitution_t.
+      rewrite EQ2.
+      rewrite (closed_subst_eq_t _ _ _ Ct).
+      reflexivity.
+    * unfold substitution_t;
+      fold substitution_t.
+      rewrite EQ1, EQ2.
+      reflexivity.
+Qed.
+
 Lemma substitution_order_a :
   forall (a : atomic_formula) (m n : nat) (s t : term),
   closed_t s = true ->
@@ -1177,6 +1215,21 @@ Proof.
 intros a m n s t Hs Ht Hmn. destruct a as [t1 t2]. simpl.
 rewrite (substitution_order_t _ _ _ _ _ Hs Ht Hmn).
 rewrite (substitution_order_t _ _ _ _ _ Hs Ht Hmn). auto.
+Qed.
+
+Lemma substitution_order_a_succ_closed : forall (a : atomic_formula) (m n : nat) (t : term),
+  nat_eqb m n = false ->
+  closed_t t = true ->
+  substitution_a (substitution_a a n (succ (var n))) m t =
+  substitution_a (substitution_a a m t) n (succ (var n)).
+Proof.
+intros a m n t NE Ct.
+destruct a as [t1 t2].
+unfold substitution_a;
+fold substitution_a.
+rewrite (substitution_order_t_succ_closed _ _ _ _ NE Ct).
+rewrite (substitution_order_t_succ_closed _ _ _ _ NE Ct).
+reflexivity.
 Qed.
 
 Lemma substitution_order : forall (B : formula) (m n : nat) (s t : term),
@@ -1196,6 +1249,39 @@ intros B m n s t Hs Ht Hmn. induction B; simpl.
     rewrite nat_eqb_symm. rewrite Hmn. rewrite nat_eqb_refl. auto.
   + destruct (nat_eqb n0 m) eqn:Hm; simpl; rewrite Hm, Hn; auto.
     rewrite IHB. auto.
+Qed.
+
+Lemma substitution_order_succ_closed : forall (B : formula) (m n : nat) (t : term),
+  nat_eqb m n = false ->
+  closed_t t = true ->
+  substitution (substitution B n (succ (var n))) m t =
+  substitution (substitution B m t) n (succ (var n)).
+Proof.
+intros B m n t NE Ct.
+induction B;
+unfold substitution;
+fold substitution.
+- rewrite (substitution_order_a_succ_closed _ _ _ _ NE Ct).
+  reflexivity.
+- rewrite IHB.
+  reflexivity.
+- rewrite IHB1, IHB2.
+  reflexivity.
+- case (nat_eqb n0 n) eqn:EQ1.
+  + apply nat_eqb_eq in EQ1.
+    destruct EQ1.
+    rewrite nat_eqb_symm in NE.
+    rewrite NE.
+    unfold substitution;
+    fold substitution.
+    rewrite NE, nat_eqb_refl.
+    reflexivity.
+  + case (nat_eqb n0 m) eqn:EQ2;
+    unfold substitution;
+    fold substitution;
+    rewrite EQ1, EQ2;
+    try rewrite IHB;
+    reflexivity.
 Qed.
 
 Lemma univ_free_var : forall (B : formula) (m n : nat),

@@ -725,6 +725,292 @@ case (node_extract P) eqn:L1.
   lia.
 Qed.
 
+(*Could keep track of height, as exact increase of 1 if required*)
+
+Theorem macro_weakening :
+    forall (P : ptree) (B C : formula),
+        closed C = true ->
+            struct_valid P ->
+                In B (node_extract P) ->
+                    {Q : ptree & (In (lor C B) (node_extract Q) * (ptree_formula Q = lor C (ptree_formula P)) * (ptree_deg Q = ptree_deg P) * struct_valid Q)%type}.
+Proof.
+intros P.
+induction P;
+intros B C CB PSV INB.
+
+1 : destruct PSV. (*node*)
+2 : destruct PSV as [PSV DU]. (*deg up*)
+3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+
+4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+2-14 : destruct (IHP B C CB PSV INB) as [Q [[[INQ QF] QD] QSV]].
+
+15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+
+15-21 : unfold node_extract in INB; fold node_extract in INB;
+        apply (@in_app_bor _ form_eq_dec) in INB as [INB1 | INB2];
+        try destruct (IHP1 B C CB P1SV INB1) as [Q1 [[[INQ1 Q1F] Q1D] Q1SV]];
+        try destruct (IHP1 B C CB P1SV INB2) as [Q1 [[[INQ1 Q1F] Q1D] Q1SV]];
+        try destruct (IHP2 B C CB P2SV INB1) as [Q2 [[[INQ2 Q2F] Q2D] Q2SV]];
+        try destruct (IHP2 B C CB P2SV INB2) as [Q2 [[[INQ2 Q2F] Q2D] Q2SV]].
+
+1 : exists (node (lor C a)).
+    repeat split.
+    unfold node_extract in *.
+    inversion INB as [EQ | FAL].
+    destruct EQ.
+    apply or_introl, eq_refl.
+    inversion FAL.
+
+1 : exists (deg_up d' Q).
+
+2 : exists Q.
+
+3 : exists (exchange_ab (lor b a) C d (ptree_ord Q)
+            (exchange_abd a b C d (ptree_ord Q)
+            (exchange_ab C (lor a b) d (ptree_ord Q) Q))).
+
+4 : exists (exchange_ab (lor (lor c b) a) C d (ptree_ord Q)
+            (exchange_cabd c a b C d (ptree_ord Q)
+            (exchange_ab C (lor (lor c a) b) d (ptree_ord Q) Q))).
+
+5 : exists (exchange_ab (lor (lor b a) d) C d0 (ptree_ord Q)
+            (exchange_abd d (lor b a) C d0 (ptree_ord Q)
+            (exchange_cab d C (lor b a) d0 (ptree_ord Q)
+            (exchange_ab (lor b a) (lor d C) d0 (ptree_ord Q)
+            (exchange_abd a b (lor d C) d0 (ptree_ord Q)
+            (exchange_ab (lor d C) (lor a b) d0 (ptree_ord Q)
+            (exchange_cab d (lor a b) C d0 (ptree_ord Q)
+            (exchange_abd (lor a b) d C d0 (ptree_ord Q)
+            (exchange_ab C (lor (lor a b) d) d0 (ptree_ord Q) Q))))))))).
+
+6 : exists (exchange_ab (lor (lor (lor c b) a) d) C d0 (ptree_ord Q)
+            (exchange_abd d (lor (lor c b) a) C d0 (ptree_ord Q)
+            (exchange_cab d C (lor (lor c b) a) d0 (ptree_ord Q)
+            (exchange_ab (lor (lor c b) a) (lor d C) d0 (ptree_ord Q)
+                (exchange_cabd c a b (lor d C) d0 (ptree_ord Q)
+            (exchange_ab (lor d C) (lor (lor c a) b) d0 (ptree_ord Q)
+            (exchange_cab d (lor (lor c a) b) C d0 (ptree_ord Q)
+            (exchange_abd (lor (lor c a) b) d C d0 (ptree_ord Q)
+            (exchange_ab C (lor (lor (lor c a) b) d) d0 (ptree_ord Q) Q))))))))).
+
+7 : exists (exchange_ab a C d (ptree_ord Q)
+            (contraction_ad a C d (ptree_ord Q)
+            (exchange_ab C (lor a a) d (ptree_ord Q) Q))).
+
+8 : exists (exchange_ab (lor a d) C d0 (ptree_ord Q)
+            (exchange_abd d a C d0 (ptree_ord Q)
+            (exchange_cab d C a d0 (ptree_ord Q)
+            (exchange_ab a (lor d C) d0 (ptree_ord Q)
+                (contraction_ad a (lor d C) d0 (ptree_ord Q)
+            (exchange_ab (lor d C) (lor a a ) d0 (ptree_ord Q)
+            (exchange_cab d (lor a a) C d0 (ptree_ord Q)
+            (exchange_abd (lor a a) d C d0 (ptree_ord Q)
+            (exchange_ab C (lor (lor a a) d) d0 (ptree_ord Q) Q))))))))).
+
+9 : exists (exchange_ab (neg (neg a)) C d (ord_succ (ptree_ord Q))
+            (negation_ad a C d (ptree_ord Q)
+            (exchange_ab C a d (ptree_ord Q) Q))).
+
+10 : exists (exchange_ab (lor (neg (neg a)) d) C d0 (ord_succ (ptree_ord Q))
+            (exchange_abd d (neg (neg a)) C d0 (ord_succ (ptree_ord Q))
+            (exchange_cab d C (neg (neg a)) d0 (ord_succ (ptree_ord Q))
+            (exchange_ab (neg (neg a)) (lor d C) d0 (ord_succ (ptree_ord Q))
+                (negation_ad a (lor d C) d0 (ptree_ord Q)
+            (exchange_ab (lor d C) a d0 (ptree_ord Q)
+            (exchange_cab d a C d0 (ptree_ord Q)
+            (exchange_abd a d C d0 (ptree_ord Q)
+            (exchange_ab C (lor a d) d0 (ptree_ord Q) Q))))))))).
+
+11 : exists (exchange_ab (neg (univ m a)) C d (ord_succ (ptree_ord Q))
+            (quantification_ad a C m t d (ptree_ord Q)
+            (exchange_ab C (neg (substitution a m (projT1 t))) d (ptree_ord Q) Q))).
+
+12 : exists (exchange_ab (lor (neg (univ m a)) d) C d0 (ord_succ (ptree_ord Q))
+            (exchange_abd d (neg (univ m a)) C d0 (ord_succ (ptree_ord Q))
+            (exchange_cab d C (neg (univ m a)) d0 (ord_succ (ptree_ord Q))
+            (exchange_ab (neg (univ m a)) (lor d C) d0 (ord_succ (ptree_ord Q))
+                (quantification_ad a (lor d C) m t d0 (ptree_ord Q)
+            (exchange_ab (lor d C) (neg (substitution a m (projT1 t))) d0 (ptree_ord Q)
+            (exchange_cab d (neg (substitution a m (projT1 t))) C d0 (ptree_ord Q)
+            (exchange_abd (neg (substitution a m (projT1 t))) d C d0 (ptree_ord Q)
+            (exchange_ab C (lor (neg (substitution a m (projT1 t))) d) d0 (ptree_ord Q) Q))))))))).
+
+13 : exists (exchange_ab (lor a d) C d0 (ord_succ (ptree_ord Q))
+            (exchange_abd d a C d0 (ord_succ (ptree_ord Q))
+            (exchange_cab d C a d0 (ord_succ (ptree_ord Q))
+            (exchange_ab a (lor d C) d0 (ord_succ (ptree_ord Q))
+                (weakening_ad a (lor d C) d0 (ptree_ord Q)
+            (exchange_ab C d d0 (ptree_ord Q) Q)))))).
+
+14 : exists (exchange_ab (neg (lor a b)) C (max d1 d2) (ord_succ (ord_max (ptree_ord Q1) (ord_succ alpha2)))
+            (demorgan_abd a b C d1 d2 (ptree_ord Q1) (ord_succ alpha2)
+                (exchange_ab C (neg a) d1 (ptree_ord Q1) Q1)
+                (exchange_ab C (neg b) d2 (ord_succ alpha2)
+                    (weakening_ad C (neg b) d2 alpha2 P2)))).
+
+15 : exists (exchange_ab (neg (lor a b)) C (max d1 d2) (ord_succ (ord_max (ord_succ alpha1) (ptree_ord Q2)))
+            (demorgan_abd a b C d1 d2 (ord_succ alpha1) (ptree_ord Q2)
+                (exchange_ab C (neg a) d1 (ord_succ alpha1)
+                    (weakening_ad C (neg a) d1 alpha1 P1))
+                (exchange_ab C (neg b) d2 (ptree_ord Q2) Q2))).
+
+16 : exists (exchange_ab (lor (neg (lor a b)) d) C (max d1 d2) (ord_succ (ord_max (ptree_ord Q1) (ord_succ alpha2)))
+            (exchange_abd d (neg (lor a b)) C (max d1 d2) (ord_succ (ord_max (ptree_ord Q1) (ord_succ alpha2)))
+            (exchange_cab d C (neg (lor a b)) (max d1 d2) (ord_succ (ord_max (ptree_ord Q1) (ord_succ alpha2)))
+            (exchange_ab (neg (lor a b)) (lor d C) (max d1 d2) (ord_succ (ord_max (ptree_ord Q1) (ord_succ alpha2)))
+                (demorgan_abd a b (lor d C) d1 d2 (ptree_ord Q1) (ord_succ alpha2)
+                    (exchange_ab (lor d C) (neg a) d1 (ptree_ord Q1)
+                        (exchange_cab d (neg a) C d1 (ptree_ord Q1)
+                        (exchange_abd (neg a) d C d1 (ptree_ord Q1)
+                        (exchange_ab C (lor (neg a) d) d1 (ptree_ord Q1) Q1))))
+                    (exchange_ab (lor d C) (neg b) d2 (ord_succ alpha2)
+                        (exchange_cab d (neg b) C d2 (ord_succ alpha2)
+                        (exchange_abd (neg b) d C d2 (ord_succ alpha2)
+                        (exchange_ab C (lor (neg b) d) d2 (ord_succ alpha2)
+                        (weakening_ad C (lor (neg b) d) d2 alpha2 P2)))))))))).
+
+17 : exists (exchange_ab (lor (neg (lor a b)) d) C (max d1 d2) (ord_succ (ord_max (ord_succ alpha1) (ptree_ord Q2)))
+            (exchange_abd d (neg (lor a b)) C (max d1 d2) (ord_succ (ord_max (ord_succ alpha1) (ptree_ord Q2)))
+            (exchange_cab d C (neg (lor a b)) (max d1 d2) (ord_succ (ord_max (ord_succ alpha1) (ptree_ord Q2)))
+            (exchange_ab (neg (lor a b)) (lor d C) (max d1 d2) (ord_succ (ord_max (ord_succ alpha1) (ptree_ord Q2)))
+                (demorgan_abd a b (lor d C) d1 d2 (ord_succ alpha1) (ptree_ord Q2)
+                    (exchange_ab (lor d C) (neg a) d1 (ord_succ alpha1)
+                        (exchange_cab d (neg a) C d1 (ord_succ alpha1)
+                        (exchange_abd (neg a) d C d1 (ord_succ alpha1)
+                        (exchange_ab C (lor (neg a) d) d1 (ord_succ alpha1)
+                        (weakening_ad C (lor (neg a) d) d1 alpha1 P1)))))
+                    (exchange_ab (lor d C) (neg b) d2 (ptree_ord Q2)
+                        (exchange_cab d (neg b) C d2 (ptree_ord Q2)
+                        ((exchange_abd (neg b) d C d2 (ptree_ord Q2)
+                        (exchange_ab C (lor (neg b) d) d2 (ptree_ord Q2) Q2)))))))))).
+
+18 : exists (cut_ca (lor C c) a d1 d2 (ptree_ord Q1) alpha2
+                (exchange_abd c C a d1 (ptree_ord Q1)
+                    (exchange_cab c a C d1 (ptree_ord Q1)
+                    (exchange_ab C (lor c a) d1 (ptree_ord Q1) Q1)))
+                P2).
+
+19 : exists (exchange_ab c C (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max alpha1 (ptree_ord Q2)))
+                (cut_cad c a C d1 d2 alpha1 (ptree_ord Q2)
+                    P1
+                    (exchange_ab C (neg a) d2 (ptree_ord Q2) Q2))).
+
+20 : exists (cut_cad C a d d1 d2 (ptree_ord Q1) alpha2 Q1 P2).
+
+21 : exists (exchange_ab d C (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_succ (ord_max alpha1 (ptree_ord Q2))))
+                (cut_ad a (lor d C) d1 d2 alpha1 (ptree_ord Q2)
+                    P1
+                    (exchange_ab (lor d C) (neg a) d2 (ptree_ord Q2)
+                        (exchange_cab d (neg a) C d2 (ptree_ord Q2)
+                        (exchange_abd (neg a) d C d2 (ptree_ord Q2)
+                        (exchange_ab C (lor (neg a) d) d2 (ptree_ord Q2) Q2)))))).
+
+22 : exists (exchange_ab (lor c d) C (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max (ptree_ord Q1) alpha2))
+            (exchange_cab c C d (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max (ptree_ord Q1) alpha2))
+            (exchange_abd C c d (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max (ptree_ord Q1) alpha2))
+                (cut_cad (lor C c) a d d1 d2 (ptree_ord Q1) alpha2
+                    (exchange_abd c C a d1 (ptree_ord Q1)
+                        (exchange_cab c a C d1 (ptree_ord Q1)
+                        (exchange_ab C (lor c a) d1 (ptree_ord Q1) Q1)))
+                    P2)))).
+
+23 : exists (exchange_ab (lor c d) C (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max alpha1 (ptree_ord Q2)))
+            (exchange_abd d c C (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max alpha1 (ptree_ord Q2)))
+            (exchange_cab d C c (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max alpha1 (ptree_ord Q2)))
+            (exchange_ab c (lor d C) (max (max d1 d2) (S (num_conn a))) (ord_succ (ord_max alpha1 (ptree_ord Q2)))
+                (cut_cad c a (lor d C) d1 d2 alpha1 (ptree_ord Q2)
+                    P1
+                    (exchange_ab (lor d C) (neg a) d2 (ptree_ord Q2)
+                        (exchange_cab d (neg a) C d2 (ptree_ord Q2)
+                        (exchange_abd (neg a) d C d2 (ptree_ord Q2)
+                        (exchange_ab C (lor (neg a) d) d2 (ptree_ord Q2) Q2))))))))).
+
+24 : exists P1.
+
+25 : exists (loop_ca C a n d1 d2 (ptree_ord Q1) alpha2 Q1 P2).
+
+26 : exists P1.
+
+27 : exists (exchange_ab (lor c (univ n a)) C (max d1 d2) (ord_succ (ord_add (ptree_ord Q1) (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero))))
+            (exchange_cab c C (univ n a) (max d1 d2) (ord_succ (ord_add (ptree_ord Q1) (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero))))
+                (loop_ca (lor c C) a n d1 d2 (ptree_ord Q1) alpha2
+                    (exchange_cab c (substitution a n zero) C d1 (ptree_ord Q1)
+                        (exchange_ab C (lor c (substitution a n zero)) d1 (ptree_ord Q1) Q1))
+                    P2))).
+(*
+(exchange_ab (lor d C) (neg a) d1 (ptree_ord Q1) (exchange_cab d (neg a) C d1 (ptree_ord Q1) ((exchange_abd (neg a) d C d1 (ptree_ord Q1) (exchange_ab C (lor (neg a)) d) d1 (ptree_ord Q1) Q1))))
+*)
+
+26 : admit.
+
+24 : admit.
+
+
+all : repeat split;
+      try apply INQ;
+      try apply QF;
+      try apply Q1F;
+      try apply Q2F;
+      try apply QD;
+      try apply Q1D;
+      try apply Q2D;
+      try apply QO;
+      try apply Q1O;
+      try apply Q2O;
+      try apply QSV;
+      try apply Q1SV;
+      try apply Q2SV;
+      try rewrite QO;
+      try rewrite Q1O;
+      try rewrite Q2O;
+      try apply OU;
+      try apply NO;
+      try rewrite QD;
+      try rewrite Q1D;
+      try rewrite Q2D;
+      try apply DU;
+      try apply PF;
+      try apply P1F;
+      try apply P2F;
+      try rewrite <- PF;
+      try rewrite <- P1F;
+      try rewrite <- P2F;
+      try apply QF;
+      try apply Q1F;
+      try apply Q2F;
+      try apply PD;
+      try apply P1D;
+      try apply P2D;
+      try apply PO;
+      try apply P1O;
+      try apply P2O;
+      try apply PSV;
+      try apply P1SV;
+      try apply P2SV;
+      try reflexivity;
+      unfold node_extract;
+      fold node_extract;
+      try apply in_or_app;
+      try apply (or_introl INQ1);
+      try apply (or_intror INQ1);
+      try apply (or_intror INQ2);
+      try rewrite (closed_free_list _ CB);
+      try apply INA;
+      try apply incl_nil_l.
+
+      rewrite Q2F.
+      rewrite P1F.
+      rewrite P2F.
+      reflexivity.
+
+all :      simpl.
+
+Qed.
+
 
 (*
 Master destruct tactic.
