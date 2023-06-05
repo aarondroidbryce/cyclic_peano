@@ -102,10 +102,10 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
 
 | loop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    In A L2 ->
+    In (lor C A) L2 ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (lor C (substitution A n (succ (var n)))) d2 alpha2 L2 ->
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec (lor C A) L2) ++ L1)
 
 | cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
     PA_cyclic_pre (lor C A) d1 alpha1 L1 ->

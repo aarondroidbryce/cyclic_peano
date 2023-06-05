@@ -23,6 +23,31 @@ Notation "(0)" := ind_0.
 Notation "(1)" := ind_1.
 Notation "( x y )" := (lor_ind x y).
 
+Lemma subst_eq_dec :
+    forall (S1 S2 : subst_ind),
+        {S1 = S2} + {S1 <> S2}.
+Proof.
+induction S1;
+destruct S2.
+1,5 : apply (left eq_refl).
+1-6 : right; discriminate.
+case (IHS1_1 S2_1) as [EQ1 | NE1].
+case (IHS1_2 S2_2) as [EQ2 | NE2].
+- left.
+  rewrite EQ1,EQ2.
+  reflexivity.
+- right.
+  intros FAL.
+  apply NE2.
+  inversion FAL.
+  reflexivity.
+- right.
+  intros FAL.
+  apply NE1.
+  inversion FAL.
+  reflexivity.
+Qed.
+
 Fixpoint non_target (A : formula) : subst_ind :=
 match A with
 | lor B C => lor_ind (non_target B) (non_target C)

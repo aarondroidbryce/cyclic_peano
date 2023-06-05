@@ -255,6 +255,47 @@ exists a.
 apply (conj (SUB _ INA) INB).
 Qed.
 
+(*
+Lemma flat_map_equiv {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+forall (f : A -> list B) (A1 A2 : A) (L1 L2 : list A),
+    f A1 = f A2 ->
+        incl L1 L2 ->
+            In A1 L1 ->
+                incl (flat_map f (remove DECA A1 L1)) (flat_map f (remove DECA A2 L2)).
+Proof.
+intros f A1 A2 L1 L2 EQ SUB INA b INB.
+destruct (@flat_map_remove_in_other _ _ DECA DECB f _ _ _ INB) as [NIN | [C [INC INBC]]].
+- rewrite EQ in NIN.
+  apply (@flat_map_not_in_remove _ _ DECA DECB _ _ _ _ (@flat_map_incl _ _ DECA DECB _ _ _ SUB _ (flat_map_remove_in _ _ _ _ INB)) NIN).
+- destruct (DECA C A2) as [EQ1 | NE1].
+  + destruct EQ1.
+    rewrite <- EQ in INBC.
+    apply (@flat_map_in_other_remove _ _ DECA DECB _ _ _ _ (@flat_map_incl _ _ DECA DECB _ _ _ SUB _ (flat_map_remove_in _ _ _ _ INB)) A1 INBC (in_in_remove _ _ (fun FAL => (proj2 (in_remove _ _ _ _ INC)) (eq_sym FAL)) (SUB _ INA))).
+  + apply (@flat_map_in_other_remove _ _ DECA DECB _ _ _ _ (@flat_map_incl _ _ DECA DECB _ _ _ SUB _ (flat_map_remove_in _ _ _ _ INB)) C INBC ((in_in_remove _ _ NE1) (SUB _ (proj1 (in_remove _ _ _ _ INC))))).
+Qed.
+*)
+(*
+Lemma flat_map_equiv {A B : Type} {DECA : forall (a b : A), {a = b} + {a <> b}}  {DECB : forall (a b : B), {a = b} + {a <> b}} :
+forall (f : A -> list B) (A1 A2 : A) (L1 L2 : list A),
+    f A1 = f A2 ->
+        incl (flat_map f L1) (flat_map f L2) ->
+            In A1 L1 ->
+                incl (flat_map f (remove DECA A1 L1)) (flat_map f (remove DECA A2 L2)).
+Proof.
+intros f A1 A2 L1 L2 EQ SUB INA b INB.
+destruct (@flat_map_remove_in_other _ _ DECA DECB f _ _ _ INB) as [NIN | [C [INC INBC]]].
+- rewrite EQ in NIN.
+  apply (@flat_map_not_in_remove _ _ DECA DECB _ _ _ _ (SUB _ (flat_map_remove_in _ _ _ _ INB)) NIN).
+- destruct (DECA C A2) as [EQ1 | NE1].
+  + destruct EQ1.
+    rewrite <- EQ in INBC.
+    apply (@flat_map_in_other_remove _ _ DECA DECB _ _ _ _ (SUB _ (flat_map_remove_in _ _ _ _ INB)) A1 INBC).
+    apply (in_in_remove _ _ (fun FAL => (proj2 (in_remove _ _ _ _ INC)) (eq_sym FAL))). (SUB _ INA))).
+    admit.
+  + apply (@flat_map_in_other_remove _ _ DECA DECB _ _ _ _ (SUB _ (flat_map_remove_in _ _ _ _ INB)) C INBC ((in_in_remove _ _ NE1) (SUB _ (proj1 (in_remove _ _ _ _ INC))))).
+Qed.
+*)
+
 Lemma count_occ_app_one_cases {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (a : A) (L1 L2 : list A),
         count_occ DEC (L1 ++ L2) a = 1 ->

@@ -223,7 +223,7 @@ match P with
 
 | loop_a A n d1 d2 alpha1 alpha2 P1 P2 => (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>  (remove form_eq_dec A (node_extract P2)) ++ node_extract P1
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>  (remove form_eq_dec (lor C A) (node_extract P2)) ++ node_extract P1
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
 
@@ -308,9 +308,9 @@ match P with
 | loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) * 
-    (ptree_formula P2 = (substitution A n (succ (var n)))) * (struct_valid P2) *
+    (ptree_formula P2 = (lor C (substitution A n (succ (var n))))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    (In A (node_extract P2))
+    (In (lor C A) (node_extract P2))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -727,6 +727,7 @@ Qed.
 
 (*Could keep track of height, as exact increase of 1 if required*)
 
+(*
 Theorem macro_weakening :
     forall (P : ptree) (B C : formula),
         closed C = true ->
@@ -1011,6 +1012,7 @@ all :      simpl.
 
 Qed.
 
+*)
 
 (*
 Master destruct tactic.
