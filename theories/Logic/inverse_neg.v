@@ -996,6 +996,67 @@ all : try apply (IHP EQL _ PSV).
 Qed.
 *)
 
+Lemma dub_neg_node_non_target_triv_aux :
+    forall (P : ptree) (A E : formula) (F : formula -> bool),
+        struct_valid P ->
+            filter F (node_extract P) = dub_neg_trans (filter (fun X => F (fst X)) (combine (node_extract P) (dub_neg_node P (non_target (ptree_formula P))))) E.
+Proof.
+  intros P;
+  induction P;
+  intros A E F PSV;
+  unfold dub_neg_trans, dub_neg_node, dub_neg_node_fit, ptree_formula, node_extract;
+  rewrite non_target_fit;
+  fold ptree_formula node_extract dub_neg_node_fit.
+  
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV DU]. (*deg up*)
+  3 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+  
+  4-13 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  14 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+  
+  15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
+  
+1 : unfold combine, map, fst, snd, dub_neg_sub_formula.
+    unfold filter.
+    case (F a);
+    try rewrite non_target_sub;
+    reflexivity.
+
+all : unfold non_target;
+      fold non_target;
+      repeat rewrite dub_neg_node_formula_true;
+      try rewrite PF;
+      try rewrite P1F;
+      try rewrite P2F;
+      try apply non_target_fit;
+      unfold subst_ind_fit;
+      fold subst_ind_fit;
+      try rewrite non_target_fit;
+      try apply non_target_sub_fit;
+      repeat rewrite non_target_lor;
+      try rewrite <- PF;
+      try rewrite <- P1F;
+      try rewrite <- P2F.
+
+11,12 :  fold (non_target (neg (substitution a m (projT1 t))));
+      try rewrite non_target_lor;
+      rewrite <- PF.
+
+all : try apply (IHP _ _ _ PSV).
+
+1-5 : try rewrite <- (combine_eq_len _ _ _ _ (dub_neg_node_len _ _ P1SV));
+      try rewrite filter_app;
+      try rewrite remove_app;
+      try rewrite map_app;
+      try rewrite (IHP1 A E P1SV) at 1;
+      try rewrite (IHP2 A E P2SV) at 1;
+      try rewrite P1F, P2F;
+      try reflexivity.
+
+
+
 Lemma dub_neg_non_target_triv :
     forall (P : ptree) (E : formula),
         struct_valid P ->
@@ -1060,6 +1121,31 @@ all : try apply (IHP _ PSV).
         rewrite (non_target_term_sub a n zero) at 2.
         rewrite <- P1F.
         rewrite <- (IHP1 _ P1SV).
+
+
+
+
+        rewrite (non_target_term_sub a n (succ (var n))) at 1.
+        rewrite <- P2F.
+        rewrite (IHP2 E P2SV) at 1.
+        unfold dub_neg_trans.
+        rewrite <- remove_alt.
+        unfold remove'.
+        unfold map;
+        fold map.
+
+
+        fold (dub_neg_trans (filter (fun X => if form_eq_dec a (fst X) then false else true) (combine (node_extract P2) (dub_neg_node P2 (non_target (ptree_formula P2))))) E).
+
+
+        rewrite <- (IHP2 _ P2SV).
+        pose filter_fst_non_target.
+
+        rewrite <- remove_alt.
+        unfold remove'.
+
+        unfold map.
+        case (form_eq_dec a (fst X)).
         admit.
 
       - apply dub_neg_node_len, P2SV.

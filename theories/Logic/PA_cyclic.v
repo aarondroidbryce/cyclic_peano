@@ -34,6 +34,14 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     ord_lt alpha beta -> nf beta ->
     PA_cyclic_pre A d beta L
 
+| pre_ex : forall {A B C : formula} {d : nat} (alpha : ord) {L1 L2 : list formula},
+    PA_cyclic_pre A d alpha (L1 ++ B :: C :: L2) ->
+      PA_cyclic_pre A d alpha (L1 ++ C :: B :: L2)
+
+| pre_con : forall {A B : formula} {d : nat} (alpha : ord) {L1 L2 : list formula},
+    PA_cyclic_pre A d alpha (L1 ++ B :: B :: L2) ->
+      PA_cyclic_pre A d alpha (L1 ++ B :: L2)
+
 | axiom : forall (A : formula),
     PA_cyclic_pre A 0 Zero [A]
 
@@ -96,16 +104,16 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) L
 
 | loop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    In A L2 ->
+    ~ In A L2 ->
     PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 L2 ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec A L2) ++ L1)
+    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 (A :: L2) ->
+    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
 
 | loop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    In (lor C A) L2 ->
+    ~ In (lor C A) L2 ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor C (substitution A n (succ (var n)))) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) ((remove form_eq_dec (lor C A) L2) ++ L1)
+    PA_cyclic_pre (lor C (substitution A n (succ (var n)))) d2 alpha2 ((lor C A) :: L2) ->
+    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
 
 | cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
     PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
@@ -353,6 +361,22 @@ repeat apply and_bool_prop in IHC1 as [IHC1 ?];
 repeat apply and_bool_prop in IHC2 as [IHC2 ?];
 repeat apply andb_true_intro, conj;
 auto.
+
+- intros D IND.
+  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
+  apply AX, in_app_iff.
+  apply (or_introl IND).
+  apply (or_intror (or_intror (or_introl eq_refl))).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_intror (or_intror IND))).
+
+- intros D IND.
+  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
+  apply AX, in_app_iff.
+  apply (or_introl IND).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_intror IND)).
   
 - apply axiom_closed, AX, or_introl, eq_refl.
 
@@ -392,6 +416,22 @@ repeat apply and_bool_prop in IHC1 as [IHC1 ?];
 repeat apply and_bool_prop in IHC2 as [IHC2 ?];
 repeat apply andb_true_intro, conj;
 auto.
+
+- intros D IND.
+  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
+  apply TAX, in_app_iff.
+  apply (or_introl IND).
+  apply (or_intror (or_intror (or_introl eq_refl))).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_intror (or_intror IND))).
+
+- intros D IND.
+  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
+  apply TAX, in_app_iff.
+  apply (or_introl IND).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_introl eq_refl)).
+  apply (or_intror (or_intror IND)).
   
 - apply axiom_closed, TAX, or_introl, eq_refl.
 
