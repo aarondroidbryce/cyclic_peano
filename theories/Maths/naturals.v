@@ -151,6 +151,9 @@ Proof. induction p; lia. Qed.
 Lemma minus_n_0 : forall (n : nat), n - 0 = n.
 Proof. induction n; reflexivity. Qed.
 
+Lemma minus_n_plus_m : forall (n m : nat), n + m - n = m.
+Proof. induction n; intros m. rewrite minus_n_0. reflexivity. rewrite plus_Sn_m. apply IHn. Qed.
+
 Lemma nat_exp_monot_lem : forall (n : nat), S n < (2 ^ n) + (2 ^ n).
 Proof.
 induction n.

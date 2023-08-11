@@ -327,14 +327,14 @@ match P with
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
     (ptree_formula P2 = substitution A n (succ (var n))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    (A :: L = (node_extract P2)) * (~ In A L)
+    (A :: L = (node_extract P2)) * (~ In A L) * (In n (free_list A))
 
 | loop_ca C A n d1 d2 alpha1 alpha2 L P1 P2 =>
     (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) * 
     (ptree_formula P2 = (lor C (substitution A n (succ (var n))))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    ((lor C A) :: L = (node_extract P2)) * (~ In (lor C A) L)
+    ((lor C A) :: L = (node_extract P2)) * (~ In (lor C A) L) * (In n (free_list A))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -529,7 +529,7 @@ intros P PSV. induction P.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
 
 2-16 :  try rewrite PF,<-PD,<-PO in IHP;
         pose proof (IHP PSV) as P';
@@ -562,8 +562,8 @@ apply (demorgan2 P1' P2').
 apply (cut1 _ _ P1' P2').
 apply (cut2 _ _ P1' P2').
 apply (cut3 _ _ _ P1' P2').
-apply (loop1 _ _ NINA P1' P2').
-apply (loop2 _ _ NINA P1' P2').
+apply (loop1 _ _ NINA FREEA P1' P2').
+apply (loop2 _ _ NINA FREEA P1' P2').
 Qed.
 
 Lemma theorem_provable' :
@@ -582,7 +582,7 @@ induction P.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
 
 2,3 : rewrite PN in IHP.
 
@@ -631,9 +631,9 @@ induction P.
       rewrite P1F, <-P1D, <-P1O in P1';
       rewrite P2F, <-P2D, <-P2O, <- P2N in P2'.
 
-2 : apply (prune (loop2 _ _ NINA P1' P2') PAX).
+2 : apply (prune (loop2 _ _ NINA FREEA P1' P2') PAX).
 
-1 : apply (prune (loop1 _ _ NINA P1' P2') PAX).
+1 : apply (prune (loop1 _ _ NINA FREEA P1' P2') PAX).
 Qed.
 
 Lemma theorem_provable :
@@ -1083,5 +1083,5 @@ Master destruct tactic.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
 *)
