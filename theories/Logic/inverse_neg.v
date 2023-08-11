@@ -59,9 +59,9 @@ match P, S with
 
 | ord_up alpha P', _ => ord_up alpha (dub_neg_sub_ptree_fit P' E S)
 
-| leaf_ex A B L1 L2 P', _ => leaf_ex A B L1 L2 (dub_neg_sub_ptree_fit P' E S)
+| leaf_ex n P', _ => leaf_ex n (dub_neg_sub_ptree_fit P' E S)
 
-| leaf_con A L1 L2 P', _ => leaf_con A L1 L2 (dub_neg_sub_ptree_fit P' E S)
+| leaf_con P', _ => leaf_con (dub_neg_sub_ptree_fit P' E S)
 
 | node A, _ => node (dub_neg_sub_formula A E S)
 
@@ -190,9 +190,9 @@ match P, S with
 
 | ord_up alpha P', _ => dub_neg_node_fit P' S
 
-| leaf_ex A B L1 L2 P', _ => firstn (length L1) (dub_neg_node_fit P' S) ++ (skipn (length L1 + 1) (firstn (length L1 + 2) (dub_neg_node_fit P' S))) ++ (skipn (length L1) (firstn (length L1 + 1) (dub_neg_node_fit P' S))) ++ skipn (length L1 + 2) (dub_neg_node_fit P' S)
+| leaf_ex n P', _ => bury (dub_neg_node_fit P' S) n
 
-| leaf_con A L1 L2 P' , _ => firstn (length L1) (dub_neg_node_fit P' S) ++ (skipn (length L1) (firstn (length L1 + 1) (dub_neg_node_fit P' S))) ++ skipn (length L1 + 2) (dub_neg_node_fit P' S)
+| leaf_con P' , _ => tl (dub_neg_node_fit P' S)
 
 | node A, _ => [S]
 
@@ -681,27 +681,11 @@ all : try rewrite <- (IHP PSV);
       repeat rewrite non_target_sub_fit;
       try reflexivity.
 
-1 : { rewrite (IHP PSV), PN.
-      repeat rewrite firstn_map, skipn_map.
-      rewrite plus_n_O at 1.
-      repeat rewrite firstn_app_2.
-      unfold firstn.
-      rewrite (plus_n_O (length L1)) at 2.
-      repeat rewrite skipn_app2.
-      unfold skipn.
-      rewrite app_nil_r.
+1 : { rewrite bury_map, (IHP PSV).
       reflexivity. }
 
-1 : { rewrite (IHP PSV), PN.
-      repeat rewrite firstn_map, skipn_map.
-      rewrite plus_n_O at 1.
-      repeat rewrite firstn_app_2.
-      unfold firstn.
-      rewrite (plus_n_O (length L1)) at 1.
-      repeat rewrite skipn_app2.
-      unfold skipn.
-      rewrite app_nil_r.
-      reflexivity. }
+1 : { rewrite (IHP PSV).
+      apply map_tail. }
 
 all : rewrite <- non_target_term_sub;
       rewrite (non_target_term_sub a n (succ (var n))) at 1;
@@ -999,26 +983,11 @@ all : unfold dub_neg_node;
       fold ptree_formula in *.
 
 1 : { rewrite (dub_neg_node_formula_true _ _ FS).
-      repeat rewrite app_length.
-      repeat rewrite skipn_length.
-      repeat rewrite firstn_length_le;
-      rewrite <- (IHP _ PSV);
-      rewrite PN;
-      rewrite app_length;
-      unfold length;
-      fold (@length formula);
-      try lia. }
+      repeat rewrite bury_length.
+      apply (IHP _ PSV). }
 
 1 : { rewrite (dub_neg_node_formula_true _ _ FS).
-      repeat rewrite app_length.
-      repeat rewrite skipn_length.
-      repeat rewrite firstn_length_le;
-      rewrite <- (IHP _ PSV);
-      rewrite PN;
-      rewrite app_length;
-      unfold length;
-      fold (@length formula);
-      try lia. }
+      apply (tail_len_eq (IHP S PSV)). }
 
 3-6,8-15,18-20 :
   destruct S;
@@ -1084,7 +1053,7 @@ all : repeat rewrite dub_neg_node_formula_true;
     apply length_zero_iff_nil in FAL.
     rewrite <- (IHP2 _ P2SV) in FAL.
     apply length_zero_iff_nil in FAL.
-    apply (struct_non_empty_nodes _ FAL).
+    apply (struct_non_empty_nodes _ P2SV FAL).
 Qed.
 
 (*
@@ -1731,6 +1700,127 @@ Lemma dub_neg_free_sub :
     forall (P : ptree) (E : formula) (S : subst_ind),
         struct_valid P ->
             subst_ind_fit (ptree_formula P) S = true ->
+                (flat_map free_list (node_extract P)) = (flat_map free_list (node_extract (dub_neg_sub_ptree P E S))).
+Proof.
+  intros P E.
+  induction P;
+  intros S PSV FS.
+
+  1 : destruct PSV. (*node*)
+  2 : destruct PSV as [PSV PL]. (*leaf exchange*)
+  3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
+  4 : destruct PSV as [PSV DU]. (*deg up*)
+  5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+  6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+  
+  17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
+
+  1 : { unfold dub_neg_sub_ptree.
+        rewrite FS.
+        unfold dub_neg_sub_ptree_fit.
+        unfold node_extract, flat_map.
+        repeat rewrite app_nil_r.
+        rewrite dub_neg_formula_free.
+        reflexivity. }
+
+  5-8,10-17,20-22 :
+      destruct S;
+      inversion FS as [FS'];
+      try rewrite FS';
+      try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
+  
+  6-8,12,15,19 :
+      destruct S1;
+      inversion FS' as [FS''];
+      try rewrite FS'';
+      try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
+  
+  8 : destruct S1_1;
+      inversion FS'' as [FS'''];
+      try rewrite FS''';
+      destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
+  
+  all : unfold dub_neg_sub_ptree;
+        rewrite FS;
+        unfold dub_neg_sub_ptree_fit;
+        fold dub_neg_sub_ptree_fit;
+        unfold node_extract in *;
+        fold node_extract in *;
+        try rewrite dub_neg_ptree_formula_true;
+        try rewrite dub_neg_ptree_formula_true;
+        try rewrite PF;
+        try rewrite P1F;
+        try rewrite P2F;
+        unfold ptree_formula in FS;
+        fold ptree_formula in FS;
+        unfold subst_ind_fit;
+        fold subst_ind_fit;
+        try rewrite FS;
+        try rewrite FS';
+        try rewrite FS1;
+        try rewrite FS2;
+        try rewrite FS1_1;
+        try rewrite FS1_2;
+        try rewrite FS1_1_1;
+        try rewrite FS1_1_2;
+        try rewrite non_target_fit;
+        try rewrite non_target_sub_fit;
+        try reflexivity.
+(*
+  26 :  { unfold flat_map.
+          fold (flat_map free_list).
+          repeat rewrite flat_map_app.
+          apply incl_app_app.
+          - apply incl_refl.
+          - apply (fun FSUB => IHP1 _ P1SV FSUB).
+            rewrite P1F.
+            unfold subst_ind_fit;
+            fold subst_ind_fit.
+            rewrite FS1, non_target_sub_fit.
+            reflexivity. }
+*)
+  all : try case form_eqb eqn:EQ;
+        try case (closed (univ n a)) eqn:CuA;
+        unfold flat_map;
+        fold (flat_map free_list);
+        repeat rewrite flat_map_app;
+        repeat apply incl_app_app;
+        try apply incl_refl;
+        try apply (fun FSUB => IHP _ PSV FSUB);
+        try apply (fun FSUB => IHP1 _ P1SV FSUB);
+        try apply (fun FSUB => IHP2 _ P2SV FSUB);
+        try rewrite PF;
+        try rewrite P1F;
+        try rewrite P2F;
+        unfold ptree_formula in FS;
+        fold ptree_formula in FS;
+        unfold subst_ind_fit;
+        fold subst_ind_fit;
+        try rewrite FS;
+        try rewrite FS';
+        try rewrite FS1;
+        try rewrite FS2;
+        try rewrite FS1_1;
+        try rewrite FS1_2;
+        try rewrite FS1_1_1;
+        try rewrite FS1_1_2;
+        try rewrite non_target_fit;
+        try rewrite non_target_sub_fit;
+        try reflexivity.
+
+  1 : rewrite flat_map_bury_incl.
+      rewrite flat_map_bury_incl in INA.
+      apply (IHP _ PSV FS _ INA).
+
+  1 : 
+Qed.
+
+Lemma dub_neg_free_sub :
+    forall (P : ptree) (E : formula) (S : subst_ind),
+        struct_valid P ->
+            subst_ind_fit (ptree_formula P) S = true ->
                 incl (flat_map free_list (node_extract P)) (flat_map free_list (node_extract (dub_neg_sub_ptree P E S))).
 Proof.
   intros P E.
@@ -1738,12 +1828,13 @@ Proof.
   intros S PSV FS.
 
   1 : destruct PSV. (*node*)
-  2,3 : destruct PSV as [PSV PN]. (*leaf operations*)
+  2 : destruct PSV as [PSV PL]. (*leaf exchange*)
+  3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
   4 : destruct PSV as [PSV DU]. (*deg up*)
   5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
   6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
   16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
-
+  
   17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
   22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
 
@@ -1756,33 +1847,19 @@ Proof.
         rewrite dub_neg_formula_free.
         apply INA. }
 
-  1 : { unfold dub_neg_sub_ptree.
-        rewrite FS.
-        unfold dub_neg_sub_ptree_fit;
-        fold dub_neg_sub_ptree_fit.
-        unfold node_extract.
-        apply incl_refl. }
-
-  1 : { unfold dub_neg_sub_ptree.
-        rewrite FS.
-        unfold dub_neg_sub_ptree_fit;
-        fold dub_neg_sub_ptree_fit.
-        unfold node_extract.
-        apply incl_refl. }
-  
-  3-6,8-15,18-20 :
+  5-8,10-17,20-22 :
       destruct S;
       inversion FS as [FS'];
       try rewrite FS';
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
   
-  4-6,10,13,17 :
+  6-8,12,15,19 :
       destruct S1;
       inversion FS' as [FS''];
       try rewrite FS'';
       try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
   
-  6 : destruct S1_1;
+  8 : destruct S1_1;
       inversion FS'' as [FS'''];
       try rewrite FS''';
       destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
@@ -1814,7 +1891,7 @@ Proof.
         try rewrite non_target_sub_fit;
         try reflexivity.
 
-  24 :  { unfold flat_map.
+  26 :  { unfold flat_map.
           fold (flat_map free_list).
           repeat rewrite flat_map_app.
           apply incl_app_app.
@@ -1854,6 +1931,13 @@ Proof.
         try rewrite non_target_fit;
         try rewrite non_target_sub_fit;
         try reflexivity.
+
+  1 : intros A INA.
+      rewrite flat_map_bury_incl.
+      rewrite flat_map_bury_incl in INA.
+      apply (IHP _ PSV FS _ INA).
+
+  1 : 
 Qed.
 
 Lemma dub_neg_not_ax_not_ax :

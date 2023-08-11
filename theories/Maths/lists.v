@@ -15,6 +15,135 @@ Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
+Fixpoint bury {A : Type} (L : list A) (n : nat) : list A :=
+match L with
+| [] => []
+| hd :: tl => match n with
+    | 0 => tl ++ [hd]
+    | S m => hd :: bury tl m
+    end
+end.
+
+Lemma in_bury {A : Type} {L : list A} {n : nat} : forall (a : A), In a L <-> In a (bury L n).
+Proof.
+generalize n.
+induction L;
+intros b;
+split;
+intros IN.
+1,2 : inversion IN.
+- destruct IN as [[] | IN];
+  destruct b.
+  + apply in_or_app, or_intror, or_introl, eq_refl.
+  + apply or_introl, eq_refl.
+  + apply in_or_app, or_introl, IN.
+  + apply or_intror, IHL, IN.
+- destruct b;
+  try destruct IN as [[] | IN];
+  try apply in_app_or in IN as [IN | [[] |[]]].
+  + apply or_intror, IN.
+  + apply or_introl, eq_refl.
+  + apply or_introl, eq_refl.
+  + apply or_intror.
+    apply <- IHL.
+    apply IN. 
+Qed.
+
+Lemma bury_map {A B : Type} {L : list A} {f : A -> B} {n : nat} : map f (bury L n) = bury (map f L) n.
+Proof.
+generalize n.
+induction L.
+reflexivity.
+intros m.
+destruct m.
+apply map_app.
+unfold bury, map;
+fold (@bury A) (@bury B) (map f).
+rewrite IHL.
+reflexivity.
+Qed.
+
+Lemma bury_nil {A : Type} {L  : list A} {n : nat} : bury L n = [] <-> L = [].
+Proof.
+split;
+intros EQ.
+destruct L.
+reflexivity.
+destruct n;
+destruct L;
+inversion EQ.
+rewrite EQ.
+reflexivity.
+Qed.
+
+Lemma bury_length {A : Type} {L  : list A} {n : nat} : length (bury L n) = length L.
+Proof.
+generalize n.
+induction L.
+reflexivity.
+destruct n0;
+unfold bury, length;
+fold (@bury A) (@length A).
+rewrite app_length.
+unfold length;
+fold (@length A).
+rewrite <- plus_n_Sm, <- plus_n_O.
+reflexivity.
+rewrite IHL.
+reflexivity.
+Qed.
+
+Lemma bury_type {A : Type} {a : A} {L1 L2 : list A} : (bury (L1 ++ a :: L2) (length L1)) = L1 ++ L2 ++ [a].
+Proof.
+induction L1.
+reflexivity.
+unfold length;
+fold (@length A).
+repeat rewrite <- app_comm_cons.
+unfold bury;
+fold (@bury A).
+rewrite IHL1.
+reflexivity.
+Qed.
+
+Lemma bury_ge {A : Type} {L : list A} {n : nat} : n >= length L -> bury L n = L.
+Proof.
+generalize n.
+induction L;
+intros m GE.
+reflexivity.
+destruct m;
+inversion GE as [ GE' | x GE' EQ];
+unfold bury;
+fold (@bury A);
+rewrite IHL;
+unfold ge;
+try reflexivity.
+unfold length in GE';
+fold (@length A) in GE'.
+apply le_S_n, le_S, GE'.
+Qed.
+
+Lemma map_tail {A B : Type} {L : list A} {F : A -> B} : tl (map F L) = map F (tl L).
+Proof. induction L; reflexivity. Qed.
+
+Lemma tail_len_eq {A B : Type} {L1 : list A} {L2 : list B} : length L1 = length L2 -> length (tl L1) = length (tl L2).
+Proof.
+intros EQ.
+destruct L1;
+destruct L2;
+inversion EQ.
+reflexivity.
+apply H0.
+Qed.
+
+Lemma in_double_head {A : Type} {L : list A} {a : A} : forall (b : A), In b (a :: a :: L) -> In b (a :: L).
+Proof.
+intros B [[] | INB].
+apply or_introl, eq_refl.
+apply INB.
+Qed.
+
 Lemma in_app_comm {A : Type} :
     forall (L1 L2 : list A) (a : A),
       In a (L1 ++ L2) <-> In a (L2 ++ L1).
@@ -24,6 +153,58 @@ rewrite (in_app_iff L1).
 rewrite (in_app_iff L2).
 rewrite or_comm.
 reflexivity.
+Qed.
+
+Lemma flat_map_split {A B : Type} {a : A} {L1 L2 : list A} {F : A -> list B} : flat_map F (L1 ++ a :: L2) = (flat_map F L1) ++ (F a) ++ (flat_map F L2).
+Proof. apply flat_map_app. Qed.
+
+Lemma flat_map_bury_type {A B : Type} {a : A} {L1 L2 : list A} {F : A -> list B} : flat_map F (bury (L1 ++ a :: L2) (length L1)) = (flat_map F L1) ++ (flat_map F L2) ++ (F a).
+Proof.
+rewrite bury_type.
+repeat rewrite flat_map_app.
+unfold flat_map;
+rewrite app_nil_r.
+reflexivity.
+Qed.
+
+Lemma flat_map_bury_incl {A B : Type} {L : list A} {F : A -> list B} {n : nat} : forall (b : B), In b (flat_map F (bury L n)) <-> In b (flat_map F L).
+Proof.
+destruct (nat_semiconnex n (length L)) as [LT | [GT | EQ]].
+
+all : intros b.
+
+2,3 : rewrite bury_ge;
+      try reflexivity;
+      unfold ge.
+
+3 : rewrite EQ;
+    reflexivity.
+
+2 : apply le_S_n, le_S, GT.
+
+split;
+rewrite <- (firstn_skipn n L).
+
+1 : rewrite <- (PeanoNat.Nat.min_l n (length L) (le_S_n _ _ (le_S _ _ LT))) at 3.
+2 : rewrite <- (PeanoNat.Nat.min_l n (length L) (le_S_n _ _ (le_S _ _ LT))) at 5.
+
+all : rewrite <- firstn_length;
+      case (skipn n L) eqn:SKIP.
+
+1,3 : pose proof (skipn_length n L) as FAL;
+      rewrite SKIP in FAL;
+      unfold length in FAL;
+      fold (@length A) in FAL;
+      symmetry in FAL;
+      contradict (minus_lt_not_zero _ _ LT FAL).
+
+all : rewrite flat_map_bury_type, flat_map_split;
+      intros IN;
+      apply in_app_or in IN as [IN1 | IN];
+      try apply in_app_or in IN as [IN2 | IN3];
+      try apply in_or_app, or_introl, IN1;
+      try apply in_or_app, or_intror, in_or_app, or_intror, IN2;
+      try apply in_or_app, or_intror, in_or_app, or_introl, IN3.
 Qed.
 
 Lemma nin_split {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :

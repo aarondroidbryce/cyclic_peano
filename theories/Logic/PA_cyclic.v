@@ -34,13 +34,14 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     ord_lt alpha beta -> nf beta ->
     PA_cyclic_pre A d beta L
 
-| pre_ex : forall {A B C : formula} {d : nat} (alpha : ord) {L1 L2 : list formula},
-    PA_cyclic_pre A d alpha (L1 ++ B :: C :: L2) ->
-      PA_cyclic_pre A d alpha (L1 ++ C :: B :: L2)
+| pre_ex : forall {A : formula} {d : nat} {alpha : ord} (n : nat) {L : list formula},
+    n < length L ->
+      PA_cyclic_pre A d alpha L ->
+        PA_cyclic_pre A d alpha (bury L n)
 
-| pre_con : forall {A B : formula} {d : nat} (alpha : ord) {L1 L2 : list formula},
-    PA_cyclic_pre A d alpha (L1 ++ B :: B :: L2) ->
-      PA_cyclic_pre A d alpha (L1 ++ B :: L2)
+| pre_con : forall {A B : formula} {d : nat} {alpha : ord} {L : list formula},
+    PA_cyclic_pre A d alpha (B :: B :: L) ->
+      PA_cyclic_pre A d alpha (B :: L)
 
 | axiom : forall (A : formula),
     PA_cyclic_pre A 0 Zero [A]
@@ -362,21 +363,12 @@ repeat apply and_bool_prop in IHC2 as [IHC2 ?];
 repeat apply andb_true_intro, conj;
 auto.
 
-- intros D IND.
-  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
-  apply AX, in_app_iff.
-  apply (or_introl IND).
-  apply (or_intror (or_intror (or_introl eq_refl))).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_intror (or_intror IND))).
+- apply (fun B INB => AX B (proj1 (in_bury B) INB)).
 
 - intros D IND.
-  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
-  apply AX, in_app_iff.
-  apply (or_introl IND).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_intror IND)).
+  destruct IND as [[] | IND].
+  apply AX, or_introl, eq_refl.
+  apply AX, IND.
   
 - apply axiom_closed, AX, or_introl, eq_refl.
 
@@ -417,21 +409,12 @@ repeat apply and_bool_prop in IHC2 as [IHC2 ?];
 repeat apply andb_true_intro, conj;
 auto.
 
-- intros D IND.
-  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
-  apply TAX, in_app_iff.
-  apply (or_introl IND).
-  apply (or_intror (or_intror (or_introl eq_refl))).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_intror (or_intror IND))).
+- apply (fun B INB => TAX B (proj1 (in_bury B) INB)).
 
 - intros D IND.
-  apply in_app_iff in IND as [IND | [[] | [[] | IND]]];
-  apply TAX, in_app_iff.
-  apply (or_introl IND).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_introl eq_refl)).
-  apply (or_intror (or_intror IND)).
+  destruct IND as [[] | IND].
+  apply TAX, or_introl, eq_refl.
+  apply TAX, IND.
   
 - apply axiom_closed, TAX, or_introl, eq_refl.
 
