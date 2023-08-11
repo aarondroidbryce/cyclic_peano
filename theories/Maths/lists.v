@@ -124,8 +124,80 @@ fold (@length A) in GE'.
 apply le_S_n, le_S, GE'.
 Qed.
 
+Lemma length_split_n {A : Type} {L : list A} {n : nat} : n < length L -> {L1 : list A & {L2 : list A & {a : A & length L1 = n /\ L1 ++ a :: L2 = L}}}.
+Proof.
+intros LT.
+refine (existT _ (firstn n L) (existT _ (tl (skipn n L)) _)).
+case (skipn n L) eqn:EQ.
+- apply length_zero_iff_nil in EQ.
+  pose proof LT as LT'. 
+  rewrite <- (firstn_skipn n L), app_length, EQ, <- plus_n_O, firstn_length in LT'.
+  rewrite min_l in LT'.
+  + lia.
+  + apply le_S_n, le_S, LT.
+- refine (existT _ a (conj _ _)).
+  + rewrite firstn_length.
+    apply min_l.
+    apply le_S_n, le_S, LT.
+  + unfold tl.
+    rewrite <- EQ.
+    apply firstn_skipn.
+Qed.
+
+Lemma nth_pre_bury {A : Type} {L : list A} {n m : nat} {a : A} : n < m -> nth n (bury L m) a = nth n L a.
+Proof.
+intros LT.
+destruct (nat_semiconnex m (length L)) as [LT' | [GT | EQ]].
+- destruct (length_split_n LT') as [L1 [L2 [b [LEN EQ']]]].
+  rewrite <- EQ', <- LEN, bury_type, app_nth1, app_nth1.
+  reflexivity.
+  all : rewrite LEN;
+        apply LT.
+- rewrite bury_ge.
+  reflexivity.
+  apply le_S_n, le_S, GT.
+- rewrite bury_ge.
+  reflexivity.
+  rewrite EQ.
+  apply le_n.
+Qed.
+
+Lemma nth_post_bury {A : Type} {L : list A} {n m : nat} : n >= m -> S n <> (length L) -> nth n (bury L m) = nth (S n) L.
+Proof.
+Admitted.
+
+Lemma nth_end_bury {A : Type}  {L : list A} {n m : nat} {a : A} : m < (length L) -> S n = (length L) -> nth n (bury L m) a = nth m L a.
+Proof.
+generalize n m.
+induction L;
+intros l1 l2 LE EQ;
+inversion EQ as [EQ'].
+destruct l1.
+- symmetry in EQ'.
+  apply length_zero_iff_nil in EQ'.
+  destruct (eq_sym EQ').
+  unfold length.
+  destruct EQ.
+  inversion LE as [EQ''| x FAL].
+  reflexivity.
+  inversion FAL.
+- pose proof (fun X => IHL l1 l2 X EQ').
+  destruct l2;
+  unfold bury;
+  fold (@bury A).
+  + rewrite plus_n_O at 1.
+    apply (app_nth2_plus L [a0]).
+  + unfold nth;
+    fold (@nth A).
+    rewrite <- EQ'.
+    apply (IHL _ _ (le_S_n _ _ LE) EQ').
+Qed.
+
 Lemma map_tail {A B : Type} {L : list A} {F : A -> B} : tl (map F L) = map F (tl L).
 Proof. induction L; reflexivity. Qed.
+
+Lemma nth_tail {A : Type} {L : list A} {a : A} {n : nat} : nth n (tl L) a = nth (S n) L a.
+Proof. induction L; destruct n; reflexivity. Qed.
 
 Lemma tail_len_eq {A B : Type} {L1 : list A} {L2 : list B} : length L1 = length L2 -> length (tl L1) = length (tl L2).
 Proof.
