@@ -51,9 +51,9 @@ Inductive ptree : Type :=
 
 | cut_cad : forall (c a d : formula) (d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| loop_a : forall (a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (L : list formula) (P1 P2 : ptree), ptree
+| loop_a : forall (a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree
 
-| loop_ca : forall (c a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (L : list formula) (P1 P2 : ptree), ptree.
+| loop_ca : forall (c a : formula) (n d1 d2 : nat) (alpha1 alpha2 : ord) (P1 P2 : ptree), ptree.
 
 Fixpoint ptree_formula (P : ptree) : formula :=
 match P with
@@ -93,9 +93,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => lor (neg (univ n A)) D
 
-| loop_a A n d1 d2 alpha1 alpha2 L P1 P2 => (univ n A)
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => (univ n A)
 
-| loop_ca C A n d1 d2 alpha1 alpha2 L P1 P2 => lor C (univ n A)
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => lor C (univ n A)
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => C
 
@@ -143,9 +143,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => d
 
-| loop_a A n d1 d2 alpha1 alpha2 L P1 P2 => max d1 d2
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => max d1 d2
 
-| loop_ca A D n d1 d2 alpha1 alpha2 L P1 P2 => max d1 d2
+| loop_ca A D n d1 d2 alpha1 alpha2 P1 P2 => max d1 d2
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => max (max d1 d2) (num_conn (neg A))
 
@@ -192,9 +192,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => ord_succ alpha
 
-| loop_a A n d1 d2 alpha1 alpha2 L P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
 
-| loop_ca C A n d1 d2 alpha1 alpha2 L P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 => ord_succ (ord_max alpha1 alpha2)
 
@@ -241,9 +241,9 @@ match P with
 
 | quantification_ad A D n t d alpha P' => node_extract P'
 
-| loop_a A n d1 d2 alpha1 alpha2 L P1 P2 => L ++ node_extract P1
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => tl (node_extract P2) ++ node_extract P1
 
-| loop_ca C A n d1 d2 alpha1 alpha2 L P1 P2 => L ++ node_extract P1
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => tl (node_extract P2) ++ node_extract P1
 
 | cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
 
@@ -322,19 +322,19 @@ match P with
     (ptree_formula P' = lor (neg (substitution A n (projT1 t))) D) * (struct_valid P') *
     (d = ptree_deg P') * (alpha = ptree_ord P')
 
-| loop_a A n d1 d2 alpha1 alpha2 L P1 P2 =>
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = substitution A n zero) * (struct_valid P1) *
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) *
     (ptree_formula P2 = substitution A n (succ (var n))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    (A :: L = (node_extract P2)) * (~ In A L) * (In n (free_list A))
+    ({L : list formula & A :: L = (node_extract P2) /\ (~ In A L)}) * (In n (free_list A))
 
-| loop_ca C A n d1 d2 alpha1 alpha2 L P1 P2 =>
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor C (substitution A n zero)) * (struct_valid P1) *
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) * 
     (ptree_formula P2 = (lor C (substitution A n (succ (var n))))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    ((lor C A) :: L = (node_extract P2)) * (~ In (lor C A) L) * (In n (free_list A))
+    ({L : list formula & (lor C A) :: L = (node_extract P2) /\ (~ In (lor C A) L)}) * (In n (free_list A))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -390,13 +390,15 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
 - exists (negation_ad A D (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_a A n c (ptree_deg P) alpha P). repeat split; auto.
 - exists (quantification_ad A D n c (ptree_deg P) alpha P). repeat split; auto.
-- exists (loop_a A n d1 d2 alpha1 alpha2 L2 P1 P2).
+- exists (loop_a A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
-  rewrite P1N.
+  apply (existT _ L2 (conj (eq_sym P2N) n0)).
+  rewrite P1N, P2N.
   reflexivity.
-- exists (loop_ca C A n d1 d2 alpha1 alpha2 L2 P1 P2).
+- exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
-  rewrite P1N.
+  apply (existT _ L2 (conj (eq_sym P2N) n0)).
+  rewrite P1N, P2N.
   reflexivity.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
 - exists (cut_ad A D (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
@@ -493,15 +495,17 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
 - exists (quantification_ad A D n c (ptree_deg P) alpha P). repeat split; auto.
 - pose proof (structural_pre_theorem TS1) as [P1 [[[[P1F P1SV] P1D] P1O] P1L]].
   pose proof (structural_pre_theorem TS2) as [P2 [[[[P2F P2SV] P2D] P2O] P2L]].
-  exists (loop_a A n d1 d2 alpha1 alpha2 L2 P1 P2).
+  exists (loop_a A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
-  rewrite P1L.
+  apply (existT _ L2 (conj (eq_sym P2L) n0)).
+  rewrite P1L,P2L.
   apply TAX.
 - pose proof (structural_pre_theorem TS1) as [P1 [[[[P1F P1SV] P1D] P1O] P1L]].
   pose proof (structural_pre_theorem TS2) as [P2 [[[[P2F P2SV] P2D] P2O] P2L]].
-  exists (loop_ca C A n d1 d2 alpha1 alpha2 L2 P1 P2).
+  exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
-  rewrite P1L.
+  apply (existT _ L2 (conj (eq_sym P2L) n0)).
+  rewrite P1L,P2L.
   apply TAX.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
@@ -535,7 +539,7 @@ intros P PSV. induction P.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
 
 2-16 :  try rewrite PF,<-PD,<-PO in IHP;
         pose proof (IHP PSV) as P';
@@ -549,6 +553,10 @@ intros P PSV. induction P.
 
 3 : unfold node_extract; fold node_extract;
     rewrite PN.
+
+22 : fold (tl (a :: L)) in NINA.
+23 : fold (tl ((lor c a) :: L)) in NINA.
+22,23 : rewrite P2N in NINA.
 
 apply (axiom _).
 apply (pre_ex _ PL P').
@@ -571,8 +579,8 @@ apply (demorgan2 P1' P2').
 apply (cut1 _ _ P1' P2').
 apply (cut2 _ _ P1' P2').
 apply (cut3 _ _ _ P1' P2').
-apply (loop1 _ _ NINA FREEA P1' P2').
-apply (loop2 _ _ NINA FREEA P1' P2').
+apply (loop1 _ _ NINA FREEA P1'). rewrite <- P2N. apply P2'.
+apply (loop2 _ _ NINA FREEA P1'). rewrite <- P2N. apply P2'.
 Qed.
 
 Lemma theorem_provable' :
@@ -592,7 +600,7 @@ induction P.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
 
 2,3 : unfold node_extract in PAX;
       fold node_extract in PAX;
@@ -642,6 +650,10 @@ induction P.
       pose proof (pre_theorem_structural P2 P2SV) as P2';
       rewrite P1F, <-P1D, <-P1O in P1';
       rewrite P2F, <-P2D, <-P2O, <- P2N in P2'.
+
+1,2 : unfold node_extract in PAX;
+      fold node_extract in PAX;
+      rewrite <- P2N in PAX.
 
 2 : apply (prune (loop2 _ _ NINA FREEA P1' P2') PAX).
 
@@ -770,7 +782,7 @@ fold node_extract.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
 
 
 all : try apply (IHP PSV).
@@ -1117,5 +1129,6 @@ Master destruct tactic.
 16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
 17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA] FREEA]. (*loop*)
+22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+
 *)

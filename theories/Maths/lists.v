@@ -15,6 +15,142 @@ Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
+
+Lemma combine_eq_len :
+    forall {A B : Type} {L1 L3 : list A} {L2 L4 : list B},
+        length L1 = length L2 ->
+            combine L1 L2 ++ combine L3 L4 = combine (L1 ++ L3) (L2 ++ L4).
+Proof.
+intros A B L1.
+induction L1;
+intros L3 L2 L4 EQ;
+destruct L2.
+- reflexivity.
+- inversion EQ.
+- inversion EQ.
+- repeat rewrite <- app_comm_cons.
+  unfold combine;
+  fold (@combine A A).
+  rewrite <- IHL1.
+  reflexivity.
+  apply eq_add_S, EQ.
+Qed.
+
+Lemma combine_filter_fst :
+    forall {A B : Type} {L1 : list A} {L2 : list B} (f : A -> bool),
+        length L1 = length L2 ->
+            length (filter (fun X => f (fst X)) (combine L1 L2)) = length (filter f L1).
+Proof.
+intros A B L1.
+induction L1;
+intros L2 f EQL;
+destruct L2.
+- reflexivity.
+- inversion EQL.
+- inversion EQL.
+- unfold combine;
+  fold (@combine A B).
+  unfold filter;
+  fold (filter f) (filter (fun (X : A * B) => f (fst X))).
+  unfold fst at 1.
+  case (f a) eqn:T.
+  + unfold length;
+    fold (@length A) (@length (A*B)).
+    rewrite IHL1.
+    reflexivity.
+    apply eq_add_S, EQL.
+  + apply IHL1, eq_add_S, EQL.
+Qed.
+
+Lemma eq_app_eq :
+    forall {A : Type} {L1 L2 L3 L4 : list A},
+        L1 = L2 -> L3 = L4 -> L1 ++ L3 = L2 ++ L4.
+Proof.
+intros A L1 L2 L3 L4 EQ1 EQ2.
+rewrite EQ1, EQ2.
+reflexivity.
+Qed.
+
+Lemma snd_split :
+    forall {A B : Type} {L : list (A * B)} {a : A} {b : B},
+        snd (split ((a,b) :: L)) = b :: snd (split L).
+Proof.
+intros A B L a b.
+unfold split at 1.
+fold (split L).
+unfold snd at 1.
+destruct (split L).
+reflexivity.
+Qed.
+    
+Lemma combine_with_filter_split :
+    forall {A B : Type} (f : A -> bool) {L1 : list A} {L2 : list B},
+        length L1 = length L2 ->
+            combine (filter f L1) (snd (split (filter (fun X => f (fst X)) (combine L1 L2)))) = (filter (fun X => f (fst X)) (combine L1 L2)).
+Proof.
+intros A B f.
+induction L1;
+intros L2 EQL;
+destruct L2.
+- reflexivity.
+- inversion EQL.
+- inversion EQL.
+- unfold length in EQL;
+  fold (@length A) (@length B) in EQL.
+  unfold combine;
+  fold (@combine A B).
+  unfold filter;
+  fold (@filter A f) (@filter (A * B) (fun X => f (fst X))).
+  unfold fst at 1 4.
+  case (f a) eqn:Val.
+  + rewrite snd_split.
+    unfold combine at 1.
+    fold (@combine A B).
+    rewrite IHL1.
+    reflexivity.
+    apply (eq_add_S _ _ EQL).
+  + rewrite IHL1.
+    reflexivity.
+    apply (eq_add_S _ _ EQL).
+Qed.
+
+Lemma filter_fst_non_target : 
+    forall {A B : Type} (f : A -> bool) (m : A -> B) (L : list A),
+        (snd (split (filter (fun X => f (fst X)) (combine L (map m L))))) = map m (filter (fun X => f X) L).
+Proof.
+intros A B f m L.
+induction L.
+- reflexivity.
+- unfold combine, map.
+  fold (map m) (combine L (map m L)).
+  unfold filter;
+  fold (filter f) (filter (fun (X : A * B) => (f (fst X)))).
+  unfold fst at 1.
+  case (f a) eqn:T;
+  try rewrite snd_split;
+  rewrite IHL;
+  reflexivity.
+Qed.
+
+Lemma skipn_app2 {A : Type} {n : nat} : forall (l1 l2 : list A),
+    skipn (length l1 + n) (l1 ++ l2) = (skipn n l2).
+Proof.
+intros L1 L2.
+rewrite skipn_app.
+rewrite minus_n_plus_m.
+rewrite skipn_all2.
+reflexivity.
+destruct n.
+rewrite <- plus_n_O.
+reflexivity.
+apply le_S_n.
+rewrite <- plus_n_Sm.
+repeat rewrite <- plus_Sn_m.
+apply (@nat_lt_add_trans_l _ _ (S n) _ (le_n _)).
+rewrite <- plus_n_Sm.
+reflexivity.
+Qed.
+
 Fixpoint bury {A : Type} (L : list A) (n : nat) : list A :=
 match L with
 | [] => []
@@ -61,6 +197,25 @@ unfold bury, map;
 fold (@bury A) (@bury B) (map f).
 rewrite IHL.
 reflexivity.
+Qed.
+
+Lemma bury_combine {A B : Type} {L1 : list A} {L2 : list B} {n : nat} : length L1 = length L2 -> combine (bury L1 n) (bury L2 n) = bury (combine L1 L2) n.
+Proof.
+generalize L2 n.
+induction L1;
+induction L0;
+intros m LEN;
+try inversion LEN as [LEN'].
+reflexivity.
+destruct m.
+- unfold bury, combine;
+  fold (@combine A B).
+  rewrite <- (combine_eq_len LEN').
+  reflexivity.
+- unfold bury, combine;
+  fold (@bury A) (@bury B) (@bury (A*B)) (@combine A B).
+  rewrite (IHL1 _ _ LEN').
+  reflexivity.
 Qed.
 
 Lemma bury_nil {A : Type} {L  : list A} {n : nat} : bury L n = [] <-> L = [].
@@ -148,8 +303,8 @@ Lemma nth_pre_bury {A : Type} {L : list A} {n m : nat} {a : A} : n < m -> nth n 
 Proof.
 intros LT.
 destruct (nat_semiconnex m (length L)) as [LT' | [GT | EQ]].
-- destruct (length_split_n LT') as [L1 [L2 [b [LEN EQ']]]].
-  rewrite <- EQ', <- LEN, bury_type, app_nth1, app_nth1.
+- destruct (length_split_n LT') as [L1 [L2 [b [LEN EQ]]]].
+  rewrite <- EQ, <- LEN, bury_type, app_nth1, app_nth1.
   reflexivity.
   all : rewrite LEN;
         apply LT.
@@ -162,9 +317,28 @@ destruct (nat_semiconnex m (length L)) as [LT' | [GT | EQ]].
   apply le_n.
 Qed.
 
-Lemma nth_post_bury {A : Type} {L : list A} {n m : nat} : n >= m -> S n <> (length L) -> nth n (bury L m) = nth (S n) L.
+Lemma nth_post_bury {A : Type} {L : list A} {n m : nat} {a : A} : n >= m -> S n <> (length L) -> nth n (bury L m) a = nth (S n) L a.
 Proof.
-Admitted.
+intros GT NE.
+destruct (nat_semiconnex m (length L)) as [LT | [GT' | EQ]].
+destruct (nat_semiconnex n (length L)) as [LT' | [GT' | EQ']].
+1 : { destruct (length_split_n LT) as [L1 [L2 [b [LEN EQ]]]].
+      { rewrite <- EQ, <- LEN, bury_type, app_nth2, app_nth1, app_nth2, minus_ge_succ.
+        reflexivity.
+        all : rewrite LEN;
+              try apply GT.
+        1 : apply le_S, GT.
+        1 : assert (S n < length L) as LT''.
+            lia.
+            rewrite <- EQ in LT''.
+            rewrite app_length in LT''.
+            rewrite <- (plus_n_Sm _ (length L2)) in LT''.
+            lia. } }
+all : repeat rewrite nth_overflow;
+      try rewrite bury_length;
+      try reflexivity;
+      try lia.
+Qed.
 
 Lemma nth_end_bury {A : Type}  {L : list A} {n m : nat} {a : A} : m < (length L) -> S n = (length L) -> nth n (bury L m) a = nth m L a.
 Proof.
@@ -199,6 +373,26 @@ Proof. induction L; reflexivity. Qed.
 Lemma nth_tail {A : Type} {L : list A} {a : A} {n : nat} : nth n (tl L) a = nth (S n) L a.
 Proof. induction L; destruct n; reflexivity. Qed.
 
+Lemma combine_tail {A B : Type} {L1 : list A} {L2 : list B} : combine (tl L1) (tl L2) = tl (combine L1 L2).
+Proof. induction L1; induction L2; try reflexivity. destruct L1; reflexivity. Qed.
+
+Lemma cons_tl_len {A : Type} : forall (L : list A), [] <> L -> length (tl L) = length L - 1.
+Proof.
+induction L;
+intros EQ.
+destruct EQ.
+reflexivity.
+unfold tl.
+unfold length;
+fold (@length A).
+unfold minus.
+rewrite minus_n_0.
+reflexivity.
+Qed.
+
+Lemma app_tail {A : Type} {L1 L2 : list A} : L1 <> [] -> (tl L1) ++ L2 = tl (L1 ++ L2).
+Proof. induction L1; intros NE. contradict NE. reflexivity. rewrite <- app_comm_cons. reflexivity. Qed.
+
 Lemma tail_len_eq {A B : Type} {L1 : list A} {L2 : list B} : length L1 = length L2 -> length (tl L1) = length (tl L2).
 Proof.
 intros EQ.
@@ -208,6 +402,9 @@ inversion EQ.
 reflexivity.
 apply H0.
 Qed.
+
+Lemma in_tail {A : Type} {L : list A} {a : A} : In a (tl L) -> In a L.
+Proof. intros IN. destruct L. inversion IN. apply or_intror, IN. Qed.
 
 Lemma in_double_head {A : Type} {L : list A} {a : A} : forall (b : A), In b (a :: a :: L) -> In b (a :: L).
 Proof.
@@ -277,6 +474,101 @@ all : rewrite flat_map_bury_type, flat_map_split;
       try apply in_or_app, or_introl, IN1;
       try apply in_or_app, or_intror, in_or_app, or_intror, IN2;
       try apply in_or_app, or_intror, in_or_app, or_introl, IN3.
+Qed.
+
+Lemma flat_map_nth_ext {A B : Type} {L1 L2 : list A} {F : A -> list B} {a : A} : length L1 = length L2 -> (forall (n : nat), F (nth n L1 a) = F (nth n L2 a)) -> flat_map F L1 = flat_map F L2.
+Proof.
+generalize L2.
+induction L1;
+induction L0;
+intros LEN HYP.
+- reflexivity.
+- inversion LEN.
+- inversion LEN.
+- unfold flat_map;
+  fold (flat_map F).
+  pose proof (HYP 0) as HD.
+  unfold nth in HD.
+  rewrite HD.
+  inversion LEN as [LEN'].
+  rewrite (IHL1 _ LEN').
+  reflexivity.
+  intros n.
+  apply (HYP (S n)).
+Qed.
+
+Lemma flat_map_nth_ext_bury {A B : Type} {L1 L2 : list A} {F : A -> list B} {a : A} {n : nat} : length L1 = length L2 -> (forall (n : nat), F (nth n L1 a) = F (nth n L2 a)) -> flat_map F (bury L1 n) = flat_map F (bury L2 n).
+Proof.
+generalize n.
+generalize L2.
+induction L1;
+induction L0;
+intros m LEN HYP.
+- reflexivity.
+- inversion LEN.
+- inversion LEN.
+- destruct m.
+  + unfold bury.
+    pose proof (HYP 0) as HD.
+    unfold nth in HD.
+    repeat rewrite flat_map_app.
+    unfold flat_map at 2 4.
+    rewrite HD, app_nil_r.
+    inversion LEN as [LEN'].
+    rewrite (@flat_map_nth_ext _ _ L1 L0 _ a LEN').
+    reflexivity.
+    intros x.
+    apply (HYP (S x)).
+  + unfold bury;
+    fold (@bury A).
+    unfold flat_map;
+    fold (flat_map F).
+    pose proof (HYP 0) as HD.
+    unfold nth in HD.
+    rewrite HD.
+    inversion LEN as [LEN'].
+    rewrite (IHL1 _ _ LEN').
+    reflexivity.
+    intros x.
+    apply (HYP (S x)).
+Qed.
+
+Lemma flat_map_nth_ext_tl {A B : Type} {L1 L2 : list A} {F : A -> list B} {a : A} : length L1 = length L2 -> (forall (n : nat), F (nth n L1 a) = F (nth n L2 a)) -> flat_map F (tl L1) = flat_map F (tl L2).
+Proof.
+generalize L2.
+induction L1;
+induction L0;
+intros LEN HYP.
+- reflexivity.
+- inversion LEN.
+- inversion LEN.
+- unfold tl.
+  inversion LEN as [LEN'].
+  rewrite (@flat_map_nth_ext _ _ L1 L0 _ a LEN').
+  reflexivity.
+  intros x.
+  apply (HYP (S x)).
+Qed.
+
+Lemma nth_app_split {A : Type} {L1 L2 L3 L4 : list A} {a : A} : length L1 = length L2 -> length L3 = length L4 -> (forall (n : nat), nth n L1 a = nth n L2 a) -> (forall (n : nat), nth n L3 a = nth n L4 a) -> (forall (n : nat), nth n (L1 ++ L3) a = nth n (L2 ++ L4) a).
+Proof.
+intros EQ1 EQ2 EX1 EX2 n.
+destruct (nat_semiconnex n (length L1)) as [LT | [GT | EQ]].
+- repeat rewrite app_nth1.
+  apply EX1.
+  rewrite <- EQ1.
+  apply LT.
+  apply LT.
+- repeat rewrite app_nth2.
+  rewrite EQ1.
+  apply EX2.
+  lia.
+  lia.
+- repeat rewrite app_nth2.
+  rewrite EQ1.
+  apply EX2.
+  lia.
+  lia.
 Qed.
 
 Lemma nin_split {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :

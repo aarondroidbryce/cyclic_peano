@@ -160,6 +160,9 @@ Proof. induction n; intros m. rewrite minus_n_0. reflexivity. rewrite plus_Sn_m.
 Lemma minus_lt_not_zero : forall (n m : nat), m < n -> n - m <> 0.
 Proof. induction n; intros m LT. inversion LT. destruct m. discriminate. apply IHn, le_S_n, LT. Qed. 
 
+Lemma minus_ge_succ : forall (n m : nat), n >= m -> S n - m = S (n - m).
+Proof. induction n; intros m LT. inversion LT. reflexivity. destruct m. reflexivity. apply IHn. apply le_S_n, LT. Qed.
+
 Lemma nat_exp_monot_lem : forall (n : nat), S n < (2 ^ n) + (2 ^ n).
 Proof.
 induction n.
