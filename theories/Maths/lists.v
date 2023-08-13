@@ -571,6 +571,24 @@ destruct (nat_semiconnex n (length L1)) as [LT | [GT | EQ]].
   lia.
 Qed.
 
+Lemma len_1_head {A : Type} {L : list A} {a : A} : length L = 1 -> [(hd a L)] = L.
+Proof.
+intros LEN.
+destruct L.
+inversion LEN.
+destruct L.
+reflexivity.
+inversion LEN.
+Qed.
+
+Lemma head_tail_combine {A : Type} {L : list A} {a : A} : L <> [] -> hd a L :: tl L = L.
+Proof.
+intros NE.
+destruct L.
+contradict (NE eq_refl).
+reflexivity.
+Qed.
+
 Lemma nin_split {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L1 L2 : list A) (a : A),
         ~ In a (L1 ++ L2) ->
