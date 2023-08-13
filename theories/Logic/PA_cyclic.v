@@ -39,10 +39,6 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
       PA_cyclic_pre A d alpha L ->
         PA_cyclic_pre A d alpha (bury L n)
 
-| pre_con : forall {A B : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre A d alpha (B :: B :: L) ->
-      PA_cyclic_pre A d alpha (B :: L)
-
 | axiom : forall (A : formula),
     PA_cyclic_pre A 0 Zero [A]
 
@@ -105,13 +101,13 @@ Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
     PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) L
 
 | loop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    ~ In A L2 -> In n (free_list A) ->
+    In n (free_list A) ->
     PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
     PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 (A :: L2) ->
     PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
 
 | loop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    ~ In (lor C A) L2 -> In n (free_list A) ->
+    In n (free_list A) ->
     PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
     PA_cyclic_pre (lor C (substitution A n (succ (var n)))) d2 alpha2 ((lor C A) :: L2) ->
     PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
@@ -364,11 +360,6 @@ repeat apply andb_true_intro, conj;
 auto.
 
 - apply (fun B INB => AX B (proj1 (in_bury B) INB)).
-
-- intros D IND.
-  destruct IND as [[] | IND].
-  apply AX, or_introl, eq_refl.
-  apply AX, IND.
   
 - apply axiom_closed, AX, or_introl, eq_refl.
 
@@ -410,11 +401,6 @@ repeat apply andb_true_intro, conj;
 auto.
 
 - apply (fun B INB => TAX B (proj1 (in_bury B) INB)).
-
-- intros D IND.
-  destruct IND as [[] | IND].
-  apply TAX, or_introl, eq_refl.
-  apply TAX, IND.
   
 - apply axiom_closed, TAX, or_introl, eq_refl.
 

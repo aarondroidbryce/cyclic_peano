@@ -61,8 +61,6 @@ match P, S with
 
 | leaf_ex n P', _ => leaf_ex n (dub_neg_sub_ptree_fit P' E S)
 
-| leaf_con P', _ => leaf_con (dub_neg_sub_ptree_fit P' E S)
-
 | node A, _ => node (dub_neg_sub_formula A E S)
 
 | exchange_ab A B d alpha P', lor_ind S_B S_A =>
@@ -192,8 +190,6 @@ match P, S with
 
 | leaf_ex n P', _ => bury (dub_neg_node_fit P' S) n
 
-| leaf_con P' , _ => tl (dub_neg_node_fit P' S)
-
 | node A, _ => [S]
 
 | exchange_ab A B d alpha P', (lor_ind S_B S_A) => dub_neg_node_fit P' (lor_ind S_A S_B)
@@ -247,6 +243,7 @@ match subst_ind_fit (ptree_formula P) S with
 | true => dub_neg_node_fit P S
 end.
 
+(*
 Fixpoint dub_neg_node_valid_fit (P : ptree) (S : subst_ind): Type :=
 match P, S with
 | deg_up d P', _ => (dub_neg_node_valid_fit P' S)
@@ -303,6 +300,7 @@ match subst_ind_fit (ptree_formula P) S with
 | false => (false = true)
 | true => dub_neg_node_valid_fit P S
 end.
+*)
 
 Lemma dub_neg_ptree_formula_true :
     forall (P : ptree) (E : formula) (S : subst_ind),
@@ -316,11 +314,13 @@ Lemma dub_neg_node_formula_true :
             dub_neg_node_fit P S = dub_neg_node P S.
 Proof. intros. unfold dub_neg_node. rewrite H. reflexivity. Qed.
 
+(*
 Lemma dub_neg_node_valid_formula_true :
     forall (P : ptree) (S : subst_ind),
         subst_ind_fit (ptree_formula P) S = true ->
             dub_neg_node_valid_fit P S = dub_neg_node_valid P S.
 Proof. intros. unfold dub_neg_node_valid. rewrite H. reflexivity. Qed.
+*)
 
 Lemma dub_neg_axiom_id :
     forall (A E : formula) (S : subst_ind),
@@ -351,14 +351,14 @@ intros P E PSV.
 induction P.
 
 1 : destruct PSV. (*node*)
-2,3 : destruct PSV as [PSV PN]. (*leaf operations*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+2 : destruct PSV as [PSV PL]. (*leaf exchange*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] P2N] NINA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 all : intros S FS;
       unfold dub_neg_sub_ptree;
@@ -369,11 +369,11 @@ all : intros S FS;
       fold ptree_formula in *;
       try reflexivity.
 
-1-4 : rewrite (dub_neg_ptree_formula_true _ _ _ FS);
+1-3 : rewrite (dub_neg_ptree_formula_true _ _ _ FS);
       unfold ptree_formula; fold ptree_formula;
       apply (IHP PSV _ FS).
 
-8,11,14 :
+7,10,13 :
     unfold dub_neg_sub_formula, formula_sub_ind;
     try rewrite FS;
     try reflexivity.
@@ -457,12 +457,12 @@ unfold ptree_deg in *; fold ptree_deg in *;
 try reflexivity.
 
 
-1,2 : destruct PSV as [PSV PN].
-3 : destruct PSV as [[PSV OU] NO].
+1 : destruct PSV as [PSV PN].
+2 : destruct PSV as [[PSV OU] NO].
 
-9,10 : destruct PSV as [[[PF PSV] PD] PO].
+8,9 : destruct PSV as [[[PF PSV] PD] PO].
 
-1-3 : unfold ptree_formula in FS; fold ptree_formula in FS;
+1,2 : unfold ptree_formula in FS; fold ptree_formula in FS;
       pose proof (IHP PSV S) as IHPS;
       rewrite FS in IHPS;
       apply IHPS.
@@ -510,12 +510,12 @@ unfold dub_neg_sub_ptree_fit; fold dub_neg_sub_ptree_fit;
 unfold ptree_ord in *; fold ptree_ord in *;
 try reflexivity.
 
-1,2 : destruct PSV as [PSV PN].
-3 : destruct PSV as [PSV DU].
+1 : destruct PSV as [PSV PN].
+2 : destruct PSV as [PSV DU].
 
-9,10 : destruct PSV as [[[PF PSV] PD] PO].
+8,9 : destruct PSV as [[[PF PSV] PD] PO].
 
-1-3 : unfold ptree_formula in FS; fold ptree_formula in FS;
+1,2 : unfold ptree_formula in FS; fold ptree_formula in FS;
       pose proof (IHP PSV S) as IHPS;
       rewrite FS in IHPS;
       apply IHPS.
@@ -575,14 +575,14 @@ rewrite non_target_fit;
 fold node_extract dub_neg_node_fit.
 
 1 : destruct PSV. (*node*)
-2,3 : destruct PSV as [PSV PN]. (*leaf operations*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+2 : destruct PSV as [PSV PL]. (*leaf exchange*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 1 : reflexivity.
 
@@ -612,9 +612,6 @@ all : try rewrite <- (IHP PSV);
 1 : { rewrite bury_map, (IHP PSV).
       reflexivity. }
 
-1 : { rewrite (IHP PSV).
-      apply map_tail. }
-
 all : rewrite <- non_target_term_sub;
       rewrite (non_target_term_sub a n (succ (var n))) at 1;
       try rewrite non_target_lor;
@@ -634,14 +631,14 @@ induction P;
 intros S PSV.
 
 1 : destruct PSV. (*node*)
-2,3 : destruct PSV as [PSV PN]. (*leaf operations*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+2 : destruct PSV as [PSV PL]. (*leaf exchange*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 all : unfold dub_neg_node;
       case subst_ind_fit eqn:FS;
@@ -655,9 +652,6 @@ all : unfold dub_neg_node;
 1 : { rewrite (dub_neg_node_formula_true _ _ FS).
       repeat rewrite bury_length.
       apply (IHP _ PSV). }
-
-1 : { rewrite (dub_neg_node_formula_true _ _ FS).
-      apply (tail_len_eq (IHP S PSV)). }
 
 3-6,8-15,18-20 :
   destruct S;
@@ -899,14 +893,13 @@ fold ptree_formula node_extract dub_neg_node_fit.
 
 1 : destruct PSV. (*node*)
 2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 1 : unfold combine, map, fst, snd, dub_neg_sub_formula.
     rewrite non_target_sub.
@@ -915,12 +908,6 @@ fold ptree_formula node_extract dub_neg_node_fit.
 1 : { rewrite (dub_neg_node_formula_true _ _ (non_target_fit _)).
       rewrite (bury_combine (dub_neg_node_len _ _ PSV)).
       rewrite bury_map.
-      rewrite (IHP E PSV) at 1.
-      reflexivity. }
-
-1 : { rewrite (dub_neg_node_formula_true _ _ (non_target_fit _)).
-      rewrite (combine_tail).
-      rewrite <- map_tail.
       rewrite (IHP E PSV) at 1.
       reflexivity. }
 
@@ -1001,24 +988,17 @@ fold node_extract dub_neg_sub_ptree_fit.
 
 1 : destruct PSV. (*node*)
 2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 1 : reflexivity.
 
 1 : repeat rewrite bury_length.
-    unfold ptree_formula in FS;
-    fold ptree_formula in FS.
-    rewrite (dub_neg_ptree_formula_true _ _ _ FS).
-    apply (IHP _ _ PSV FS).
-
-1 : apply tail_len_eq.
     unfold ptree_formula in FS;
     fold ptree_formula in FS.
     rewrite (dub_neg_ptree_formula_true _ _ _ FS).
@@ -1106,14 +1086,13 @@ fold node_extract dub_neg_sub_ptree_fit dub_neg_node_fit.
 
 1 : destruct PSV. (*node*)
 2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-4 : destruct PSV as [PSV DU]. (*deg up*)
-5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+3 : destruct PSV as [PSV DU]. (*deg up*)
+4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
 
-17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
 1 : reflexivity.
 
@@ -1126,17 +1105,6 @@ fold node_extract dub_neg_sub_ptree_fit dub_neg_node_fit.
       rewrite (bury_combine (dub_neg_node_len _ _ PSV)).
       unfold dub_neg_trans.
       rewrite bury_map.
-      reflexivity. }
-
-1 : { pose proof FS as FS'.
-      unfold ptree_formula in FS'.
-      rewrite (dub_neg_ptree_formula_true _ _ _ FS').
-      rewrite (dub_neg_node_formula_true _ _ FS').
-      clear FS'.
-      rewrite (IHP _ _ PSV FS).
-      unfold dub_neg_trans.
-      rewrite map_tail.
-      rewrite combine_tail.
       reflexivity. }
 
 3-6,8-15,18-20 :
@@ -1286,14 +1254,13 @@ Proof.
 
   1 : destruct PSV. (*node*)
   2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-  3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-  4 : destruct PSV as [PSV DU]. (*deg up*)
-  5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-  6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-  16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
-  
-  17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-  22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+  3 : destruct PSV as [PSV DU]. (*deg up*)
+  4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+  5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
   1 : { unfold dub_neg_sub_ptree.
         rewrite FS.
@@ -1305,19 +1272,19 @@ Proof.
         try rewrite dub_neg_formula_free;
         reflexivity. }
 
-  5-8,10-17,20-22 :
+  4-7,9-16,19-21 :
       destruct S;
       inversion FS as [FS'];
       try rewrite FS';
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
   
-  6-8,12,15,19 :
+  5-7,11,14,18 :
       destruct S1;
       inversion FS' as [FS''];
       try rewrite FS'';
       try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
   
-  8 : destruct S1_1;
+  7 : destruct S1_1;
       inversion FS'' as [FS'''];
       try rewrite FS''';
       destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
@@ -1395,10 +1362,6 @@ Proof.
               try reflexivity;
               repeat rewrite <- (dub_neg_node_size _ _ _ PSV FS);
               try lia. }
-
-  1 : { intros m.
-        repeat rewrite nth_tail.
-        apply (IHP _ PSV FS). }
 
   4 : { intros m.
         rewrite (app_tail (struct_non_empty_nodes _ P2SV)).
@@ -1488,14 +1451,13 @@ Proof.
 
   1 : destruct PSV. (*node*)
   2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-  3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-  4 : destruct PSV as [PSV DU]. (*deg up*)
-  5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-  6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-  16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
-  
-  17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-  22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+  3 : destruct PSV as [PSV DU]. (*deg up*)
+  4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+  5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
   1 : { unfold dub_neg_sub_ptree.
         rewrite FS.
@@ -1505,19 +1467,19 @@ Proof.
         rewrite dub_neg_formula_free.
         reflexivity. }
 
-  5-8,10-17,20-22 :
+  4-7,9-16,19-21 :
       destruct S;
       inversion FS as [FS'];
       try rewrite FS';
       try destruct (and_bool_prop _ _ FS') as [FS1 FS2].
   
-  6-8,12,15,19 :
+  5-7,11,14,18 :
       destruct S1;
       inversion FS' as [FS''];
       try rewrite FS'';
       try destruct (and_bool_prop _ _ FS1) as [FS1_1 FS1_2].
   
-  8 : destruct S1_1;
+  7 : destruct S1_1;
       inversion FS'' as [FS'''];
       try rewrite FS''';
       destruct (and_bool_prop _ _ FS1_1) as [FS1_1_1 FS1_1_2].
@@ -1580,8 +1542,6 @@ Proof.
 
   1 : apply (flat_map_nth_ext_bury (dub_neg_node_size _ _ _ PSV FS) (dub_neg_sub_nth_node_free _ _ _ PSV FS)).
 
-  1 : apply (flat_map_nth_ext_tl (dub_neg_node_size _ _ _ PSV FS) (dub_neg_sub_nth_node_free _ _ _ PSV FS)).
-
   1,2 : rewrite (@flat_map_nth_ext_tl _ _ (node_extract P2) (node_extract (dub_neg_sub_ptree P2 E (lor_ind S1 (non_target a)))) _ (atom (equ zero zero)));
         try apply (dub_neg_node_size _ _ _ P2SV);
         try apply (dub_neg_sub_nth_node_free _ _ _ P2SV);
@@ -1627,17 +1587,16 @@ Proof.
   unfold ptree_formula in *; fold ptree_formula in *;
   unfold dub_neg_sub_ptree_fit; fold dub_neg_sub_ptree_fit;
   unfold node_extract in *; fold node_extract in *.
-  
+
   1 : destruct PSV. (*node*)
   2 : destruct PSV as [PSV PL]. (*leaf exchange*)
-  3 : destruct PSV as [PSV [L [B PN]]]. (*leaf contraction*)
-  4 : destruct PSV as [PSV DU]. (*deg up*)
-  5 : destruct PSV as [[PSV OU] NO]. (*ord up*)
-  6-15 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
-  16 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
-  
-  17-21 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
-  22-23 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA]. (*loop*)
+  3 : destruct PSV as [PSV DU]. (*deg up*)
+  4 : destruct PSV as [[PSV OU] NO]. (*ord up*)
+  5-14 : destruct PSV as [[[PF PSV] PD] PO]. (*single hyp*)
+  15 : destruct PSV as [[[[PF PSV] PD] PO] CPF]. (*weakening*)
+
+  16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
+  21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
   1 : { destruct x.
         - rewrite dub_neg_axiom_id.
@@ -1672,17 +1631,6 @@ Proof.
               rewrite (dub_neg_node_size _ E _ PSV FS);
               try lia.
         1,2 : repeat rewrite nth_overflow;
-              try rewrite bury_length;
-              try rewrite <- (dub_neg_node_size _ _ _ PSV FS);
-              try lia;
-              try reflexivity. }
-
-  1 : { destruct (nat_semiconnex x (length (node_extract P))) as [LT | [GT | EQ]];
-        rewrite (dub_neg_ptree_formula_true _ _ _ FS).
-        1 : repeat rewrite nth_tail in *.
-            apply (IHP _ PSV FS _ _ AX).
-        1,2 : repeat rewrite nth_tail;
-              repeat rewrite nth_overflow;
               try rewrite bury_length;
               try rewrite <- (dub_neg_node_size _ _ _ PSV FS);
               try lia;
@@ -2103,23 +2051,13 @@ all : try apply PSV.
         apply PL.
       - apply FS. }
 
-1 : { destruct PSV as [PSV [L [B PN]]].
-      pose proof (IHP PSV _ FS) as PSV'.
-      rewrite dub_neg_ptree_formula_true.
-      repeat split;
-      unfold node_extract;
-      fold node_extract.
-      - apply (IHP PSV _ FS).
-      - admit. 
-      - apply FS. }
-
 1 : destruct PSV as [PSV DU].
 2 : destruct PSV as [[PSV OU] NO].
 3-11 : destruct PSV as [[[PF PSV] PD] PO].
 12 : destruct PSV as [[[[PF PSV] PD] PO] FC].
 13-16 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O].
 17 :  pose proof PSV as PSV'; 
-      destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA].
+      destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA].
 
 3-6,8-13,16,17 : 
     destruct S; inversion FS as [FS'];
@@ -2168,38 +2106,18 @@ all : try apply PSV.
           fold subst_ind_fit;
           rewrite FS1.
           apply non_target_sub_fit.
-        - (*assert (subst_ind_fit (ptree_formula P2) (lor_ind S1 (non_target a)) = true) as FIT2.
+        - assert (subst_ind_fit (ptree_formula P2) (lor_ind S1 (non_target a)) = true) as FIT2.
           { rewrite P2F.
             unfold subst_ind_fit;
             fold subst_ind_fit;
             rewrite FS1, non_target_sub_fit;
             unfold "&&";
             reflexivity. }
-          refine (existT _ (tl ) (conj _ _)).
-          + pose proof (dub_neg_structral _ E PSV' (lor_ind S1 S2) FS') as HELP.
-            unfold dub_neg_sub_ptree, dub_neg_node, dub_neg_sub_ptree_fit, dub_neg_node_fit in HELP;
-            fold dub_neg_sub_ptree_fit dub_neg_node_fit in HELP.
-            unfold ptree_formula, subst_ind_fit in HELP;
-            fold ptree_formula subst_ind_fit in HELP.
-            rewrite FS' in HELP.
-            destruct HELP as [[[[[[[[[P1F' P1SV'] P1D'] P1O'] P2F'] P2SV'] P2D'] P2O'] [L' [P2N' NINA']]] FREEA'].
-            rewrite (dub_neg_ptree_formula_true _ _ _ FIT2) in P2N'.
-            rewrite <- P2N'.
-            pose proof (dub_neg_tail_valid_node _ E P2SV (fun A INA => PAX _ (in_or_app _ _ _ (or_introl INA))) _ FIT2) as EQ.
-            rewrite <- P2N, <- P2N' in EQ.
-            unfold tl in EQ.
-            rewrite EQ.
-            reflexivity.
-          + intros FAL.
-            unfold node_extract in PAX;
-            fold node_extract in PAX.
-            rewrite <- P2N in PAX.
-            pose proof (closed_free_list _ (axiom_closed _ (PAX _ (in_or_app _ _ _ (or_introl FAL))))) as FAL2.
-            apply nodup_nil in FAL2.
-            apply app_eq_nil in FAL2 as [_ FAL2].
-            fold free_list in FAL2.
-            rewrite FAL2 in FREEA.
-            apply FREEA. *) admit.
+          refine (existT _ (tl (node_extract (dub_neg_sub_ptree P2 E (lor_ind S1 (non_target a))))) _).
+          rewrite <- (@head_tail_combine _ _ E (struct_non_empty_nodes _ (IHP2 P2SV _ FIT2))) at 2.
+          rewrite (dub_neg_node_transform _ _ _ P2SV FIT2).
+          rewrite <- P2N.
+          admit.
         - apply FREEA. }
 
 all : try apply form_eqb_eq in EQ;
@@ -2505,34 +2423,13 @@ all : try apply (PSV,PAX).
       - apply (fun A INA => PAX' A (proj2 (in_bury _) INA)).
       - apply FS. }
 
-1 : { destruct PSV as [PSV [L [B PN]]].
-      assert ((forall A : formula, In A (node_extract P) -> PA_cyclic_axiom A = true)) as PAX2.
-      { unfold node_extract in PAX;
-        fold node_extract in PAX.
-        rewrite PN in *.
-        intros A [[] | IN].
-        apply PAX, or_introl, eq_refl.
-        apply PAX, IN. }
-      destruct (IHP PSV PAX2 _ FS) as [PSV' PAX'].
-      rewrite dub_neg_ptree_formula_true.
-      repeat split;
-      unfold node_extract;
-      fold node_extract.
-      - apply PSV'.
-      - exists L.
-        exists B.
-        rewrite <- PN.
-        apply (dub_neg_valid_node _ _ (PSV,PAX2) _ FS).
-      - apply (fun A INA => PAX' _ (in_tail INA)).
-      - apply FS. }
-
 1 : destruct PSV as [PSV DU].
 2 : destruct PSV as [[PSV OU] NO].
 3-11 : destruct PSV as [[[PF PSV] PD] PO].
 12 : destruct PSV as [[[[PF PSV] PD] PO] FC].
 13-16 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O].
 17 :  pose proof PSV as PSV'; 
-      destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L [P2N NINA]]] FREEA].
+      destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA].
 
 3-6,8-13,16,17 : 
     destruct S; inversion FS as [FS'];
@@ -2588,31 +2485,21 @@ all : try apply (PSV,PAX).
             rewrite FS1, non_target_sub_fit;
             unfold "&&";
             reflexivity. }
-          refine (existT _ L (conj _ _)).
-          + pose proof (dub_neg_structural _ E PSV' (lor_ind S1 S2) FS') as HELP.
-            unfold dub_neg_sub_ptree, dub_neg_node, dub_neg_sub_ptree_fit, dub_neg_node_fit in HELP;
-            fold dub_neg_sub_ptree_fit dub_neg_node_fit in HELP.
-            unfold ptree_formula, subst_ind_fit in HELP;
-            fold ptree_formula subst_ind_fit in HELP.
-            rewrite FS' in HELP.
-            destruct HELP as [[[[[[[[[P1F' P1SV'] P1D'] P1O'] P2F'] P2SV'] P2D'] P2O'] [L' [P2N' NINA']]] FREEA'].
-            rewrite (dub_neg_ptree_formula_true _ _ _ FIT2) in P2N'.
-            rewrite <- P2N'.
-            pose proof (dub_neg_tail_valid_node _ E P2SV (fun A INA => PAX _ (in_or_app _ _ _ (or_introl INA))) _ FIT2) as EQ.
-            rewrite <- P2N, <- P2N' in EQ.
-            unfold tl in EQ.
-            rewrite EQ.
-            reflexivity.
-          + intros FAL.
-            unfold node_extract in PAX;
-            fold node_extract in PAX.
-            rewrite <- P2N in PAX.
-            pose proof (closed_free_list _ (axiom_closed _ (PAX _ (in_or_app _ _ _ (or_introl FAL))))) as FAL2.
-            apply nodup_nil in FAL2.
-            apply app_eq_nil in FAL2 as [_ FAL2].
-            fold free_list in FAL2.
-            rewrite FAL2 in FREEA.
-            apply FREEA.
+          refine (existT _ L _).
+          pose proof (dub_neg_structural _ E PSV' (lor_ind S1 S2) FS') as HELP.
+          unfold dub_neg_sub_ptree, dub_neg_node, dub_neg_sub_ptree_fit, dub_neg_node_fit in HELP;
+          fold dub_neg_sub_ptree_fit dub_neg_node_fit in HELP.
+          unfold ptree_formula, subst_ind_fit in HELP;
+          fold ptree_formula subst_ind_fit in HELP.
+          rewrite FS' in HELP.
+          destruct HELP as [[[[[[[[[P1F' P1SV'] P1D'] P1O'] P2F'] P2SV'] P2D'] P2O'] [L' P2N']] FREEA'].
+          rewrite (dub_neg_ptree_formula_true _ _ _ FIT2) in P2N'.
+          rewrite <- P2N'.
+          pose proof (dub_neg_tail_valid_node _ E P2SV (fun A INA => PAX _ (in_or_app _ _ _ (or_introl INA))) _ FIT2) as EQ.
+          rewrite <- P2N, <- P2N' in EQ.
+          unfold tl in EQ.
+          rewrite EQ.
+          reflexivity.
         - apply FREEA.
         - unfold node_extract;
           fold node_extract.
