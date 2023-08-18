@@ -2117,6 +2117,14 @@ all : try apply PSV.
           rewrite <- (@head_tail_combine _ _ E (struct_non_empty_nodes _ (IHP2 P2SV _ FIT2))) at 2.
           rewrite (dub_neg_node_transform _ _ _ P2SV FIT2).
           rewrite <- P2N.
+          destruct dub_neg_node.
+          admit.
+          unfold combine;
+          fold (@combine formula subst_ind).
+          unfold dub_neg_trans.
+          unfold map.
+          fold (map (fun X => dub_neg_sub_formula (fst X) E (snd X))).
+          unfold hd, tl, fst, snd.
           admit.
         - apply FREEA. }
 

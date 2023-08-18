@@ -3,6 +3,7 @@ From Cyclic_PA.Maths Require Import ordinals.
 From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
+From Cyclic_PA.Logic Require Import substitute.
 From Cyclic_PA.Logic Require Import PA_cyclic.
 Require Import Lia.
 Require Import List.
@@ -242,6 +243,65 @@ match P with
 | cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
 end.
 
+Fixpoint ancestry_fit (P : ptree) (S : subst_ind) : list subst_ind :=
+match P, S with
+| deg_up d P', _ => ancestry_fit P' S
+
+| ord_up alpha P', _ => ancestry_fit P' S
+
+| leaf_ex n P', _ => bury (ancestry_fit P' S) n
+
+| node A, _ => [S]
+
+| exchange_ab A B d alpha P', (lor_ind S_B S_A) => ancestry_fit P' (lor_ind S_A S_B)
+
+| exchange_cab C A B d alpha P', (lor_ind (lor_ind S_C S_B) S_A) => ancestry_fit P' (lor_ind (lor_ind S_C S_A) S_B)
+
+| exchange_abd A B D d alpha P', (lor_ind (lor_ind S_B S_A) S_D) => ancestry_fit P' (lor_ind (lor_ind S_A S_B) S_D)
+
+| exchange_cabd C A B D d alpha P', (lor_ind (lor_ind (lor_ind S_C S_B) S_A) S_D) => ancestry_fit P' (lor_ind (lor_ind (lor_ind S_C S_A) S_B) S_D)
+
+| contraction_a A d alpha P', _ => ancestry_fit P' (lor_ind S S)
+
+| contraction_ad A D d alpha P', (lor_ind S_A S_D) => ancestry_fit P' (lor_ind (lor_ind S_A S_A) S_D)
+
+| weakening_ad A D d alpha P', (lor_ind S_A S_D) => ancestry_fit P' S_D
+
+| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 S ++ ancestry_fit P2 S
+
+| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_AB S_D) => ancestry_fit P1 (lor_ind S_AB S_D) ++ ancestry_fit P2 (lor_ind S_AB S_D)
+
+| negation_a A d alpha P', (1) => ancestry_fit P' (target A)
+
+| negation_ad A D d alpha P', (lor_ind (0) S_D) => ancestry_fit P' (lor_ind (non_target A) S_D)
+
+| negation_ad A D d alpha P', (lor_ind (1) S_D) => ancestry_fit P' (lor_ind (target A) S_D)
+
+| quantification_a A n t d alpha P', _ => ancestry_fit P' S
+
+| quantification_ad A D n t d alpha P', (lor_ind S_A S_D) => ancestry_fit P' (lor_ind S_A S_D)
+
+| loop_a A n d1 d2 alpha1 alpha2 P1 P2, (1) => tl (ancestry_fit P2 (target A)) ++ ancestry_fit P1 (target A)
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C (0)) => (ancestry_fit P2 (lor_ind S_C (non_target A))) ++ ancestry_fit P1 (lor_ind S_C (non_target A))
+
+| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C (1)) => tl (ancestry_fit P2 (lor_ind S_C (target A))) ++ ancestry_fit P1 (lor_ind S_C (target A))
+
+| cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 (lor_ind S (non_target A)) ++ ancestry_fit P2 (0)
+
+| cut_ad A D d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 (non_target A) ++ ancestry_fit P2 (lor_ind (0) S)
+
+| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C S_D) => ancestry_fit P1 (lor_ind S_C (non_target A)) ++ ancestry_fit P2 (lor_ind (0) S_D)
+
+| _,_ => []
+end.
+
+Definition ancestry (P : ptree) (S : subst_ind) : list subst_ind :=
+match subst_ind_fit (ptree_formula P) S with
+| false => map non_target (node_extract P)
+| true => ancestry_fit P S
+end.
+
 Fixpoint struct_valid (P : ptree) : Type :=
 match P with
 | deg_up d P' => (struct_valid P') * (d > ptree_deg P')
@@ -322,7 +382,9 @@ match P with
     (d1 = ptree_deg P1) * (alpha1 = ptree_ord P1) * 
     (ptree_formula P2 = (lor C (substitution A n (succ (var n))))) * (struct_valid P2) *
     (d2 = ptree_deg P2) * (alpha2 = ptree_ord P2) *
-    ({L : list formula & (lor C A) :: L = (node_extract P2)}) * (In n (free_list A))
+    ({L : list formula & A :: L = (node_extract P2)}) *
+    ({L : list subst_ind & (target A) :: L = (ancestry P2 (lor_ind (non_target C) (target A)))}) *
+    (In n (free_list A))
 
 | cut_ca E A d1 d2 alpha1 alpha2 P1 P2 =>
     (ptree_formula P1 = lor E A) * (struct_valid P1) *
@@ -385,6 +447,7 @@ try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
 - exists (loop_ca C A n d1 d2 alpha1 alpha2 P1 P2).
   repeat split; simpl; auto.
   apply (existT _ L2 (eq_sym P2N)).
+  admit.
   rewrite P1N, P2N.
   reflexivity.
 - exists (cut_ca C A (ptree_deg P1) (ptree_deg P2) alpha1 alpha2 P1 P2). repeat split; simpl; auto. rewrite P1N,P2N. reflexivity.
