@@ -449,5 +449,34 @@ match I1,I2 with
 | _, _ => I1
 end.
 
+Fixpoint colour_list (I : paint_ind) : list nat :=
+match I with
+| colour L => L
+| <I1, I2| => colour_list I1 ++ colour_list I2
+end.
+
+Definition paint_neg_ad (I : paint_ind) : paint_ind := 
+match I with
+| <Ia, Id| => <<colour_list Ia|, I|
+| _ => I
+end.
+
+Definition paint_cut_ca (I : paint_ind) : paint_ind :=
+match I with
+| <Ic, Ia| => Ic
+| _ => I
+end.
+
+Definition paint_cut_ad (I : paint_ind) : paint_ind :=
+match I with
+| <colour L, Id| => Id
+| _ => I
+end.
+
+Definition paint_cut_cad (I1 I2 : paint_ind) : paint_ind :=
+match I1, I2 with
+| <Ic, Ia|, <colour L1, Id| => <Ic, Id|
+| _, _ => I1
+end.
 
 End Paint.
