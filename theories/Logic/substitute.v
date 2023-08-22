@@ -13,7 +13,7 @@ Inductive subst_ind : Type :=
 
 Notation "(0)" := ind_0.
 Notation "(1)" := ind_1.
-Notation "( x y )" := (lor_ind x y).
+Notation "( x @ y )" := (lor_ind x y).
 
 Lemma subst_eq_dec :
     forall (S1 S2 : subst_ind),
@@ -65,7 +65,7 @@ Fixpoint formula_sub_ind_fit (A D E : formula) (S : subst_ind) : formula :=
 match A with
 | lor B C =>
   (match S with
-  | lor_ind S1 S2 => lor (formula_sub_ind_fit B D E S1)
+  | (S1 @ S2) => lor (formula_sub_ind_fit B D E S1)
                          (formula_sub_ind_fit C D E S2)
   | _ => A
   end)
@@ -80,6 +80,37 @@ Definition formula_sub_ind (A D E : formula) (S : subst_ind) : formula :=
 match subst_ind_fit A S with
 | false => A
 | true => formula_sub_ind_fit A D E S
+end.
+
+Fixpoint mass_non_target (L : list formula) : list subst_ind :=
+match L with
+| [] => []
+| hd :: tl => (non_target hd) :: (mass_non_target tl)
+end.
+
+Fixpoint mass_target (L : list formula) : list subst_ind :=
+match L with
+| [] => []
+| hd :: tl => (target hd) :: (mass_target tl)
+end.
+
+Fixpoint mass_fit (LF : list formula) (LS : list subst_ind) : bool :=
+match LF, LS with
+| [], [] => true
+| a :: LF', s :: LS' => subst_ind_fit a s && mass_fit LF' LS'
+| _, _ => false
+end.
+
+Fixpoint mass_form_sub_fit (LF : list formula) (LS : list subst_ind) (D E : formula) : list formula :=
+match LF, LS with
+| a :: LF', s :: LS' => formula_sub_ind_fit a D E s :: mass_form_sub_fit LF' LS' D E
+| _, _ => LF
+end.
+
+Definition mass_form_sub (LF : list formula) (LS : list subst_ind) (D E : formula) : list formula :=
+match mass_fit LF LS with
+| false => LF
+| true => mass_form_sub_fit LF LS D E
 end.
 
 Lemma sub_fit_true :

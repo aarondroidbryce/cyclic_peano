@@ -71,6 +71,18 @@ rewrite EQ1, EQ2.
 reflexivity.
 Qed.
 
+Lemma fst_split :
+    forall {A B : Type} {L : list (A * B)} {a : A} {b : B},
+        fst (split ((a,b) :: L)) = a :: fst (split L).
+Proof.
+intros A B L a b.
+unfold split at 1.
+fold (split L).
+unfold fst at 1.
+destruct (split L).
+reflexivity.
+Qed.
+
 Lemma snd_split :
     forall {A B : Type} {L : list (A * B)} {a : A} {b : B},
         snd (split ((a,b) :: L)) = b :: snd (split L).
@@ -82,7 +94,40 @@ unfold snd at 1.
 destruct (split L).
 reflexivity.
 Qed.
-    
+
+Lemma split_type : 
+    forall {A B : Type} {L : list (A * B)},
+        split L = pair (fst (split L)) (snd (split L)).
+Proof.
+intros A B L.
+induction L.
+reflexivity.
+destruct a.
+rewrite fst_split, snd_split.
+unfold split at 1.
+fold (split L).
+rewrite IHL at 1.
+reflexivity.
+Qed.
+
+Lemma app_split :
+    forall {A B : Type} {L1 L2 : list (A * B)},
+        split (L1 ++ L2) = pair (fst (split L1) ++ (fst (split L2))) (snd (split L1) ++ (snd (split L2))).
+Proof.
+intros A B L1.
+induction L1;
+intros L2.
+repeat rewrite app_nil_l.
+apply split_type.
+destruct a.
+rewrite fst_split, snd_split.
+rewrite <- app_comm_cons.
+unfold split at 1.
+fold (split (L1 ++ L2)).
+rewrite IHL1 at 1.
+reflexivity.
+Qed.
+
 Lemma combine_with_filter_split :
     forall {A B : Type} (f : A -> bool) {L1 : list A} {L2 : list B},
         length L1 = length L2 ->
@@ -215,6 +260,27 @@ destruct m.
 - unfold bury, combine;
   fold (@bury A) (@bury B) (@bury (A*B)) (@combine A B).
   rewrite (IHL1 _ _ LEN').
+  reflexivity.
+Qed.
+
+Lemma bury_split {A B : Type} {L : list (A * B)} {n : nat} : split (bury L n) = pair (bury (fst (split L)) n) (bury (snd (split L)) n).
+Proof.
+generalize n.
+induction L;
+intros m.
+reflexivity.
+destruct m.
+- destruct a.
+  rewrite fst_split, snd_split.
+  unfold bury.
+  rewrite app_split.
+  reflexivity.
+- unfold bury, combine;
+  fold (@bury A) (@bury B) (@bury (A*B)) (@combine A B).
+  destruct a.
+  unfold split at 1.
+  fold (split (bury L m)).
+  rewrite IHL, fst_split, snd_split.
   reflexivity.
 Qed.
 

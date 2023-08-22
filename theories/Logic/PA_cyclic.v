@@ -11,7 +11,7 @@ From Cyclic_PA.Maths Require Import ordinals.
 
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
-From Cyclic_PA.Logic Require Import paint.
+From Cyclic_PA.Logic Require Import substitute.
 
 Import ListNotations.
 
@@ -24,125 +24,83 @@ match A with
 | _ => false
 end.
 
-Inductive PA_cyclic_pre : formula -> nat -> ord -> list formula -> Type :=
-| deg_incr : forall {A : formula} (d d' : nat) {alpha : ord} {L : list formula},
-    PA_cyclic_pre A d alpha L ->
+Definition Universal (A : formula) : bool :=
+match A with
+| univ n B => true
+| _ => false
+end.
+
+Inductive PA_cyclic_pre : list (formula * list formula) -> nat -> ord -> Type :=
+| deg_incr : forall {LF : list (formula * list formula)} (d d' : nat) {alpha : ord},
+    PA_cyclic_pre LF d alpha ->
     d' > d ->
-    PA_cyclic_pre A d' alpha L
+    PA_cyclic_pre LF d' alpha
 
-| ord_incr : forall {A : formula} {d : nat} (alpha beta : ord) {L : list formula},
-    PA_cyclic_pre A d alpha L ->
+| ord_incr : forall {LF : list (formula * list formula)} {d : nat} (alpha beta : ord),
+    PA_cyclic_pre LF d alpha ->
     ord_lt alpha beta -> nf beta ->
-    PA_cyclic_pre A d beta L
+    PA_cyclic_pre LF d beta
 
-| pre_ex : forall {A : formula} {d : nat} {alpha : ord} (n : nat) {L : list formula},
-    n < length L ->
-      PA_cyclic_pre A d alpha L ->
-        PA_cyclic_pre A d alpha (bury L n)
+| join : forall (A B : formula) {LF : list (formula * list formula)} {LN1 LN2 : list formula} {d : nat} (alpha : ord),
+    PA_cyclic_pre ((pair A LN1) :: (pair B LN2) :: LF) d alpha ->
+    PA_cyclic_pre ((pair (lor A B) (LN1 ++ LN2)) :: LF) d alpha
+
+| unjoin : forall (A B : formula) {LF : list (formula * list formula)} {LN : list formula} {d : nat} (alpha : ord),
+    PA_cyclic_pre ((pair (lor A B) LN) :: LF) d alpha ->
+    PA_cyclic_pre ((pair A LN) :: (pair B LN) :: LF) d alpha
 
 | axiom : forall (A : formula),
-    PA_cyclic_pre A 0 Zero [A]
+    PA_cyclic_pre [pair A [A]] 0 Zero
 
-| exchange1 : forall {A B : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A B) d alpha L ->
-    PA_cyclic_pre (lor B A) d alpha L
+| exchange : forall {LF : list (formula * list formula)} {d : nat} {alpha : ord} (n : nat),
+    n < (length LF) ->
+    PA_cyclic_pre LF d alpha ->
+    PA_cyclic_pre (bury LF n) d alpha
 
-| exchange2 : forall {C A B : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor C A) B) d alpha L ->
-    PA_cyclic_pre (lor (lor C B) A) d alpha L
+| contraction : forall {A : formula} {LF : list (formula * list formula)} {LN : list formula} {d : nat} {alpha : ord},
+    PA_cyclic_pre ((pair (lor A A) LN) :: LF) d alpha ->
+    PA_cyclic_pre ((pair A LN) :: LF) d alpha
 
-| exchange3 : forall {A B D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor A B) D) d alpha L ->
-    PA_cyclic_pre (lor (lor B A) D) d alpha L
+| weakening : forall (A : formula) {D : formula} {LF : list (formula * list formula)} {LN : list formula} {d : nat} {alpha : ord} (FLSub : incl (free_list A) (flat_map free_list LN)),
+    PA_cyclic_pre ((pair D LN) :: LF) d alpha ->
+    PA_cyclic_pre ((pair (lor A D) LN) :: LF) d (ord_succ alpha)
 
-| exchange4 : forall {C A B D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor (lor C A) B) D) d alpha L ->
-    PA_cyclic_pre (lor (lor (lor C B) A) D) d alpha L
+| demorgan : forall {A B : formula} {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {d1 d2 : nat} {alpha1 alpha2 : ord},
+    PA_cyclic_pre ((pair (neg A) LN1) :: LF1) d1 alpha1 ->
+    PA_cyclic_pre ((pair (neg B) LN2) :: LF2) d2 alpha2 ->
+    PA_cyclic_pre ((pair (neg (lor A B)) (LN1 ++ LN2)) :: LF1 ++ LF2) (max d1 d2) (ord_succ (ord_max alpha1 alpha2))
 
-| contraction1 : forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A A) d alpha L ->
-    PA_cyclic_pre A d alpha L
+| negation : forall {A : formula} {LF : list (formula * list formula)} {LN : list formula} {d : nat} {alpha : ord},
+    PA_cyclic_pre ((pair A LN) :: LF) d alpha ->
+    PA_cyclic_pre ((pair (neg (neg A)) LN) :: LF) d (ord_succ alpha)
 
-| contraction2 : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (lor A A) D) d alpha L ->
-    PA_cyclic_pre (lor A D) d alpha L
+| quantification : forall {A : formula} {LF : list (formula * list formula)} {LN : list formula} {n : nat} {c : c_term} {d : nat} {alpha : ord},
+    PA_cyclic_pre ((pair (neg (substitution A n (projT1 c))) LN) :: LF) d alpha ->
+    PA_cyclic_pre ((pair (neg (univ n A)) LN) :: LF) d (ord_succ alpha)
 
-| weakening : forall (A : formula) {D : formula} {d : nat} {alpha : ord} {L : list formula} (FLSub : incl (free_list A) (flat_map free_list L)),
-    PA_cyclic_pre D d alpha L ->
-    PA_cyclic_pre (lor A D) d (ord_succ alpha) L
-
-| demorgan1 : forall {A B : formula} {d1 d2 : nat}
-                     {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (neg A) d1 alpha1 L1 ->
-    PA_cyclic_pre (neg B) d2 alpha2 L2 ->
-    PA_cyclic_pre (neg (lor A B)) (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
-
-| demorgan2 : forall {A B D : formula} {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor (neg A) D) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg B) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor (neg (lor A B)) D)
-                     (max d1 d2) (ord_succ (ord_max alpha1 alpha2)) (L1 ++ L2)
-
-| negation1 : forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre A d alpha L ->
-    PA_cyclic_pre (neg (neg A)) d (ord_succ alpha) L
-
-| negation2 : forall {A D : formula} {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor A D) d alpha L ->
-    PA_cyclic_pre (lor (neg (neg A)) D) d (ord_succ alpha) L
-
-| quantification1 : forall {A : formula} {n : nat} {c : c_term}
-                           {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (neg (substitution A n (projT1 c))) d alpha L ->
-    PA_cyclic_pre (neg (univ n A)) d (ord_succ alpha) L
-
-| quantification2 : forall {A D : formula} {n : nat} {c : c_term}
-                           {d : nat} {alpha : ord} {L : list formula},
-    PA_cyclic_pre (lor (neg (substitution A n (projT1 c))) D) d alpha L ->
-    PA_cyclic_pre (lor (neg (univ n A)) D) d (ord_succ alpha) L
-
-| loop1 : forall {A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
+| loop : forall {A : formula} {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord},
     In n (free_list A) ->
-    PA_cyclic_pre (substitution A n zero) d1 alpha1 L1 ->
-    PA_cyclic_pre (substitution A n (succ (var n))) d2 alpha2 (A :: L2) ->
-    PA_cyclic_pre (univ n A) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
+    In A LN2 ->
+    PA_cyclic_pre ((pair (substitution A n zero) LN1) :: LF1) d1 alpha1 ->
+    PA_cyclic_pre ((pair (substitution A n (succ (var n))) LN2) :: LF2) d2 alpha2 ->
+    PA_cyclic_pre ((pair (univ n A) (LN1 ++ mass_form_sub LN2 (mass_target LN2) A (univ n A))) :: LF1 ++ (combine (fst (split LF2)) (map (filter (fun F => if form_eq_dec F A then false else true)) (snd (split LF2))))) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero))))
 
-| loop2 : forall {C A : formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord} (L1 L2 : list formula),
-    In n (free_list A) ->
-    PA_cyclic_pre (lor C (substitution A n zero)) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor C (substitution A n (succ (var n)))) d2 alpha2 (A :: L2) ->
-    PA_cyclic_pre (lor C (univ n A)) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero)))) (L2 ++ L1)
+| cut1 : forall (A : formula) {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {d1 d2 : nat} {alpha1 alpha2 : ord},
+    LF1 <> [] ->
+    PA_cyclic_pre ((pair A LN1) :: LF1) d1 alpha1 ->
+    PA_cyclic_pre ((pair (neg A) LN2) :: LF2) d2 alpha2 ->
+    PA_cyclic_pre (LF1 ++ LF2) (max (max d1 d2) (num_conn (neg A))) (ord_succ (ord_max alpha1 alpha2))
 
-| cut1 : forall (C A : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
-    PA_cyclic_pre (neg A) d2 alpha2 L2 ->
-    PA_cyclic_pre C
-                     (max (max d1 d2) (num_conn (neg A)))
-                     (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2)
+| cut2 : forall (A : formula) {LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {d1 d2 : nat} {alpha1 alpha2 : ord},
+    LF2 <> [] ->
+    PA_cyclic_pre [(pair A LN1)] d1 alpha1 ->
+    PA_cyclic_pre ((pair (neg A) LN2) :: LF2) d2 alpha2 ->
+    PA_cyclic_pre LF2 (max (max d1 d2) (num_conn (neg A))) (ord_succ (ord_succ (ord_max alpha1 alpha2))).
 
-| cut2 : forall (A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre A d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg A) D) d2 alpha2 L2 ->
-    PA_cyclic_pre D
-                     (max (max d1 d2) (num_conn (neg A)))
-                     (ord_succ (ord_succ (ord_max alpha1 alpha2)))
-                     (L1 ++ L2)
+Inductive PA_cyclic_theorem : list formula -> nat -> ord -> Type :=
+| prune : forall {LF : list (formula * list formula)} {d : nat} {alpha : ord}, PA_cyclic_pre LF d alpha -> (forall (B : formula), In B (concat (snd (split LF))) -> (PA_cyclic_axiom B || Universal B = true)) -> PA_cyclic_theorem (fst (split LF)) d alpha.
 
-| cut3 : forall (C A D : formula) {d1 d2 : nat} {alpha1 alpha2 : ord} {L1 L2 : list formula},
-    PA_cyclic_pre (lor C A) d1 alpha1 L1 ->
-    PA_cyclic_pre (lor (neg A) D) d2 alpha2 L2 ->
-    PA_cyclic_pre (lor C D)
-                     (max (max d1 d2) (num_conn (neg A)))
-                     (ord_succ (ord_max alpha1 alpha2))
-                     (L1 ++ L2).
-
-Inductive PA_cyclic_theorem : formula -> nat -> ord -> Type :=
-| prune : forall {A : formula} {d : nat} {alpha : ord} {L : list formula}, PA_cyclic_pre A d alpha L -> (forall (B : formula), In B L -> PA_cyclic_axiom B = true) -> PA_cyclic_theorem A d alpha.
-
-Definition true_theorem {A : formula} {d : nat} {alpha : ord} : PA_cyclic_theorem A d alpha -> {L : list formula & {X : PA_cyclic_pre A d alpha L & (forall (B : formula), In B L -> PA_cyclic_axiom B = true)}}.
-Proof. intros T. inversion T. exists L, X. apply H. Defined.
-
+(*
 Lemma associativity1 :
   forall (C A B : formula) {d : nat} {alpha : ord},
     PA_cyclic_theorem (lor (lor C A) B) d alpha ->
@@ -178,14 +136,15 @@ Proof.
 intros C A B d alpha t T.
 apply (exchange3 (exchange2 (exchange1 T))).
 Qed.
+*)
 
 Lemma weakening_closed :
-    forall {A D : formula} {d : nat} {alpha : ord} {L : list formula},
+    forall {A D : formula} {LF : list (formula * list formula)} {LN : list formula} {d : nat} {alpha : ord},
         closed A = true ->
-            PA_cyclic_pre D d alpha L ->
-                PA_cyclic_pre (lor A D) d (ord_succ alpha) L.
+            PA_cyclic_pre ((pair D LN) :: LF)  d alpha ->
+                PA_cyclic_pre ((pair (lor A D) LN) :: LF) d (ord_succ alpha).
 Proof.
-intros A D d alpha L CA T.
+intros A D LF LN d alpha CA T.
 refine (weakening _ _ T).
 rewrite (closed_free_list _ CA).
 intros f IN.
@@ -193,26 +152,25 @@ inversion IN.
 Qed.
 
 Lemma deg_monot :
-  forall {A : formula} (d d' : nat) {alpha : ord},
+  forall {L : list formula} {d d' : nat} {alpha : ord},
       d' >= d ->
-          PA_cyclic_theorem A d alpha ->
-              PA_cyclic_theorem A d' alpha.
+          PA_cyclic_theorem L d alpha ->
+              PA_cyclic_theorem L d' alpha.
 Proof.
-intros A d d' alpha IE T. apply true_theorem in T as [L [TS TA]].
+intros L d d' alpha IE T.
+inversion T as [LF m b TS FAU EQ1 EQ2 EQ3].
 destruct (nat_ge_case_type _ _ IE) as [LT | EQ].
-
-- apply (prune (deg_incr d d' TS LT) TA).
-
+- apply (prune (deg_incr d d' TS LT) FAU).
 - destruct EQ.
-  apply (prune TS TA).
+  apply (prune TS FAU).
 Qed.
 
 Lemma ord_nf_pre :
-    forall {A : formula} {d : nat} (alpha : ord) {L : list formula},
-        PA_cyclic_pre A d alpha L ->
+    forall {LF : list (formula * list formula)} {d : nat} (alpha : ord),
+        PA_cyclic_pre LF d alpha ->
             nf alpha.
 Proof.
-intros A d alpha L T.
+intros LF d alpha T.
 induction T;
 repeat apply nf_nf_succ;
 try apply nf_ord_max;
@@ -230,24 +188,23 @@ all : refine ((nf_add _ _ IHT1 (nf_mult _ _ IHT2 _)));
 Qed.
 
 Lemma ord_nf :
-    forall {A : formula} {d : nat} (alpha : ord),
-        PA_cyclic_theorem A d alpha ->
+    forall {L : list formula} {d : nat} (alpha : ord),
+        PA_cyclic_theorem L d alpha ->
             nf alpha.
 Proof.
-intros A d alpha T.
-apply true_theorem in T as [L [TS TA]].
+intros L d alpha T.
+inversion T as [LF m b TS FAU EQ1 EQ2 EQ3].
 apply (ord_nf_pre _ TS).
 Qed.
 
-Lemma ord_monot : forall {A : formula} {d : nat} (alpha beta : ord),
+Lemma ord_monot : forall {L : list formula} {d : nat} (alpha beta : ord),
   (((ord_lt alpha beta) /\ (nf beta)) + (alpha = beta)) ->
-    PA_cyclic_theorem A d alpha ->
-      PA_cyclic_theorem A d beta.
+    PA_cyclic_theorem L d alpha ->
+      PA_cyclic_theorem L d beta.
 Proof.
-intros A d alpha beta [[I N] | EQ] T.
-apply true_theorem in T as [L [TS TA]].
-- apply (prune (ord_incr alpha _ TS I N) TA).
-
+intros L d alpha beta [[I N] | EQ] T.
+inversion T as [LF m b TS FAU EQ1 EQ2 EQ3].
+- apply (prune (ord_incr alpha _ TS I N) FAU).
 - destruct EQ.
   apply T.
 Qed.
@@ -338,15 +295,17 @@ destruct (free_list A).
 Qed.
 
 Lemma pre_theorem_closed :
-    forall {A : formula} {d : nat} {alpha : ord} {L : list formula},
-        PA_cyclic_pre A d alpha L ->
-            (forall B : formula, In B L -> PA_cyclic_axiom B = true) ->
-                closed A = true.
+    forall {LF : list (formula * list formula)} {d : nat} {alpha : ord},
+        PA_cyclic_pre LF d alpha ->
+            (forall (B : formula), In B (concat (snd (split LF))) -> (PA_cyclic_axiom B || Universal B = true)) ->
+                forall (A : formula), In A (fst (split LF)) -> closed A = true.
 Proof.
-intros A d alpha L TS AX.
+intros LF d alpha TS AX.
 induction TS;
 try apply IHTS;
 try apply AX;
+repeat rewrite fst_split in *;
+repeat rewrite snd_split in *;
 try apply INF;
 try pose proof (IHTS AX) as IHC;
 try pose proof (IHTS1 (fun B INB => AX B (proj2 (in_app_iff _ _ _) (or_introl INB)))) as IHC1;
@@ -360,7 +319,18 @@ repeat apply and_bool_prop in IHC2 as [IHC2 ?];
 repeat apply andb_true_intro, conj;
 auto.
 
-- apply (fun B INB => AX B (proj1 (in_bury B) INB)).
+4 : { rewrite bury_split.
+      unfold fst at 1.
+      refine (fun B INB => IHTS _ B (proj2 (in_bury B) INB)).
+      intros A.
+      specialize AX with A.
+      rewrite in_concat in *.
+      rewrite bury_split in AX.
+      unfold snd at 1 in AX.
+      intros [L [INL INA]].
+      apply AX.
+      exists L.
+      apply (conj (proj1 (in_bury _) INL) INA). }
   
 - apply axiom_closed, AX, or_introl, eq_refl.
 

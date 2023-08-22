@@ -12,8 +12,8 @@ Inductive paint_ind : Type :=
 
 Notation "( 0 )" := (colour [0]).
 Notation "( 1 )" := (colour [1]).
-Notation "< L |" := (colour L).
-Notation "< x , y |" := (lor_ind x y).
+(*Notation "< L |" := (colour L).*)
+(*Notation "< x , y |" := (lor_ind x y).*)
 
 Section Paint.
 
