@@ -18,8 +18,7 @@ theories/Maths/lists.v
 theories/Maths/ordinals.v
 
 theories/Logic/fol.v
-theories/Logic/substitute.v
-theories/Logic/PA_cyclic.v
+#theories/Logic/substitute.v
 theories/Logic/proof_trees.v
 theories/Logic/inverse_neg.v
 theories/Logic/inverse_dem_1.v

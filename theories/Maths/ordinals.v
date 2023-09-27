@@ -3030,4 +3030,24 @@ destruct (ord_semiconnex_bool beta (ord_add (ord_mult alpha (wcon (wcon Zero 0 Z
   destruct EQ.
   apply ord_lt_ltb, ord_succ_monot.
 Qed.
-Close Scope cantor_scope. 
+
+Fixpoint repeated_app {A : Type} (f : A -> A) (n : nat) : A -> A :=
+match n with
+| 0 => id
+| S m => (fun a => (repeated_app f m) (f a))
+end.
+
+Definition terminates (f : ord -> ord) (alpha : ord) := (forall (beta : ord), (f beta) < beta /\ nf (f beta)) -> {n : nat & repeated_app f n alpha = Zero}.
+
+Lemma ord_descent : forall (f : ord -> ord) (alpha : ord), nf alpha -> (forall (beta : ord), (f beta) < beta /\ nf (f beta)) -> {n : nat & repeated_app f n alpha = Zero}.
+Proof.
+intros f.
+apply (transfinite_induction (terminates f)).
+intros alpha NA IND COND.
+destruct (COND alpha) as [DECR NF].
+unfold terminates in *.
+destruct (IND (f alpha) NF DECR COND) as [n REP].
+exists (S n).
+apply REP.
+Qed.
+Close Scope cantor_scope.

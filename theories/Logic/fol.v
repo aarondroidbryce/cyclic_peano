@@ -1,4 +1,5 @@
 From Cyclic_PA.Maths Require Import naturals.
+From Cyclic_PA.Maths Require Import ordinals.
 From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
 
@@ -13,22 +14,246 @@ Open Scope list_scope.
 Import ListNotations.
 
 (*Language*)
-Inductive term : Type :=
-| zero : term
-| succ : term -> term
-| plus : term -> term -> term
-| times : term -> term -> term
-| var : nat -> term.
+Definition ivar := nat.
 
-Inductive atomic_formula : Type :=
-| equ : term -> term -> atomic_formula.
+Definition ovar := nat.
+
+Inductive ordinal : Type :=
+| cast : ord -> ordinal
+| assn : ovar -> ordinal.
+(*| ordinal_add : ordinal -> ordinal -> ordinal
+| omega_mult : ordinal -> ordinal.*)
+
+Lemma ord_eq_dec : forall x y : ord, {x = y} + {x <> y}.
+Proof.
+induction x, y.
+2,3 : right;
+      discriminate.
+
+1 : left.
+    reflexivity.
+
+destruct (IHx1 y1) as [[] | NE].
+destruct (IHx2 y2) as [[] | NE].
+destruct (nat_eq_dec n n0) as [[] | NE].
+
+1 : left.
+    reflexivity.
+
+all : right;
+      intros FAL;
+      apply NE;
+      inversion FAL;
+      reflexivity.
+Qed.
+
+Lemma ord_pair_eq_dec : forall x y : ovar * ovar, {x = y} + {x <> y}.
+Proof.
+unfold ovar.
+destruct x, y.
+destruct (nat_eq_dec n n1) as [[] | NE].
+destruct (nat_eq_dec n0 n2) as [[] | NE].
+1 : left.
+    reflexivity.
+all : right;
+      intros FAL;
+      apply NE;
+      inversion FAL;
+      reflexivity.
+Qed.
+
+Fixpoint nvec (n : nat) : Type :=
+match n with
+| 0 => unit
+| S m => (prod ivar (nvec m))
+end.
+
+Inductive predicate (n : nat) : Type :=
+| base : nat -> nvec n -> predicate n
+| pvar : nat -> nvec n -> predicate n.
 
 Inductive formula : Type :=
-| atom : atomic_formula -> formula
-| neg : formula -> formula
-| lor : formula -> formula -> formula
-| univ : nat -> formula -> formula.
+| fal : formula
+| equ : ivar -> ivar -> formula
+| imp : formula -> formula -> formula
+| univ : ivar -> formula -> formula
+| bnd : ovar -> ovar -> formula -> formula
+| prd : forall (n : nat), (predicate n) -> formula.
+(*
+| mu : forall n, (predicate n) -> formula -> formula
+| muk : forall n, (predicate n) -> ordinal -> formula -> formula.
+*)
 
+Definition constraint := prod (list ovar) (list (prod ovar ovar)).
+
+Definition elt (OC : constraint) (lambda : ovar) : Prop := In lambda (fst OC).
+
+Definition sensible (OC : constraint) : Prop := forall Pair, In Pair (snd OC) -> elt OC (fst Pair) /\ elt OC (snd Pair).
+
+Definition descendent (OC : constraint) (lambda kappa : ovar) : Prop := elt OC lambda -> elt OC kappa -> In (pair lambda kappa) (snd OC).
+
+Definition progeny (OC : constraint) (kappa : ovar) : list ovar := filter (fun lambda => if (in_dec ord_pair_eq_dec (pair lambda kappa) (snd OC)) then true else false) (fst OC).
+
+Definition child (OC : constraint) (lambda kappa : ovar) : Prop := descendent OC lambda kappa /\ (forall eta, descendent OC eta kappa -> ~ descendent OC lambda eta).
+
+Definition add_fresh (OC : constraint) (lambda : ovar) : constraint := pair (lambda :: (fst OC)) (snd OC).
+
+Definition add_fresh_child (OC : constraint) (lambda kappa : ovar) (KIN : elt OC kappa) : constraint := pair (lambda :: (fst OC)) ((pair lambda kappa) :: (snd OC) ++ map (fun eta => pair lambda eta) (progeny OC kappa)).
+
+Definition restriction (OC : constraint) (L : list ovar) (SUB : incl L (fst OC)) : constraint := pair (filter (fun eta => if in_dec nat_eq_dec eta L then true else false) (fst OC)) (filter (fun Pair => if in_dec nat_eq_dec (fst Pair) L then if in_dec nat_eq_dec (snd Pair) L then true else false else false) (snd OC)).
+
+Definition empty : constraint := pair [] [].
+
+Lemma empty_sense : sensible empty.
+Proof.
+unfold sensible, empty.
+intros Pair IN.
+inversion IN.
+Qed.
+
+Lemma add_sense :
+    forall (OC : constraint) (lambda : ovar),
+        sensible OC ->
+            sensible (add_fresh OC lambda).
+Proof.
+intros OC lambda BL.
+unfold sensible, elt, add_fresh in *.
+intros (alpha, beta) IN.
+unfold fst, snd in *.
+pose proof (BL _ IN) as [INA INB].
+split;
+apply or_intror.
+apply INA.
+apply INB.
+Qed.
+
+Lemma add_child_sense :
+    forall (OC : constraint) (lambda kappa : ovar) (KIN : elt OC kappa),
+        sensible OC ->
+            sensible (add_fresh_child OC lambda kappa KIN).
+Proof.
+intros OC lambda kappa KIN BL.
+unfold sensible, elt, add_fresh_child, progeny in *.
+intros (alpha, beta) [IN1 | IN2];
+unfold fst, snd in *.
+- inversion IN1 as [[EQ1 EQ2]].
+  destruct EQ1, EQ2.
+  split.
+  apply or_introl, eq_refl.
+  destruct OC.
+  apply or_intror, KIN.
+- apply in_app_or in IN2 as [IN1 | IN2].
+  + pose proof (BL _ IN1) as [INA INB].
+    split;
+    apply or_intror.
+    * apply INA.
+    * apply INB.
+  + apply in_map_iff in IN2 as [gamma [EQ IN]].
+    apply filter_In in IN as [IN COND].
+    inversion EQ as [[E1 E2]].
+    destruct E1, E2.
+    split.
+    * apply or_introl, eq_refl.
+    * apply or_intror, IN.
+Qed.
+
+Lemma restrict_sense :
+    forall (OC : constraint) (L : list ovar) (SUB : incl L (fst OC)),
+        sensible OC ->
+            sensible (restriction OC L SUB).
+Proof.
+intros OC L SUB BL.
+unfold sensible, elt, restriction in *.
+intros (alpha, beta) IN.
+unfold fst, snd in *.
+apply filter_In in IN as [IN COND].
+pose proof (BL _ IN) as [INA INB].
+split;
+apply filter_In;
+split.
+1 : apply INA.
+2 : apply INB.
+all : destruct (in_dec nat_eq_dec alpha L) as [TT | FF];
+      destruct (in_dec nat_eq_dec beta L) as [TT' | FF'];
+      try inversion COND;
+      reflexivity.
+Qed.
+
+Fixpoint num_conn (A : formula) : nat :=
+match A with
+| fal => 0
+| equ v1 v2 => 0
+| imp B C => S ((num_conn B) + (num_conn C))
+| univ v B => S (num_conn B)
+| bnd o1 o2 B => S (num_conn B)
+| prd n pn => 0
+end.
+
+Fixpoint vars_in (a : formula) : list ovar :=
+match a with
+| fal => []
+| equ v1 v2 => []
+| imp B C => (vars_in B) ++ (vars_in C)
+| univ v B => (vars_in B)
+| bnd o1 o2 B => o1 :: o2 :: (vars_in B)
+| prd n pn => []
+end.
+
+Definition prd_eqb {n1 n2 : nat} (p1 : predicate n1) (p2 : predicate n2) : bool :=
+  match p1, p2 with
+  | base _ m1 _, base _ m2 _ => nat_eqb n1 n2 && nat_eqb m1 m2
+  | pvar _ m1 _, pvar _ m2 _ => nat_eqb n1 n2 && nat_eqb m1 m2
+  | _, _ => false
+  end.
+
+Fixpoint form_eqb (A1 A2 : formula) : bool :=
+match A1, A2 with
+| fal, fal => true
+| equ v1 v2, equ v3 v4 => nat_eqb v1 v3 && nat_eqb v2 v4
+| imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
+| univ v1 B1, univ v2 B2 => nat_eqb v1 v2 && form_eqb B1 B2
+| bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
+| prd n1 pn1, prd n2 pn2 => nat_eqb n1 n2 && prd_eqb pn1 pn2
+| _, _ => false
+end.
+
+Fixpoint substitution (A : formula) (i1 i2 : ivar) : formula :=
+match A with
+| fal => fal
+| equ v1 v2 => match nat_eqb v1 i1, nat_eqb v2 i1 with
+    | true, true => equ i2 i2
+    | true, false => equ i2 v2
+    | false, true => equ v1 i2
+    | false, false => A
+    end
+| imp B C => imp (substitution B i1 i2) (substitution C i1 i2)
+| univ v B => 
+    (match nat_eqb v i1 with
+    | true => A
+    | false => univ v (substitution B i1 i2)
+    end)
+| bnd o1 o2 B => bnd o1 o2 (substitution B i1 i2)
+| prd n pn => A
+end.
+
+(*Fixpoint num_conn (a : formula) : ordinal :=
+match a with
+| fal => cast Zero
+| equ v1 v2 => cast Zero
+| imp a1 a2 => ordinal_add (cast (nat_ord 1)) (ordinal_add (num_conn a1) (num_conn a2))
+| univ v a => ordinal_add (cast (nat_ord 1)) (num_conn a)
+| bnd o1 o2 a => ordinal_add (cast (nat_ord 1)) (num_conn a)
+| prd n pn => cast Zero
+| mu n pn a => omega_mult (num_conn a)
+| muk n pn o a => num_conn a
+end.
+*)
+
+(*
+Old Version
+*)
+
+(*
 (*Logical Connectives*)
 Fixpoint num_conn (a : formula) : nat :=
 match a with
@@ -2004,3 +2229,4 @@ intros. unfold correct_a. unfold correctness. pose proof eval_represent_non_zero
 pose proof (closed_eval (projT1 c) (projT2 c)). case (eval (projT1 c)) eqn:X1. inversion H0. unfold value in X. rewrite represent_eval in X.
 destruct X. destruct X1. rewrite nat_eqb_refl. auto. destruct c. auto.
 Qed.
+*)

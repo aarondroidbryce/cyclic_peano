@@ -6,14 +6,7 @@ From Cyclic_PA.Logic Require Import fol.
 Require Import List.
 Import ListNotations.
 
-Inductive subst_ind : Type :=
-| ind_0 : subst_ind
-| ind_1 : subst_ind
-| lor_ind : subst_ind -> subst_ind -> subst_ind.
-
-Notation "(0)" := ind_0.
-Notation "(1)" := ind_1.
-Notation "( x @ y )" := (lor_ind x y).
+Definition subst_ind : Type := list bool.
 
 Lemma subst_eq_dec :
     forall (S1 S2 : subst_ind),
@@ -21,65 +14,40 @@ Lemma subst_eq_dec :
 Proof.
 induction S1;
 destruct S2.
-1,5 : apply (left eq_refl).
-1-6 : right; discriminate.
-case (IHS1_1 S2_1) as [EQ1 | NE1].
-case (IHS1_2 S2_2) as [EQ2 | NE2].
-- left.
-  rewrite EQ1,EQ2.
-  reflexivity.
+1 : apply (left eq_refl).
+1-2 : right; discriminate.
+case (IHS1 S2) as [EQ | NE].
+- destruct EQ.
+  case a;
+  case b.
+  1,4 : left; reflexivity.
+  all : right; discriminate.
 - right.
   intros FAL.
-  apply NE2.
-  inversion FAL.
-  reflexivity.
-- right.
-  intros FAL.
-  apply NE1.
+  apply NE.
   inversion FAL.
   reflexivity.
 Qed.
 
-Fixpoint non_target (A : formula) : subst_ind :=
-match A with
-| lor B C => lor_ind (non_target B) (non_target C)
-| _ => (0)
-end.
+Definition non_target (L : list formula) : subst_ind := repeat false (length L).
 
-Fixpoint target (A : formula) : subst_ind :=
-match A with
-| lor B C => lor_ind (target B) (target C)
-| _ => (1)
-end.
+Definition target (L : list formula) : subst_ind := repeat true (length L).
 
-Fixpoint subst_ind_fit (A : formula) (S : subst_ind) : bool :=
-match A, S with
-| lor B C, lor_ind S_B S_C =>
-    subst_ind_fit B S_B && subst_ind_fit C S_C
-| _, lor_ind _ _ => false
-| lor _ _, _ => false
-| _, _ => true
-end.
+Definition subst_ind_fit (L : list formula) (S : subst_ind) : bool := nat_eqb (length L) (length S).
 
-Fixpoint formula_sub_ind_fit (A D E : formula) (S : subst_ind) : formula :=
-match A with
-| lor B C =>
-  (match S with
-  | (S1 @ S2) => lor (formula_sub_ind_fit B D E S1)
-                         (formula_sub_ind_fit C D E S2)
-  | _ => A
+Fixpoint formula_sub_ind_fit (L : list formula) (D E : formula) (S : subst_ind) : list formula :=
+match L, S with
+| A :: L', i :: S' => (match form_eqb A D, i with
+  | true, true => E :: formula_sub_ind_fit L' D E S'
+  | _, _ => A :: formula_sub_ind_fit L' D E S'
   end)
-| _ =>
-  (match form_eqb A D, S with
-  | true, (1) => E
-  | _, _ => A
-  end)
+| _,_ => L
 end.
 
-Definition formula_sub_ind (A D E : formula) (S : subst_ind) : formula :=
-match subst_ind_fit A S with
-| false => A
-| true => formula_sub_ind_fit A D E S
+Definition formula_sub_ind (L : list formula) (D E : formula) (S : subst_ind) : list formula :=
+match subst_ind_fit L S with
+| false => L
+| true => formula_sub_ind_fit L D E S
 end.
 
 Fixpoint mass_non_target (L : list formula) : list subst_ind :=

@@ -50,7 +50,8 @@ Inductive PA_cyclic_pre : list (formula * list formula) -> nat -> ord -> Type :=
     PA_cyclic_pre ((pair A LN) :: (pair B LN) :: LF) d alpha
 
 | axiom : forall (A : formula),
-    PA_cyclic_pre [pair A [A]] 0 Zero
+    PA_cyclic_axiom A = true ->
+    PA_cyclic_pre [pair A []] 0 Zero
 
 | exchange : forall {LF : list (formula * list formula)} {d : nat} {alpha : ord} (n : nat),
     n < (length LF) ->
@@ -78,9 +79,15 @@ Inductive PA_cyclic_pre : list (formula * list formula) -> nat -> ord -> Type :=
     PA_cyclic_pre ((pair (neg (substitution A n (projT1 c))) LN) :: LF) d alpha ->
     PA_cyclic_pre ((pair (neg (univ n A)) LN) :: LF) d (ord_succ alpha)
 
-| loop : forall {A : formula} {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord},
+| loop_close : forall {A : formula} {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord},
     In n (free_list A) ->
-    In A LN2 ->
+    PA_cyclic_pre ((pair (substitution A n zero) []) :: LF1) d1 alpha1 ->
+    PA_cyclic_pre ((pair (substitution A n (succ (var n))) [A]) :: LF2) d2 alpha2 ->
+    PA_cyclic_pre ((pair (univ n A) []) :: LF1 ++ (filter (fun F => if form_eq_dec (fst F) A then false else true)) LF2) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero))))
+
+| loop_open : forall {A : formula} {LF1 LF2 : list (formula * list formula)} {LN1 LN2 : list formula} {n : nat} {d1 d2 : nat} {alpha1 alpha2 : ord},
+    In n (free_list A) ->
+    ~ In A LN2 ->
     PA_cyclic_pre ((pair (substitution A n zero) LN1) :: LF1) d1 alpha1 ->
     PA_cyclic_pre ((pair (substitution A n (succ (var n))) LN2) :: LF2) d2 alpha2 ->
     PA_cyclic_pre ((pair (univ n A) (LN1 ++ mass_form_sub LN2 (mass_target LN2) A (univ n A))) :: LF1 ++ (combine (fst (split LF2)) (map (filter (fun F => if form_eq_dec F A then false else true)) (snd (split LF2))))) (max d1 d2) (ord_succ (ord_add alpha1 (ord_mult alpha2 (wcon (wcon Zero 0 Zero) 0 Zero))))
