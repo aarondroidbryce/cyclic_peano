@@ -11,12 +11,12 @@ Import ListNotations.
 Inductive ptree : Type :=
 | bot : ptree
 
-| pred : forall (n : nat), forall (P : predicate n), ptree
+| pred : forall (n : nat), forall (pn : predicate n), ptree
 
 | equal : forall (v1 v2 : ivar), ptree
 
 
-| loop_head : forall (OC1 OC2 : constraint) (gamma delta : list formula), ptree
+| loop_head : forall (OC : constraint) (gamma delta : list formula) (P_Target : ptree), ptree
 
 (*| deg_up : forall (OC : constraint) (gamma delta : list formula) (alpha beta : ordinal) (LT : ord_lt alpha beta) (P' : ptree), ptree *)
 
@@ -34,7 +34,7 @@ Inductive ptree : Type :=
 
 | wkn : forall (OC : constraint) (gamma delta sigma pi : list formula) (alpha : ordinal) (P' : ptree), ptree
 
-| rst : forall (OC : constraint) (gamma delta : list formula) (L : list ovar) (alpha : ordinal) (P' : ptree), ptree
+| rst : forall (OC : constraint) (gamma delta : list formula) (kappa : ovar) (alpha : ordinal) (P' : ptree), ptree
 
 
 | ug_l : forall (OC : constraint) (gamma delta : list formula) (phi : formula) (v : ivar) (alpha : ordinal) (P' : ptree), ptree
@@ -53,16 +53,60 @@ Inductive ptree : Type :=
 
 | cut : forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha1 alpha2 : ordinal) (P1 P2 : ptree), ptree.
 
+Lemma ptree_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
+Proof.
+induction P1;
+destruct P2.
+
+324 : { destruct (IHP1_1 P2_1) as [EQ1 | NE1];
+        destruct (IHP1_2 P2_2) as [EQ2 | NE2];
+        destruct (constraint_eq_dec P2_2) as [EQ2 | NE2];
+        try destruct EQ1;
+        try destruct EQ2.
+        left; reflexivity. }
+
+all : right; try discriminate.
+
+2-19 : right; discriminate.
+3-20 : right; discriminate.
+4-21 : right; discriminate.
+5-22 : right; discriminate.
+6-23 : right; discriminate.
+7-24 : right; discriminate.
+8-25 : right; discriminate.
+9-26 : right; discriminate.
+10-27 : right; discriminate.
+11-28 : right; discriminate.
+12-29 : right; discriminate.
+13-30 : right; discriminate.
+14-31 : right; discriminate.
+15-32 : right; discriminate.
+16-33 : right; discriminate.
+17-34 : right; discriminate.
+18-35 : right; discriminate.
+
+1 : apply left, eq_refl.
+
+1 : destruct (nat_eq_dec n n0) as [EQ | NE].
+
+1 : destruct EQ.
+    destruct pn;
+    destruct pn0.
+
+apply pred
+
+auto.
+discriminate.
 
 Definition ptree_left (P : ptree) : list formula :=
 match P with
 | bot => [fal]
 
-| pred n P => [prd n P]
+| pred n pn => [prd n pn]
 
 | equal v1 v2 => [equ v1 v2]
 
-| loop_head OC1 OC2 gamma delta => gamma
+| loop_head OC gamma delta P_Target => gamma
 
 | con_l OC gamma delta phi v1 v2 alpha P' => (equ v1 v2) :: phi :: gamma
 
@@ -78,7 +122,7 @@ match P with
 
 | wkn OC gamma delta sigma pi alpha P' => gamma ++ sigma
 
-| rst OC gamma delta L alpha P' => gamma
+| rst OC gamma delta kappa alpha P' => gamma
 
 | ug_l OC gamma delta phi v alpha P' => (univ v phi) :: gamma
 
@@ -101,11 +145,11 @@ Definition ptree_right (P : ptree) : list formula :=
 match P with
 | bot => []
 
-| pred n P => [prd n P]
+| pred n pn => [prd n pn]
 
 | equal v1 v2 => [equ v1 v2]
 
-| loop_head OC1 OC2 gamma delta => delta
+| loop_head OC gamma delta P_Target => delta
 
 | con_l OC gamma delta phi v1 v2 alpha P' => delta
 
@@ -121,7 +165,7 @@ match P with
 
 | wkn OC gamma delta sigma pi alpha P' => delta ++ pi
 
-| rst OC gamma delta L alpha P' => delta
+| rst OC gamma delta kappa alpha P' => delta
 
 | ug_l OC gamma delta phi v alpha P' => delta
 
@@ -189,11 +233,11 @@ Definition ptree_constraint (P : ptree) : constraint :=
 match P with
 | bot => empty
 
-| pred n P => empty
+| pred n pn => empty
 
 | equal v1 v2 => empty
 
-| loop_head OC1 OC2 gamma delta => OC1
+| loop_head OC gamma delta P_Target => OC
 
 | con_l OC gamma delta phi v1 v2 alpha P' => OC
 
@@ -209,7 +253,7 @@ match P with
 
 | wkn OC gamma delta sigma pi alpha P' => OC
 
-| rst OC gamma delta L alpha P' => OC
+| rst OC gamma delta kappa alpha P' => OC
 
 | ug_l OC gamma delta phi v alpha P' => OC
 
@@ -228,114 +272,150 @@ match P with
 | cut OC gamma delta phi alpha1 alpha2 P1 P2 => OC
 end.
 
+Definition states : Type := constraint * ((list formula) * (list formula)).
+
+Definition ptree_state (P : ptree) : states := pair (ptree_constraint P) (pair (ptree_left P) (ptree_right P)).
+
 (*
-Fixpoint node_extract (P : ptree) : list formula :=
+Definition ptree_premises (P : ptree) : list ptree :=
 match P with
+| bot => []
 
-| ord_up alpha P' => node_extract P'
+| pred n pn => []
 
-| leaf_ex n P' => bury (node_extract P') n
+| equal v1 v2 => []
 
-| node A => [A]
+| loop_head OC gamma delta P_Target => [P_Target]
 
-| exchange_ab A B d alpha P' => node_extract P'
+| con_l OC gamma delta phi v1 v2 alpha P' => [P']
 
-| exchange_cab C A B d alpha P' => node_extract P'
+| con_r OC gamma delta phi alpha P' => [P']
 
-| exchange_abd A B D d alpha P' => node_extract P'
+| refl OC gamma delta v alpha P' => [P']
 
-| exchange_cabd C A B D d alpha P' => node_extract P'
 
-| contraction_a A d alpha P' => node_extract P'
+| ex_l OC gamma delta n alpha P' => [P']
 
-| contraction_ad A D d alpha P' => node_extract P'
+| ex_r OC gamma delta n alpha P' => [P']
 
-| weakening_ad A D d alpha P' => node_extract P'
 
-| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+| wkn OC gamma delta sigma pi alpha P' => [P']
 
-| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+| rst OC gamma delta kappa alpha P' => [P']
 
-| negation_a A d alpha P' => node_extract P'
+| ug_l OC gamma delta phi v alpha P' => [P']
 
-| negation_ad A D d alpha P' => node_extract P'
+| ug_r OC gamma delta phi v alpha P' => [P']
 
-| quantification_a A n t d alpha P' => node_extract P'
+| bnd_l OC gamma delta phi lambda kappa alpha P' => [P']
 
-| quantification_ad A D n t d alpha P' => node_extract P'
+| bnd_r OC gamma delta phi lambda kappa alpha P' => [P']
 
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2 => tl (node_extract P2) ++ node_extract P1
 
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2 => tl (node_extract P2) ++ node_extract P1
+| imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => [P1; P2]
 
-| cut_ca C A d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
+| imp_r OC gamma delta phi psi alpha P' => [P']
 
-| cut_ad A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
 
-| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2 => node_extract P1 ++ node_extract P2
-end.
-
-Fixpoint ancestry_fit (P : ptree) (S : subst_ind) : list subst_ind :=
-match P, S with
-| deg_up d P', _ => ancestry_fit P' S
-
-| ord_up alpha P', _ => ancestry_fit P' S
-
-| leaf_ex n P', _ => bury (ancestry_fit P' S) n
-
-| node A, _ => [S]
-
-| exchange_ab A B d alpha P', (lor_ind S_B S_A) => ancestry_fit P' (lor_ind S_A S_B)
-
-| exchange_cab C A B d alpha P', (lor_ind (lor_ind S_C S_B) S_A) => ancestry_fit P' (lor_ind (lor_ind S_C S_A) S_B)
-
-| exchange_abd A B D d alpha P', (lor_ind (lor_ind S_B S_A) S_D) => ancestry_fit P' (lor_ind (lor_ind S_A S_B) S_D)
-
-| exchange_cabd C A B D d alpha P', (lor_ind (lor_ind (lor_ind S_C S_B) S_A) S_D) => ancestry_fit P' (lor_ind (lor_ind (lor_ind S_C S_A) S_B) S_D)
-
-| contraction_a A d alpha P', _ => ancestry_fit P' (lor_ind S S)
-
-| contraction_ad A D d alpha P', (lor_ind S_A S_D) => ancestry_fit P' (lor_ind (lor_ind S_A S_A) S_D)
-
-| weakening_ad A D d alpha P', (lor_ind S_A S_D) => ancestry_fit P' S_D
-
-| demorgan_ab A B d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 S ++ ancestry_fit P2 S
-
-| demorgan_abd A B D d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_AB S_D) => ancestry_fit P1 (lor_ind S_AB S_D) ++ ancestry_fit P2 (lor_ind S_AB S_D)
-
-| negation_a A d alpha P', (1) => ancestry_fit P' (target A)
-
-| negation_ad A D d alpha P', (lor_ind (0) S_D) => ancestry_fit P' (lor_ind (non_target A) S_D)
-
-| negation_ad A D d alpha P', (lor_ind (1) S_D) => ancestry_fit P' (lor_ind (target A) S_D)
-
-| quantification_a A n t d alpha P', _ => ancestry_fit P' S
-
-| quantification_ad A D n t d alpha P', (lor_ind S_A S_D) => ancestry_fit P' (lor_ind S_A S_D)
-
-| loop_a A n d1 d2 alpha1 alpha2 P1 P2, (1) => tl (ancestry_fit P2 (target A)) ++ ancestry_fit P1 (target A)
-
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C (0)) => (ancestry_fit P2 (lor_ind S_C (non_target A))) ++ ancestry_fit P1 (lor_ind S_C (non_target A))
-
-| loop_ca C A n d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C (1)) => tl (ancestry_fit P2 (lor_ind S_C (target A))) ++ ancestry_fit P1 (lor_ind S_C (target A))
-
-| cut_ca C A d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 (lor_ind S (non_target A)) ++ ancestry_fit P2 (0)
-
-| cut_ad A D d1 d2 alpha1 alpha2 P1 P2, _ => ancestry_fit P1 (non_target A) ++ ancestry_fit P2 (lor_ind (0) S)
-
-| cut_cad C A D d1 d2 alpha1 alpha2 P1 P2, (lor_ind S_C S_D) => ancestry_fit P1 (lor_ind S_C (non_target A)) ++ ancestry_fit P2 (lor_ind (0) S_D)
-
-| _,_ => []
-end.
-
-Definition ancestry (P : ptree) (S : subst_ind) : list subst_ind :=
-match subst_ind_fit (ptree_formula P) S with
-| false => map non_target (node_extract P)
-| true => ancestry_fit P S
+| cut OC gamma delta phi alpha1 alpha2 P1 P2 => [P1; P2]
 end.
 *)
 
-Definition applicable (OC : constraint) (gamma delta : list formula) : Type := sensible OC * (incl (flat_map vars_in gamma) (fst OC)) * (incl (flat_map vars_in delta) (fst OC)).
+Fixpoint leaves (P : ptree) : list ptree :=
+match P with
+| bot => []
+
+| pred n pn => []
+
+| equal v1 v2 => []
+
+| loop_head OC gamma delta P_Target => [P]
+
+| con_l OC gamma delta phi v1 v2 alpha P' => leaves P'
+
+| con_r OC gamma delta phi alpha P' => leaves P'
+
+| refl OC gamma delta v alpha P' => leaves P'
+
+
+| ex_l OC gamma delta n alpha P' => leaves P'
+
+| ex_r OC gamma delta n alpha P' => leaves P'
+
+
+| wkn OC gamma delta sigma pi alpha P' => leaves P'
+
+| rst OC gamma delta kappa alpha P' => leaves P'
+
+| ug_l OC gamma delta phi v alpha P' => leaves P'
+
+| ug_r OC gamma delta phi v alpha P' => leaves P'
+
+| bnd_l OC gamma delta phi lambda kappa alpha P' => leaves P'
+
+| bnd_r OC gamma delta phi lambda kappa alpha P' => leaves P'
+
+
+| imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
+
+| imp_r OC gamma delta phi psi alpha P' => leaves P'
+
+
+| cut OC gamma delta phi alpha1 alpha2 P1 P2 => leaves P1 ++ leaves P2
+end.
+
+Definition path_marker := list bool.
+
+Fixpoint path_fit (P : ptree) (M : path_marker) : list states :=
+match P, M with
+| bot, [true] => [ptree_state P]
+
+| pred n pn, [true] => [ptree_state P]
+
+| equal v1 v2, [true] => [ptree_state P]
+
+| loop_head OC gamma delta P_Target, true :: M' => (ptree_state P) :: path_fit P_Target M'
+
+| con_l OC gamma delta phi v1 v2 alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| con_r OC gamma delta phi alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| refl OC gamma delta v alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+
+| ex_l OC gamma delta n alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| ex_r OC gamma delta n alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+
+| wkn OC gamma delta sigma pi alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| rst OC gamma delta kappa alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| ug_l OC gamma delta phi v alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| ug_r OC gamma delta phi v alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| bnd_l OC gamma delta phi lambda kappa alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+| bnd_r OC gamma delta phi lambda kappa alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+
+| imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2, false :: M' => (ptree_state P) :: path_fit P1 M'
+
+| imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2, true :: M' => (ptree_state P) :: path_fit P2 M'
+
+| imp_r OC gamma delta phi psi alpha P', true :: M' => (ptree_state P) :: path_fit P' M'
+
+
+| cut OC gamma delta phi alpha1 alpha2 P1 P2, false :: M' => (ptree_state P) :: path_fit P1 M'
+
+| cut OC gamma delta phi alpha1 alpha2 P1 P2, true :: M' => (ptree_state P) :: path_fit P2 M'
+
+| _ , _ => []
+end.
+
+Definition applicable (OC : constraint) (gamma delta : list formula) : Type := (incl (flat_map vars_in gamma) (OC_list OC)) * (incl (flat_map vars_in delta) (OC_list OC)).
 
 Fixpoint struct_valid (P : ptree) : Type :=
 match P with
@@ -345,7 +425,7 @@ match P with
 
 | equal v1 v2 => true = true
 
-| loop_head OC1 OC2 gamma delta => applicable OC1 gamma delta * applicable OC2 gamma delta * (true = false) (*order coherent*)
+| loop_head OC gamma delta P_Target => applicable OC gamma delta * applicable (ptree_constraint P_Target) gamma delta * {sig : ovar -> ovar & coherent sig OC (ptree_constraint P_Target)} * (In (loop_head OC gamma delta bot) (leaves P_Target))
 
 | con_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: phi :: (substitution phi v1 v2) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC)
 
@@ -361,15 +441,15 @@ match P with
 
 | wkn OC gamma delta sigma pi alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC)
 
-| rst OC gamma delta L alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * {SUB : incl L (fst OC) & ptree_constraint P' = restriction OC L SUB}
+| rst OC gamma delta kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_in gamma)) * (~ In kappa (flat_map vars_in delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)}
 
 | ug_l OC gamma delta phi v alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC)
 
 | ug_r OC gamma delta phi v alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * (ptree_constraint P' = OC)
 
-| bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * descendent OC lambda kappa
+| bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true)
 
-| bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {KIN : elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa KIN}
+| bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}}
 
 
 | imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => struct_valid P1 * struct_valid P2 * applicable OC gamma delta * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC)
@@ -380,7 +460,33 @@ match P with
 | cut OC gamma delta phi alpha1 alpha2 P1 P2 => struct_valid P1 * struct_valid P2 * applicable OC gamma delta * (ptree_left P1 = gamma) * (ptree_right P1 = phi :: delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = phi :: gamma) * (ptree_right P2 = delta) * (ptree_constraint P2 = OC)
 end.
 
-Definition valid (P : ptree) : Type := (struct_valid P) * (forall (A : formula), In A (node_extract P) -> PA_cyclic_axiom A = true).
+Lemma in_leaves_path : forall (P1 P2 : ptree), In P2 (leaves P1) -> {M : path_marker & {L : list states & path_fit P1 M = L ++ [ptree_state P2]}}.
+Proof.
+intros P1.
+pose (ptree_state P1) as PS.
+induction P1;
+intros P2 IN.
+
+1-3 : inversion IN.
+
+1 : admit.
+
+12 : { apply in_app_bor in IN as [IN1 | IN2]. }
+
+12,14: admit.
+
+all : destruct (IHP1 P2 IN) as [M [L EQ]];
+      exists (true :: M);
+      exists (PS :: L);
+      unfold path_fit;
+      fold path_fit PS;
+      rewrite EQ;
+      reflexivity.
+Qed.
+
+Lemma loop_struct_gives_path : forall (OC : constraint) (gamma delta : list formula) (P_Target : ptree), struct_valid (loop_head OC gamma delta P_Target) -> {M : path_marker & {L : list states & path_fit P_Target M = (ptree_state P_Target) :: L ++ [pair OC (pair gamma delta)]}}.
+
+Definition valid (P : ptree) : Type := (struct_valid P) * (forall (A : formula), In A (leaves P) -> PA_cyclic_axiom A = true).
 
 Definition P_proves (P : ptree) (A : formula) (d : nat) (alpha : ord) : Type :=
   (ptree_formula P = A) * (valid P) *
@@ -391,7 +497,7 @@ Definition provable (A : formula) (d : nat) (alpha : ord) : Type :=
 
 Lemma structural_pre_theorem :
     forall {A : formula} {d : nat} {alpha : ord} {L : list formula} (ST : PA_cyclic_pre A d alpha L),
-        {P : ptree & prod (prod( prod (prod (ptree_formula P = A) (struct_valid P)) (d = ptree_deg P)) (alpha = ptree_ord P)) (node_extract P = L)}.
+        {P : ptree & prod (prod( prod (prod (ptree_formula P = A) (struct_valid P)) (d = ptree_deg P)) (alpha = ptree_ord P)) (leaves P = L)}.
 intros A d alpha L TS.
 induction TS;
 try destruct IHTS as [P [[[[PF PSV] PD] PO] PN]];
@@ -399,7 +505,7 @@ try destruct IHTS1 as [P1 [[[[P1F P1SV] P1D] P1H] P1N]];
 try destruct IHTS2 as [P2 [[[[P2F P2SV] P2D] P2H] P2N]].
 - exists (deg_up d' P). repeat split; auto. lia.
 - exists (ord_up beta P). repeat split; auto. rewrite <- PO. auto.
-- exists (leaf_ex n P). repeat split; auto. rewrite PN. apply l. unfold node_extract; fold node_extract. rewrite PN. reflexivity.
+- exists (leaf_ex n P). repeat split; auto. rewrite PN. apply l. unfold leaves; fold leaves. rewrite PN. reflexivity.
 - exists (node A). repeat split.
 - exists (exchange_ab A B (ptree_deg P) alpha P). repeat split; auto.
 - exists (exchange_cab C A B (ptree_deg P) alpha P). repeat split; auto.
@@ -479,7 +585,7 @@ repeat apply and_bool_prop in P2FC as [P2FC ?].
   repeat split; auto.
   rewrite <- PO. auto.
 - destruct (structural_pre_theorem TS) as [P [[[[PF PSV] PD] PO] PN]].
-  exists (leaf_ex n P). repeat split; auto. rewrite PN. apply l. unfold node_extract; fold node_extract. rewrite PN. apply TAX.
+  exists (leaf_ex n P). repeat split; auto. rewrite PN. apply l. unfold leaves; fold leaves. rewrite PN. apply TAX.
 - exists (node A).
   repeat split.
   + intros A' IN. inversion IN.
@@ -543,7 +649,7 @@ Qed.
 
 Lemma pre_theorem_structural :
     forall (P : ptree) (PSV : struct_valid P),
-        PA_cyclic_pre (ptree_formula P) (ptree_deg P) (ptree_ord P) (node_extract P).
+        PA_cyclic_pre (ptree_formula P) (ptree_deg P) (ptree_ord P) (leaves P).
 Proof.
 intros P PSV. induction P.
 
@@ -587,8 +693,8 @@ apply (demorgan2 P1' P2').
 apply (cut1 _ _ P1' P2').
 apply (cut2 _ _ P1' P2').
 apply (cut3 _ _ _ P1' P2').
-apply (loop1 _ _ FREEA P1'). fold node_extract. rewrite <- P2N. apply P2'.
-apply (loop2 _ _ FREEA P1'). fold node_extract. rewrite <- P2N. apply P2'.
+apply (loop1 _ _ FREEA P1'). fold leaves. rewrite <- P2N. apply P2'.
+apply (loop2 _ _ FREEA P1'). fold leaves. rewrite <- P2N. apply P2'.
 Qed.
 
 Lemma theorem_provable' :
@@ -609,8 +715,8 @@ induction P.
 16-20 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
 21-22 : destruct PSV as [[[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] [L P2N]] FREEA]. (*loop*)
 
-2 : unfold node_extract in PAX;
-    fold node_extract in PAX.
+2 : unfold leaves in PAX;
+    fold leaves in PAX.
 
 3-14 :  try rewrite PF,<-PD,<-PO in IHP;
         pose proof (projT1 (projT2 (true_theorem (IHP PSV PAX)))) as P';
@@ -622,7 +728,7 @@ induction P.
         try pose proof (projT1 (projT2 (true_theorem (IHP2 P2SV (fun B INB => PAX B (proj2 (in_app_iff _ _ _) (or_intror INB))))))) as P2';
         try pose proof (projT2 (projT2 (true_theorem (IHP1 P1SV (fun B INB => PAX B (proj2 (in_app_iff _ _ _) (or_introl INB))))))) as AX1';
         try pose proof (projT2 (projT2 (true_theorem (IHP2 P2SV (fun B INB => PAX B (proj2 (in_app_iff _ _ _) (or_intror INB))))))) as AX2';
-        try fold node_extract in *.
+        try fold leaves in *.
 
 1 : apply (prune (axiom _) PAX).
 1 : apply (IHP PSV (fun A INA => PAX A (proj1 (in_bury A) INA))).
@@ -656,8 +762,8 @@ induction P.
       rewrite P1F, <-P1D, <-P1O in P1';
       rewrite P2F, <-P2D, <-P2O, <- P2N in P2'.
 
-1,2 : unfold node_extract in PAX;
-      fold node_extract in PAX;
+1,2 : unfold leaves in PAX;
+      fold leaves in PAX;
       rewrite <- P2N in PAX.
 
 2 : apply (prune (loop2 _ _ FREEA P1' P2') PAX).
@@ -771,12 +877,12 @@ Qed.
 Lemma struct_non_empty_nodes : 
     forall (P : ptree),
         struct_valid P ->
-            node_extract P <> [].
+            leaves P <> [].
 Proof.
 induction P;
 intros PSV;
-unfold node_extract;
-fold node_extract.
+unfold leaves;
+fold leaves.
 
 1 : destruct PSV. (*node*)
 2 : destruct PSV as [PSV PL]. (*leaf exchange*)
@@ -805,11 +911,11 @@ Qed.
 
 Lemma struct_node_sum_less_l {L : list formula} {P : ptree} :
     struct_valid P ->
-        length L < length (L ++ (node_extract P)).
+        length L < length (L ++ (leaves P)).
 Proof.
 intros PSV.
 rewrite app_length.
-case (node_extract P) eqn:L2.
+case (leaves P) eqn:L2.
 - destruct (struct_non_empty_nodes _ PSV L2).
 - unfold length;
   fold (@length formula).
@@ -818,11 +924,11 @@ Qed.
 
 Lemma struct_node_sum_less_r {L : list formula} {P : ptree} :
     struct_valid P ->
-        length L < length ((node_extract P) ++ L).
+        length L < length ((leaves P) ++ L).
 Proof.
 intros PSV.
 rewrite app_length.
-case (node_extract P) eqn:L1.
+case (leaves P) eqn:L1.
 - destruct (struct_non_empty_nodes _ PSV L1).
 - unfold length;
   fold (@length formula).
@@ -836,8 +942,8 @@ Theorem macro_weakening :
     forall (P : ptree) (B C : formula),
         closed C = true ->
             struct_valid P ->
-                In B (node_extract P) ->
-                    {Q : ptree & (In (lor C B) (node_extract Q) * (ptree_formula Q = lor C (ptree_formula P)) * (ptree_deg Q = ptree_deg P) * struct_valid Q)%type}.
+                In B (leaves P) ->
+                    {Q : ptree & (In (lor C B) (leaves Q) * (ptree_formula Q = lor C (ptree_formula P)) * (ptree_deg Q = ptree_deg P) * struct_valid Q)%type}.
 Proof.
 intros P.
 induction P;
@@ -855,7 +961,7 @@ intros B C CB PSV INB.
 15-19 : destruct PSV as [[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O]. (*double hyp*)
 20-21 : destruct PSV as [[[[[[[[P1F P1SV] P1D] P1O] P2F] P2SV] P2D] P2O] INA]. (*loop*)
 
-15-21 : unfold node_extract in INB; fold node_extract in INB;
+15-21 : unfold leaves in INB; fold leaves in INB;
         apply (@in_app_bor _ form_eq_dec) in INB as [INB1 | INB2];
         try destruct (IHP1 B C CB P1SV INB1) as [Q1 [[[INQ1 Q1F] Q1D] Q1SV]];
         try destruct (IHP1 B C CB P1SV INB2) as [Q1 [[[INQ1 Q1F] Q1D] Q1SV]];
@@ -864,7 +970,7 @@ intros B C CB PSV INB.
 
 1 : exists (node (lor C a)).
     repeat split.
-    unfold node_extract in *.
+    unfold leaves in *.
     inversion INB as [EQ | FAL].
     destruct EQ.
     apply or_introl, eq_refl.
@@ -1097,8 +1203,8 @@ all : repeat split;
       try apply P1SV;
       try apply P2SV;
       try reflexivity;
-      unfold node_extract;
-      fold node_extract;
+      unfold leaves;
+      fold leaves;
       try apply in_or_app;
       try apply (or_introl INQ1);
       try apply (or_intror INQ1);

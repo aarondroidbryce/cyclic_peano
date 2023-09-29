@@ -655,6 +655,18 @@ contradict (NE eq_refl).
 reflexivity.
 Qed.
 
+Lemma nin_head {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    forall {L : list A} {a b : A},
+        ~ In b (a :: L) ->
+            ~ In b L.
+Proof.
+intros L a b NIN.
+case (in_dec DEC b L) as [IN' | NIN'].
+contradict NIN.
+apply or_intror, IN'.
+apply NIN'.
+Qed.
+
 Lemma nin_split {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L1 L2 : list A) (a : A),
         ~ In a (L1 ++ L2) ->
@@ -742,6 +754,12 @@ case DEC as [FAL | _].
   apply FAL.
 - reflexivity.
 Qed.
+
+Fixpoint precedence {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L : list A) (a b : A) : bool :=
+match L with
+| [] => false
+| hd :: tl => if DEC hd a then if (in_dec DEC b tl) then true else false else if DEC hd b then false else precedence DEC tl a b
+end.
 
 Lemma flat_map_remove_in {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (f : A -> list B) (a : A) (L : list A) (b : B),
