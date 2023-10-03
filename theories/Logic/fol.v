@@ -50,17 +50,16 @@ all : right;
       reflexivity.
 Qed.
 
-Lemma ord_pair_eq_dec : forall x y : ovar * ovar, {x = y} + {x <> y}.
+Lemma ordinal_eq_dec : forall x y : ordinal, {x = y} + {x <> y}.
 Proof.
-unfold ovar.
-destruct x, y.
-destruct (nat_eq_dec n n1) as [[] | NE].
-destruct (nat_eq_dec n0 n2) as [[] | NE].
-1 : left.
-    reflexivity.
+destruct x, y;
+try destruct (ord_eq_dec o o0) as [[] | NE];
+try destruct (nat_eq_dec o o0) as [[] | NE].
+1,5 : left;
+      reflexivity.
 all : right;
       intros FAL;
-      apply NE;
+      try apply NE;
       inversion FAL;
       reflexivity.
 Qed.
@@ -69,13 +68,15 @@ Inductive nvec : nat -> Type :=
 | Null : nvec 0
 | New : forall (i : nat), nat -> nvec i -> nvec (S i).
 
-(*Inductive nvec : nat -> Type :=
-| Null : forall (n : nat), nvec n
-| New : forall (n : nat), nat -> nvec n -> nvec (S n).*)
+Inductive predicate (n : nat) : nvec n -> Type :=
+| base : forall (i : nat) (vec : nvec n), predicate n vec.
 
-Inductive predicate (n : nat) (vec : nvec n) : Type :=
-| base : nat -> predicate n vec
-| pvar : nat -> predicate n vec.
+
+Inductive predic : nat -> Type :=
+| Nullary : forall (n : nat), predic 0
+| Succary : forall {i : nat} (n : nat) (v : ivar) (prd : nvec i), predic (S i).
+
+Definition pvar := prod nat nat.
 
 Inductive formula : Type :=
 | fal : formula
@@ -83,7 +84,7 @@ Inductive formula : Type :=
 | imp : formula -> formula -> formula
 | univ : ivar -> formula -> formula
 | bnd : ovar -> ovar -> formula -> formula
-| prd : forall (n : nat) (vec : nvec n), (predicate n vec) -> formula.
+| prd : forall {n i : nat} {vec : nvec n}, predicate n -> formula.
 (*
 | mu : forall n, (predicate n) -> formula -> formula
 | muk : forall n, (predicate n) -> ordinal -> formula -> formula.
@@ -349,7 +350,7 @@ match A with
 | imp B C => S ((num_conn B) + (num_conn C))
 | univ v B => S (num_conn B)
 | bnd o1 o2 B => S (num_conn B)
-| prd n vec pn => 0
+| prd pn => 0
 end.
 
 Fixpoint vars_in (a : formula) : list ovar :=
@@ -359,7 +360,7 @@ match a with
 | imp B C => (vars_in B) ++ (vars_in C)
 | univ v B => (vars_in B)
 | bnd o1 o2 B => o1 :: o2 :: (vars_in B)
-| prd n vec pn => []
+| prd pn => []
 end.
 
 Fixpoint nvec_eqb {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2) : bool :=
@@ -369,12 +370,10 @@ match vec1, vec2 with
 | _, _ => false
 end.
 
-Definition prd_eqb {n1 n2 : nat} {vec1 : nvec n1} {vec2 : nvec n2} (p1 : predicate n1 vec1) (p2 : predicate n2 vec2) : bool :=
-  match p1, p2 with
-  | base _ _ m1, base _ _ m2 => nat_eqb n1 n2 && nvec_eqb vec1 vec2 && nat_eqb m1 m2
-  | pvar _ _ m1, pvar _ _ m2 => nat_eqb n1 n2 && nvec_eqb vec1 vec2 && nat_eqb m1 m2
-  | _, _ => false
-  end.
+Definition prd_eqb {n1 n2 : nat} {vec1 : nvec n1} {vec2 : nvec n2} (pn1 : predicate n1 vec1) (pn2 : predicate n2 vec2) : bool :=
+match pn1, pn2 with
+| base _ i1 _, base _ i2 _ => nat_eqb n1 n2 && nat_eqb i1 i2 && nvec_eqb vec1 vec2
+end.
 
 Fixpoint form_eqb (A1 A2 : formula) : bool :=
 match A1, A2 with
@@ -383,7 +382,7 @@ match A1, A2 with
 | imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
 | univ v1 B1, univ v2 B2 => nat_eqb v1 v2 && form_eqb B1 B2
 | bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
-| prd n1 vec1 pn1, prd n2 vec2 pn2 => prd_eqb pn1 pn2
+| prd pn1, prd pn2 => prd_eqb pn1 pn2
 | _, _ => false
 end.
 
@@ -403,7 +402,7 @@ match A with
     | false => univ v (substitution B i1 i2)
     end)
 | bnd o1 o2 B => bnd o1 o2 (substitution B i1 i2)
-| prd n vec pn => A
+| prd pn => A
 end.
 
 Lemma nvec_case :
@@ -477,7 +476,7 @@ intros vec1 vec2 EQB.
   reflexivity.
 Qed.
 
-Lemma nvec_eqb_relf :
+Lemma nvec_eqb_refl :
     forall {n : nat} (vec : nvec n),
         nvec_eqb vec vec = true.
 Proof.
@@ -495,20 +494,30 @@ intros vec.
   reflexivity.
 Qed.
 
+Definition nvec_eq_dec {n : nat}: forall (a b : nvec n), {a = b} + {a <> b}.
+intros a b.
+case (nvec_eqb a b) eqn:EQ.
+- left. apply nvec_eqb_eq, EQ.
+- right.
+  intros FAL.
+  subst.
+  rewrite nvec_eqb_refl in EQ.
+  inversion EQ.
+Qed.
+
 Lemma prd_eqb_eq :
     forall {n : nat} {vec : nvec n} (pn1 pn2 : predicate n vec),
         prd_eqb pn1 pn2 = true ->
             pn1 = pn2.
 Proof.
-induction pn1;
-intros pn2 EQ;
-destruct pn2;
+intros n vec [i1 vec1] [i2 vec2] EQ.
 inversion EQ as [EQ'];
 repeat apply and_bool_prop in EQ as [EQ ?EQ];
-try apply nat_eqb_eq in EQ as [];
-try apply nat_eqb_eq in EQ0 as [].
-- reflexivity.
-- reflexivity.
+try apply nat_eqb_eq in EQ;
+try apply nat_eqb_eq in EQ1;
+try apply nvec_eqb_eq in EQ0;
+subst.
+reflexivity.
 Qed.
 
 Lemma prd_eqb_refl :
@@ -519,9 +528,21 @@ intros n vec pn.
 destruct pn;
 unfold prd_eqb;
 repeat rewrite nat_eqb_refl;
-rewrite nvec_eqb_relf;
+rewrite nvec_eqb_refl;
 reflexivity.
 Qed.
+
+Definition prd_eq_dec {n : nat} {vec : nvec n} : forall (a b : predicate n vec), {a = b} + {a <> b}.
+intros a b.
+case (prd_eqb a b) eqn:EQ.
+- left. apply prd_eqb_eq, EQ.
+- right.
+  intros FAL.
+  subst.
+  rewrite prd_eqb_refl in EQ.
+  inversion EQ.
+Qed.
+
 
 Lemma form_eqb_eq :
     forall (A B : formula),
@@ -544,14 +565,14 @@ try apply nat_eqb_eq in EQ1 as [].
   reflexivity.
 - rewrite (IHA _ EQ0).
   reflexivity.
-- destruct p, p0;
-  inversion EQ' as [EQ''];
-  repeat apply and_bool_prop in EQ' as [EQ' ?EQ];
-  apply nat_eqb_eq in EQ0;
-  apply nat_eqb_eq in EQ';
-  subst;
-  apply nvec_eqb_eq in EQ1;
-  subst;
+- destruct pn as [i1 vec1], pn0 as [i2 vec2].
+  inversion EQ' as [EQ''].
+  repeat apply and_bool_prop in EQ' as [EQ' ?EQ].
+  apply nat_eqb_eq in EQ1.
+  apply nat_eqb_eq in EQ'.
+  subst.
+  apply nvec_eqb_eq in EQ0.
+  subst.
   reflexivity.
 Qed.
 

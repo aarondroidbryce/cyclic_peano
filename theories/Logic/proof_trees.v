@@ -11,7 +11,7 @@ Import ListNotations.
 Inductive ptree : Type :=
 | bot : ptree
 
-| pred : forall (n : nat), forall (pn : predicate n), ptree
+| pred : forall (n : nat) (vec : nvec n) (pn : predicate n vec), ptree
 
 | equal : forall (v1 v2 : ivar), ptree
 
@@ -57,7 +57,7 @@ Definition ptree_left (P : ptree) : list formula :=
 match P with
 | bot => [fal]
 
-| pred n pn => [prd n pn]
+| pred n vec pn => [prd pn]
 
 | equal v1 v2 => [equ v1 v2]
 
@@ -100,7 +100,7 @@ Definition ptree_right (P : ptree) : list formula :=
 match P with
 | bot => []
 
-| pred n pn => [prd n pn]
+| pred n vec pn => [prd pn]
 
 | equal v1 v2 => [equ v1 v2]
 
@@ -188,7 +188,7 @@ Definition ptree_constraint (P : ptree) : constraint :=
 match P with
 | bot => empty
 
-| pred n pn => empty
+| pred n vec pn => empty
 
 | equal v1 v2 => empty
 
@@ -232,17 +232,6 @@ Proof.
 induction P1;
 destruct P2.
 
-324 : { destruct (IHP1_1 P2_1) as [EQ1 | NE1];
-        destruct (IHP1_2 P2_2) as [EQ2 | NE2];
-        destruct (constraint_eq_dec OC OC0) as [EQO | NEO];
-        destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
-        try destruct EQ1;
-        try destruct EQ2;
-        try destruct EQO.
- }
-
-all : right; try discriminate.
-
 2-19 : right; discriminate.
 3-20 : right; discriminate.
 4-21 : right; discriminate.
@@ -261,18 +250,56 @@ all : right; try discriminate.
 17-34 : right; discriminate.
 18-35 : right; discriminate.
 
-1 : apply left, eq_refl.
+2 : { try destruct (nat_eq_dec n n0) as [EQN | NEN];
+      subst;
+      try destruct (nvec_eq_dec vec vec0) as [EQVC | NEVC];
+      subst;
+      try destruct (prd_eq_dec pn pn0) as [EQP | NEP];
+      subst.
+      - apply (left (eq_refl)).
+      - right.
+        intros FAL.
+        apply NEP.
+        inversion FAL.
+        admit.
+      - right.
+        intros FAL.
+        apply NEVC.
+        inversion FAL.
+        admit.
+      - right.
+        intros FAL.
+        apply NEN.
+        inversion FAL.
+        apply H0. }
 
-1 : destruct (nat_eq_dec n n0) as [EQ | NE].
+all : try destruct (nat_eq_dec n n0) as [EQN | NEN];
+      try destruct (IHP1 P2) as [EQ | NE];
+			try destruct (IHP1_1 P2_1) as [EQ1 | NE1];
+      try destruct (IHP1_2 P2_2) as [EQ2 | NE2];
+      try destruct (constraint_eq_dec OC OC0) as [EQO | NEO];
+			try destruct (nat_eq_dec v v0) as [EQV | NEV];
+			try destruct (nat_eq_dec v1 v0) as [EQV1 | NEV1];
+			try destruct (nat_eq_dec v2 v3) as [EQV2 | NEV2];
+      try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
+      try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NED];
+			try destruct (list_eq_dec form_eq_dec pi pi0) as [EQPI | NEPI];
+			try destruct (list_eq_dec form_eq_dec sigma sigma0) as [EQS | NES];
+      try destruct (form_eq_dec phi phi0) as [EQP1 | NEP1];
+			try destruct (form_eq_dec psi psi0) as [EQP2 | NEP2];
+			try destruct (ordinal_eq_dec alpha alpha0) as [EQA | NEA];
+      try destruct (ordinal_eq_dec alpha1 alpha0) as [EQA1 | NEA1];
+      try destruct (ordinal_eq_dec alpha2 alpha3) as [EQA2 | NEA2];
+			try destruct (nat_eq_dec kappa kappa0) as [EQK | NEK];
+      try destruct (nat_eq_dec lambda lambda0) as [EQL | NEL];
+      subst;
+			try apply (left (eq_refl));
+      right;
+      intros FAL;
+      inversion FAL as [FAL'];
+      try contradiction.
+Qed.
 
-1 : destruct EQ.
-    destruct pn;
-    destruct pn0.
-
-apply pred
-
-auto.
-discriminate.
 
 Definition states : Type := constraint * ((list formula) * (list formula)).
 
