@@ -11,6 +11,7 @@ Require Import Coq.Arith.Wf_nat.
 Require Import Coq.Program.Wf.
 Require Import Coq.Classes.RelationClasses.
 Require Import Coq.Logic.FunctionalExtensionality.
+Require Import Coq.Logic.ProofIrrelevance.
 
 Open Scope bool_scope.
 Open Scope list_scope.
@@ -25,8 +26,6 @@ Definition ovar := nat.
 Inductive ordinal : Type :=
 | cast : ord -> ordinal
 | assn : ovar -> ordinal.
-(*| ordinal_add : ordinal -> ordinal -> ordinal
-| omega_mult : ordinal -> ordinal.*)
 
 Lemma ord_eq_dec : forall x y : ord, {x = y} + {x <> y}.
 Proof.
@@ -66,15 +65,17 @@ all : right;
       reflexivity.
 Qed.
 
-Fixpoint nvec (n : nat) : Type :=
-match n with
-| 0 => unit
-| S m => (prod ivar (nvec m))
-end.
+Inductive nvec : nat -> Type :=
+| Null : nvec 0
+| New : forall (i : nat), nat -> nvec i -> nvec (S i).
 
-Inductive predicate (n : nat) : Type :=
-| base : nat -> nvec n -> predicate n
-| pvar : nat -> nvec n -> predicate n.
+(*Inductive nvec : nat -> Type :=
+| Null : forall (n : nat), nvec n
+| New : forall (n : nat), nat -> nvec n -> nvec (S n).*)
+
+Inductive predicate (n : nat) (vec : nvec n) : Type :=
+| base : nat -> predicate n vec
+| pvar : nat -> predicate n vec.
 
 Inductive formula : Type :=
 | fal : formula
@@ -82,7 +83,7 @@ Inductive formula : Type :=
 | imp : formula -> formula -> formula
 | univ : ivar -> formula -> formula
 | bnd : ovar -> ovar -> formula -> formula
-| prd : forall (n : nat), (predicate n) -> formula.
+| prd : forall (n : nat) (vec : nvec n), (predicate n vec) -> formula.
 (*
 | mu : forall n, (predicate n) -> formula -> formula
 | muk : forall n, (predicate n) -> ordinal -> formula -> formula.
@@ -283,26 +284,61 @@ inversion COND.
 reflexivity.
 Qed.
 
-Lemma dec_function_dec {A B : Type} {DECA : forall (a1 a2 : A), {a1 = a2} + {a1 <> a2}} {DECB : forall (b1 b2 : B), {b1 = b2} + {b1 <> b2}} : forall (F1 F2 : A -> B), {F1 = F2} + {F1 <> F2}.
+Lemma rel_eq_dec : forall (OC1 OC2 : constraint), (OC_list OC1) = (OC_list OC2) -> {forall (lambda kappa : ovar), OC_rel OC1 lambda kappa = OC_rel OC2 lambda kappa} + {exists (lambda kappa : ovar), OC_rel OC1 lambda kappa <> OC_rel OC2 lambda kappa}.
 Proof.
-intros F1 F2.
-assert (forall (a : A), {F1 a = F2 a} + {F1 a <> F2 a}) as CASES.
-apply (fun a => DECB (F1 a) (F2 a)).
-rewrite (functional_extensionality F1 F2).
+intros OC1 OC2 EQ.
+destruct OC1 as [L1 [R1 [NDL1 [NULL1 ORD1]]]], OC2 as [L2 [R2 [NDL2 [NULL2 ORD2]]]].
+unfold OC_list, OC_rel, projT1, projT2 in *.
+destruct EQ.
+assert (forall (lambda kappa : ovar), (~ In lambda L1 \/ ~ In kappa L1) -> R1 lambda kappa = R2 lambda kappa) as NULL_EQUIV.
+{ intros lambda kappa [NIN1 | NIN2];
+  case (R1 lambda kappa) eqn:REL1;
+  case (R2 lambda kappa) eqn:REL2;
+  try reflexivity;
+  try destruct (NULL1 kappa lambda REL1) as [IN1 IN2];
+  try destruct (NULL2 kappa lambda REL2) as [IN1 IN2];
+  contradiction. }
+pose proof (Forall_Exists_dec (fun lambda => (uncurry R1) lambda = (uncurry R2) lambda) (fun a => bool_dec (uncurry R1 a) (uncurry R2 a)) (list_prod L1 L1)) as [ALL | EXISTS].
+- rewrite Forall_forall in ALL.
+  left.
+  intros lambda kappa.
+  case (in_dec nat_eq_dec lambda L1) as [IN1 | NIN].
+  case (in_dec nat_eq_dec kappa L1) as [IN2 | NIN].
+  apply (ALL (pair lambda kappa)).
+  apply (in_prod _ _ _ _ IN1 IN2).
+  apply NULL_EQUIV, or_intror, NIN.
+  apply NULL_EQUIV, or_introl, NIN.
+- right.
+  apply Exists_exists in EXISTS as [[lambda kappa] [IN NE]].
+  exists lambda, kappa.
+  apply NE.
 Qed.
 
 Lemma constraint_eq_dec : forall (OC1 OC2 : constraint), {OC1 = OC2} + {OC1 <> OC2}.
 Proof.
-destruct OC1 as [L1 [R1 COND1]], OC2 as [L2 [R2 COND2]].
-case (list_eq_dec nat_eq_dec L1 L2) as [EQ | NE].
-- destruct EQ.
-
+intros OC1 OC2.
+case (list_eq_dec nat_eq_dec (OC_list OC1) (OC_list OC2)) as [EQL | NEL].
+- case (rel_eq_dec OC1 OC2 EQL) as [EQR | NER].
+  + left.
+    assert (OC_rel OC1 = OC_rel OC2) as EQR'.
+    { apply functional_extensionality. intros lambda. apply functional_extensionality. apply EQR. }
+    destruct OC1 as [L1 [R1 C1]], OC2 as [L2 [R2 C2]].
+    unfold OC_list, OC_rel, projT1, projT2 in *.
+    destruct EQL, EQR'.
+    rewrite (proof_irrelevance _ C1 C2).
+    reflexivity.
+  + right.
+    intros FAL.
+    destruct NER as [lambda [kappa NER]].
+    apply NER.
+    destruct FAL.
+    reflexivity.
 - right.
   intros FAL.
-  apply NE.
-  inversion FAL.
+  apply NEL.
+  destruct FAL.
   reflexivity.
-
+Qed.
 
 Definition coherent (sig : ovar -> ovar) (OC1 OC2 : constraint) : Prop := (forall (lambda : ovar), OC_elt OC2 lambda -> OC_elt OC1 (sig lambda)) /\ (forall (lambda kappa : ovar), OC_rel OC2 lambda kappa = true <-> OC_rel OC1 (sig lambda) (sig kappa) = true) /\ (forall (lambda kappa : ovar), precedence nat_eq_dec (OC_list OC2) lambda kappa = true -> precedence nat_eq_dec (OC_list OC1) (sig lambda) (sig kappa) = true).
 
@@ -313,7 +349,7 @@ match A with
 | imp B C => S ((num_conn B) + (num_conn C))
 | univ v B => S (num_conn B)
 | bnd o1 o2 B => S (num_conn B)
-| prd n pn => 0
+| prd n vec pn => 0
 end.
 
 Fixpoint vars_in (a : formula) : list ovar :=
@@ -323,13 +359,20 @@ match a with
 | imp B C => (vars_in B) ++ (vars_in C)
 | univ v B => (vars_in B)
 | bnd o1 o2 B => o1 :: o2 :: (vars_in B)
-| prd n pn => []
+| prd n vec pn => []
 end.
 
-Definition prd_eqb {n1 n2 : nat} (p1 : predicate n1) (p2 : predicate n2) : bool :=
+Fixpoint nvec_eqb {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2) : bool :=
+match vec1, vec2 with
+| Null, Null => true (*nat_eqb m1 m2*)
+| New _ m1 vec1', New _ m2 vec2' => nat_eqb m1 m2 && nvec_eqb vec1' vec2'
+| _, _ => false
+end.
+
+Definition prd_eqb {n1 n2 : nat} {vec1 : nvec n1} {vec2 : nvec n2} (p1 : predicate n1 vec1) (p2 : predicate n2 vec2) : bool :=
   match p1, p2 with
-  | base _ m1 _, base _ m2 _ => nat_eqb n1 n2 && nat_eqb m1 m2
-  | pvar _ m1 _, pvar _ m2 _ => nat_eqb n1 n2 && nat_eqb m1 m2
+  | base _ _ m1, base _ _ m2 => nat_eqb n1 n2 && nvec_eqb vec1 vec2 && nat_eqb m1 m2
+  | pvar _ _ m1, pvar _ _ m2 => nat_eqb n1 n2 && nvec_eqb vec1 vec2 && nat_eqb m1 m2
   | _, _ => false
   end.
 
@@ -340,7 +383,7 @@ match A1, A2 with
 | imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
 | univ v1 B1, univ v2 B2 => nat_eqb v1 v2 && form_eqb B1 B2
 | bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
-| prd n1 pn1, prd n2 pn2 => nat_eqb n1 n2 && prd_eqb pn1 pn2
+| prd n1 vec1 pn1, prd n2 vec2 pn2 => prd_eqb pn1 pn2
 | _, _ => false
 end.
 
@@ -360,8 +403,182 @@ match A with
     | false => univ v (substitution B i1 i2)
     end)
 | bnd o1 o2 B => bnd o1 o2 (substitution B i1 i2)
-| prd n pn => A
+| prd n vec pn => A
 end.
+
+Lemma nvec_case :
+    forall (n : nat) (P : nvec n -> Type),
+        (forall (pf : n = 0),
+            P (eq_rect 0 nvec Null n (eq_sym pf))) ->
+        (forall (i m : nat) (vec : nvec i) (pf : n = S i), P (eq_rect (S i) nvec (New i m vec) n (eq_sym pf))) ->
+            (forall (vec : nvec n), P vec).
+Proof.
+intros n P BC IND vec.
+induction vec.
+apply (BC eq_refl).
+apply (IND _ _ _ eq_refl).
+Qed.
+
+Lemma nvec_ind2 :
+    forall (n : nat) (P : nvec n -> Type),
+        (forall (pf : n = 0),
+            P (eq_rect 0 nvec Null n (eq_sym pf))) ->
+        (forall (i m : nat) (vec : nvec i) (pf : n = S i), P (eq_rect (S i) nvec (New i m vec) n (eq_sym pf))) ->
+            (forall (vec : nvec n), P vec).
+Proof.
+intros n P BC IND vec.
+induction vec.
+apply (BC eq_refl).
+apply (IND _ _ _ eq_refl).
+Qed.
+
+Lemma nvec_0_null : forall (vec : nvec 0), vec = Null.
+Proof.
+apply nvec_case.
+- intros pf.
+  subst.
+  rewrite <- Eqdep_dec.eq_rect_eq_dec in * by apply nat_eq_dec.
+  reflexivity.
+- intros i m vec pf.
+  inversion pf.
+Qed.
+
+Lemma nvec_Sn_new : forall {n : nat} (vec : nvec (S n)), {subvec : nvec n & {m : nat & vec = New n m subvec}}.
+Proof.
+intros n.
+apply nvec_case.
+- intros pf.
+  inversion pf.
+- intros i m vec pf.
+  inversion pf as [pf'].
+  subst.
+  rewrite <- Eqdep_dec.eq_rect_eq_dec in * by apply nat_eq_dec.
+  apply (existT _ vec (existT _ m eq_refl)).
+Qed.
+
+Lemma nvec_eqb_eq :
+    forall {n : nat} (vec1 vec2 : nvec n),
+        nvec_eqb vec1 vec2 = true ->
+            vec1 = vec2.
+Proof.
+induction n;
+intros vec1 vec2 EQB.
+- pose proof (nvec_0_null vec1).
+  pose proof (nvec_0_null vec2).
+  subst.
+  reflexivity.
+- pose proof (nvec_Sn_new vec1) as [vec3 [m1 EQ1]].
+  pose proof (nvec_Sn_new vec2) as [vec4 [m2 EQ2]].
+  subst.
+  apply and_bool_prop in EQB as [EQ1 EQ2].
+  apply nat_eqb_eq in EQ1.
+  subst.
+  rewrite (IHn _ _ EQ2).
+  reflexivity.
+Qed.
+
+Lemma nvec_eqb_relf :
+    forall {n : nat} (vec : nvec n),
+        nvec_eqb vec vec = true.
+Proof.
+induction n;
+intros vec.
+- pose proof (nvec_0_null vec).
+  subst.
+  reflexivity.
+- pose proof (nvec_Sn_new vec) as [vec' [m EQ]].
+  subst.
+  unfold nvec_eqb;
+  fold @nvec_eqb.
+  rewrite nat_eqb_refl.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma prd_eqb_eq :
+    forall {n : nat} {vec : nvec n} (pn1 pn2 : predicate n vec),
+        prd_eqb pn1 pn2 = true ->
+            pn1 = pn2.
+Proof.
+induction pn1;
+intros pn2 EQ;
+destruct pn2;
+inversion EQ as [EQ'];
+repeat apply and_bool_prop in EQ as [EQ ?EQ];
+try apply nat_eqb_eq in EQ as [];
+try apply nat_eqb_eq in EQ0 as [].
+- reflexivity.
+- reflexivity.
+Qed.
+
+Lemma prd_eqb_refl :
+    forall {n : nat} {vec : nvec n} (pn : predicate n vec),
+        prd_eqb pn pn = true.
+Proof.
+intros n vec pn.
+destruct pn;
+unfold prd_eqb;
+repeat rewrite nat_eqb_refl;
+rewrite nvec_eqb_relf;
+reflexivity.
+Qed.
+
+Lemma form_eqb_eq :
+    forall (A B : formula),
+        form_eqb A B = true ->
+            A = B.
+Proof.
+induction A;
+intros B EQ;
+destruct B;
+inversion EQ as [EQ'];
+repeat apply and_bool_prop in EQ as [EQ ?EQ];
+try apply nat_eqb_eq in EQ as [];
+try apply nat_eqb_eq in EQ0 as [];
+try apply nat_eqb_eq in EQ1 as [].
+- reflexivity.
+- reflexivity.
+- rewrite (IHA1 _ EQ),(IHA2 _ EQ0).
+  reflexivity.
+- rewrite (IHA _ EQ0).
+  reflexivity.
+- rewrite (IHA _ EQ0).
+  reflexivity.
+- destruct p, p0;
+  inversion EQ' as [EQ''];
+  repeat apply and_bool_prop in EQ' as [EQ' ?EQ];
+  apply nat_eqb_eq in EQ0;
+  apply nat_eqb_eq in EQ';
+  subst;
+  apply nvec_eqb_eq in EQ1;
+  subst;
+  reflexivity.
+Qed.
+
+Lemma form_eqb_refl : forall (a : formula), form_eqb a a = true.
+Proof.
+intros a.
+induction a;
+unfold form_eqb;
+fold form_eqb;
+repeat rewrite nat_eqb_refl;
+try rewrite IHa;
+try rewrite IHa1;
+try rewrite IHa2;
+try reflexivity.
+apply prd_eqb_refl.
+Qed.
+
+Definition form_eq_dec : forall (a b : formula), {a = b} + {a <> b}.
+intros a b.
+case (form_eqb a b) eqn:EQ.
+- left. apply form_eqb_eq, EQ.
+- right.
+  intros FAL.
+  subst.
+  rewrite form_eqb_refl in EQ.
+  inversion EQ.
+Qed.
 
 (*Fixpoint num_conn (a : formula) : ordinal :=
 match a with

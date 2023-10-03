@@ -53,51 +53,6 @@ Inductive ptree : Type :=
 
 | cut : forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha1 alpha2 : ordinal) (P1 P2 : ptree), ptree.
 
-Lemma ptree_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
-Proof.
-induction P1;
-destruct P2.
-
-324 : { destruct (IHP1_1 P2_1) as [EQ1 | NE1];
-        destruct (IHP1_2 P2_2) as [EQ2 | NE2];
-        destruct (constraint_eq_dec P2_2) as [EQ2 | NE2];
-        try destruct EQ1;
-        try destruct EQ2.
-        left; reflexivity. }
-
-all : right; try discriminate.
-
-2-19 : right; discriminate.
-3-20 : right; discriminate.
-4-21 : right; discriminate.
-5-22 : right; discriminate.
-6-23 : right; discriminate.
-7-24 : right; discriminate.
-8-25 : right; discriminate.
-9-26 : right; discriminate.
-10-27 : right; discriminate.
-11-28 : right; discriminate.
-12-29 : right; discriminate.
-13-30 : right; discriminate.
-14-31 : right; discriminate.
-15-32 : right; discriminate.
-16-33 : right; discriminate.
-17-34 : right; discriminate.
-18-35 : right; discriminate.
-
-1 : apply left, eq_refl.
-
-1 : destruct (nat_eq_dec n n0) as [EQ | NE].
-
-1 : destruct EQ.
-    destruct pn;
-    destruct pn0.
-
-apply pred
-
-auto.
-discriminate.
-
 Definition ptree_left (P : ptree) : list formula :=
 match P with
 | bot => [fal]
@@ -271,6 +226,53 @@ match P with
 
 | cut OC gamma delta phi alpha1 alpha2 P1 P2 => OC
 end.
+
+Lemma ptree_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
+Proof.
+induction P1;
+destruct P2.
+
+324 : { destruct (IHP1_1 P2_1) as [EQ1 | NE1];
+        destruct (IHP1_2 P2_2) as [EQ2 | NE2];
+        destruct (constraint_eq_dec OC OC0) as [EQO | NEO];
+        destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
+        try destruct EQ1;
+        try destruct EQ2;
+        try destruct EQO.
+ }
+
+all : right; try discriminate.
+
+2-19 : right; discriminate.
+3-20 : right; discriminate.
+4-21 : right; discriminate.
+5-22 : right; discriminate.
+6-23 : right; discriminate.
+7-24 : right; discriminate.
+8-25 : right; discriminate.
+9-26 : right; discriminate.
+10-27 : right; discriminate.
+11-28 : right; discriminate.
+12-29 : right; discriminate.
+13-30 : right; discriminate.
+14-31 : right; discriminate.
+15-32 : right; discriminate.
+16-33 : right; discriminate.
+17-34 : right; discriminate.
+18-35 : right; discriminate.
+
+1 : apply left, eq_refl.
+
+1 : destruct (nat_eq_dec n n0) as [EQ | NE].
+
+1 : destruct EQ.
+    destruct pn;
+    destruct pn0.
+
+apply pred
+
+auto.
+discriminate.
 
 Definition states : Type := constraint * ((list formula) * (list formula)).
 
