@@ -7,11 +7,14 @@ From Cyclic_PA.Logic Require Import fol.
 Require Import Lia.
 Require Import List.
 Import ListNotations.
+Require Import Coq.Logic.ProofIrrelevance.
+Require Import Coq.Logic.Eqdep_dec.
+
 
 Inductive ptree : Type :=
 | bot : ptree
 
-| pred : forall (n : nat) (vec : nvec n) (pn : predicate n vec), ptree
+| pred : forall {n : nat} (vec : nvec n) (pn : predicate vec), pure_predicate pn = true -> ptree
 
 | equal : forall (v1 v2 : ivar), ptree
 
@@ -57,7 +60,7 @@ Definition ptree_left (P : ptree) : list formula :=
 match P with
 | bot => [fal]
 
-| pred n vec pn => [prd pn]
+| pred vec pn pure => [prd pn pure]
 
 | equal v1 v2 => [equ v1 v2]
 
@@ -100,7 +103,7 @@ Definition ptree_right (P : ptree) : list formula :=
 match P with
 | bot => []
 
-| pred n vec pn => [prd pn]
+| pred vec pn pure => [prd pn pure]
 
 | equal v1 v2 => [equ v1 v2]
 
@@ -188,7 +191,7 @@ Definition ptree_constraint (P : ptree) : constraint :=
 match P with
 | bot => empty
 
-| pred n vec pn => empty
+| pred vec pn pure => empty
 
 | equal v1 v2 => empty
 
@@ -256,22 +259,22 @@ destruct P2.
       subst;
       try destruct (prd_eq_dec pn pn0) as [EQP | NEP];
       subst.
-      - apply (left (eq_refl)).
+      - rewrite (proof_irrelevance _ e e0). 
+        apply (left (eq_refl)).
       - right.
         intros FAL.
-        apply NEP.
-        inversion FAL.
-        admit.
+        inversion FAL as [FAL'].
+        repeat apply inj_pair2 in FAL'.
+        apply NEP, FAL'.
       - right.
         intros FAL.
-        apply NEVC.
-        inversion FAL.
-        admit.
+        inversion FAL as [[FAL' FAL'']].
+        repeat apply inj_pair2 in FAL'.
+        apply NEVC, FAL'.
       - right.
         intros FAL.
-        apply NEN.
-        inversion FAL.
-        apply H0. }
+        inversion FAL as [[FAL' FAL'' FAL''']].
+        apply NEN, FAL'. }
 
 all : try destruct (nat_eq_dec n n0) as [EQN | NEN];
       try destruct (IHP1 P2) as [EQ | NE];
@@ -354,7 +357,7 @@ Fixpoint leaves (P : ptree) : list ptree :=
 match P with
 | bot => []
 
-| pred n pn => []
+| pred vec pn pure => []
 
 | equal v1 v2 => []
 
@@ -399,7 +402,7 @@ Fixpoint path_fit (P : ptree) (M : path_marker) : list states :=
 match P, M with
 | bot, [true] => [ptree_state P]
 
-| pred n pn, [true] => [ptree_state P]
+| pred vec pn pure, [true] => [ptree_state P]
 
 | equal v1 v2, [true] => [ptree_state P]
 
@@ -450,7 +453,7 @@ Fixpoint struct_valid (P : ptree) : Type :=
 match P with
 | bot => true = true
 
-| pred n P => true = true
+| pred vec P pure => true = true
 
 | equal v1 v2 => true = true
 
@@ -498,11 +501,25 @@ intros P2 IN.
 
 1-3 : inversion IN.
 
-1 : admit.
+1 : { apply In_single in IN.
+      exists [true].
+      exists [].
+      unfold path_fit;
+      fold path_fit.
+      rewrite app_nil_l, IN;
+      destruct P1;
+      reflexivity. }
 
-12 : { apply in_app_bor in IN as [IN1 | IN2]. }
-
-12,14: admit.
+12,14 : apply (@in_app_bor _ ptree_dec) in IN as [IN1 | IN2];
+        try destruct (IHP1_1 _ IN1) as [M1 [L EQ]];
+        try destruct (IHP1_2 _ IN2) as [M2 [L EQ]];
+        try exists (false :: M1);
+        try exists (true :: M2);
+        try exists (PS :: L);
+        unfold path_fit;
+        fold path_fit PS;
+        try rewrite EQ;
+        try reflexivity.
 
 all : destruct (IHP1 P2 IN) as [M [L EQ]];
       exists (true :: M);
@@ -513,7 +530,13 @@ all : destruct (IHP1 P2 IN) as [M [L EQ]];
       reflexivity.
 Qed.
 
-Lemma loop_struct_gives_path : forall (OC : constraint) (gamma delta : list formula) (P_Target : ptree), struct_valid (loop_head OC gamma delta P_Target) -> {M : path_marker & {L : list states & path_fit P_Target M = (ptree_state P_Target) :: L ++ [pair OC (pair gamma delta)]}}.
+Lemma loop_struct_gives_path :
+    forall (OC : constraint) (gamma delta : list formula) (P_Target : ptree),
+        struct_valid (loop_head OC gamma delta P_Target) ->
+            {M : path_marker & {L : list states & path_fit P_Target M = (ptree_state P_Target) :: L ++ [pair OC (pair gamma delta)]}}.
+Proof.
+
+Admitted.
 
 Definition valid (P : ptree) : Type := (struct_valid P) * (forall (A : formula), In A (leaves P) -> PA_cyclic_axiom A = true).
 

@@ -16,6 +16,15 @@ Import ListNotations.
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
 
+Lemma In_single :
+    forall {A : Type} {a b : A}, In a [b] -> a = b.
+Proof.
+intros A a b IN.
+destruct IN as [EQ | FAL].
+apply eq_sym, EQ.
+inversion FAL.
+Qed.
+
 Lemma combine_eq_len :
     forall {A B : Type} {L1 L3 : list A} {L2 L4 : list B},
         length L1 = length L2 ->
