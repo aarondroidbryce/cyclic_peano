@@ -16,13 +16,55 @@ Import ListNotations.
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
 
-Lemma In_single :
+Lemma in_single :
     forall {A : Type} {a b : A}, In a [b] -> a = b.
 Proof.
 intros A a b IN.
 destruct IN as [EQ | FAL].
 apply eq_sym, EQ.
 inversion FAL.
+Qed.
+
+Lemma in_swap {A : Type} :
+    forall (a b c : A) (L1 L2 : list A),
+        In a (L1 ++ b :: c :: L2) <-> In a (L1 ++ c :: b :: L2).
+Proof.
+intros a b c L1 L2.
+split;
+intros IN;
+apply in_app_iff;
+apply in_app_iff in IN as [INL1 | [[] | [[] | INL2]]];
+firstorder.
+Qed.
+
+Lemma in_cont {A : Type} :
+    forall (a b : A) (L1 L2 : list A),
+        In a (L1 ++ b :: b :: L2) <-> In a (L1 ++ b :: L2).
+Proof.
+intros a b L1 L2.
+split;
+intros IN;
+apply in_app_iff;
+try apply in_app_iff in IN as [INL1 | [[] | [[] | INL2]]];
+try apply in_app_iff in IN as [INL1 | [[] | INL2]];
+firstorder.
+Qed.
+
+Lemma in_split_dec {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a : A} : In a L -> {L1 : list A & {L2 : list A & L = L1 ++ a :: L2}}.
+Proof.
+induction L;
+intros IN.
+- contradiction IN.
+- destruct (DEC a0 a) as [EQ | NE].
+  + subst.
+    refine (existT _ [] (existT _ L eq_refl)).
+  + assert (In a L) as IN'.
+    { destruct IN as [EQ | IN].
+      contradiction.
+      apply IN. }
+    destruct (IHL IN') as [L1 [L2 EQ]].
+    subst.
+    refine (existT _ (a0 :: L1) (existT _ L2 eq_refl)).
 Qed.
 
 Lemma combine_eq_len :
@@ -214,6 +256,12 @@ match L with
     end
 end.
 
+Fixpoint set_bury {A : Type} (LA : list A) (LN : list nat) : list A :=
+match LN with
+| [] => LA
+| n :: LN' => set_bury (bury LA n) LN'
+end.
+
 Lemma in_bury {A : Type} {L : list A} {n : nat} : forall (a : A), In a L <-> In a (bury L n).
 Proof.
 generalize n.
@@ -352,6 +400,233 @@ try reflexivity.
 unfold length in GE';
 fold (@length A) in GE'.
 apply le_S_n, le_S, GE'.
+Qed.
+
+Lemma bury_succ {A : Type} {L : list A} {a : A} {n : nat} : bury (a :: L) (S n) = a :: (bury L n). Proof. reflexivity. Qed.
+
+Lemma set_bury_succ {A : Type} :
+    forall {LN : list nat} {L : list A} {a : A},
+        set_bury (a :: L) (map S LN) = a :: (set_bury L LN).
+Proof.
+induction LN;
+intros L b.
+- reflexivity.
+- unfold map;
+  fold (@map _ _ S).
+  unfold set_bury;
+  fold @set_bury.
+  rewrite bury_succ.
+  apply IHLN.
+Qed.
+
+Lemma set_bury_app {A : Type} :
+    forall {LN1 LN2 : list nat} {L : list A},
+        set_bury L (LN1 ++ LN2) = set_bury (set_bury L LN1) LN2.
+Proof.
+induction LN1;
+intros LN2 L.
+- reflexivity.
+- rewrite <- app_comm_cons.
+  unfold set_bury;
+  fold @set_bury.
+  apply IHLN1.
+Qed.
+
+Lemma set_bury_rev_hyp {A : Type} :
+    forall (L : list A),
+        {LN : list nat & (forall (n : nat), In n LN -> n < (length LN)) /\ set_bury L LN = rev L}.
+Proof.
+induction L.
+- refine (existT _ [] (conj (fun n IN => _) eq_refl)).
+  inversion IN.
+- destruct IHL as [LN [LT EQ]].
+  refine (existT _ ((map S LN) ++ [0]) (conj (fun n IN => _) _)).
+  + apply in_app_or in IN as [IN1 | IN2].
+    * apply in_map_iff in IN1 as [m [EQ1 IN1]].
+      subst.
+      rewrite app_length, map_length.
+      unfold length at 2.
+      rewrite <- plus_n_Sm, <- plus_n_O.
+      specialize (LT m IN1).
+      lia.
+    * inversion IN2 as [[]|[]].
+      rewrite app_length.
+      unfold length at 2.
+      lia.
+  + rewrite set_bury_app, set_bury_succ.
+    unfold set_bury;
+    fold @set_bury.
+    unfold bury, rev;
+    fold (@rev A).
+    rewrite EQ.
+    reflexivity.
+Qed.
+
+Lemma set_bury_rev {A : Type} :
+    forall (L : list A),
+        {LN : list nat & set_bury L LN = rev L}. 
+Proof.
+intros L.
+refine (existT _ (projT1 (set_bury_rev_hyp L)) (proj2 (projT2 (set_bury_rev_hyp L)))).
+Qed.
+
+Lemma set_bury_swap {A : Type} :
+    forall (L : list A) (a b : A),
+        {LN : list nat & set_bury (a :: b :: L) LN = b :: a :: L}.
+Proof.
+intros L a b.
+exists (projT1 (set_bury_rev (a :: b :: L)) ++ [length L] ++ (projT1 (set_bury_rev (rev (b :: a :: L))))).
+repeat rewrite set_bury_app.
+rewrite (projT2 (set_bury_rev (a :: b :: L))).
+unfold rev;
+fold (@rev A).
+unfold set_bury at 2.
+rewrite <- app_assoc, <- app_assoc, <- app_comm_cons, app_nil_l, <- rev_length, bury_type.
+rewrite (projT2 (set_bury_rev (rev L ++ [a] ++ [b]))), app_assoc, rev_unit, rev_unit, rev_involutive.
+reflexivity.
+Qed.
+
+Inductive perm {A : Type} : list A -> list A -> Type :=
+| perm_nil: perm [] []
+| perm_skip a L1 L2 : perm L1 L2 -> perm (a::L1) (a::L2)
+| perm_swap a b L : perm (b::a::L) (a::b::L)
+| perm_trans L1 L2 L3 :
+    perm L1 L2 -> perm L2 L3 -> perm L1 L3.
+
+Lemma perm_refl {A : Type} {L : list A} : perm L L.
+Proof.
+induction L.
+apply perm_nil.
+apply perm_skip, IHL.
+Qed.
+
+(*
+Theorem perm_ind_prop {A : Type} :
+ forall P : list A -> list A -> Prop,
+   P [] [] ->
+   (forall a L1 L2, perm L1 L2 -> P L1 L2 -> P (a :: L1) (a :: L2)) ->
+   (forall a b L1 L2, perm L1 L2 -> P L1 L2 -> P (b :: a :: L1) (a :: b :: L2)) ->
+   (forall L1 L2 L3, perm L1 L2 -> P L1 L2 -> perm L2 L3 -> P L2 L3 -> P L1 L3) ->
+   forall L1 L2, perm L1 L2 -> P L1 L2.
+Proof.
+intros P Hnil Hskip Hswap Htrans.
+induction 1.
+- apply Hnil.
+- apply (Hskip _ _ _ X IHX).
+- apply Htrans with (a :: b :: L).
+  + apply perm_swap.
+  + apply Hswap.
+    apply perm_refl.
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+  + apply perm_refl.
+  + refine (Hskip _ _ _ perm_refl (Hskip _ _ _ perm_refl _)).
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+- apply (Htrans _ _ _ X1 IHX1 X2 IHX2).
+Qed.
+
+
+Theorem perm_ind_set {A : Type} :
+ forall P : list A -> list A -> Set,
+   P [] [] ->
+   (forall a L1 L2, perm L1 L2 -> P L1 L2 -> P (a :: L1) (a :: L2)) ->
+   (forall a b L1 L2, perm L1 L2 -> P L1 L2 -> P (b :: a :: L1) (a :: b :: L2)) ->
+   (forall L1 L2 L3, perm L1 L2 -> P L1 L2 -> perm L2 L3 -> P L2 L3 -> P L1 L3) ->
+   forall L1 L2, perm L1 L2 -> P L1 L2.
+Proof.
+intros P Hnil Hskip Hswap Htrans.
+induction 1.
+- apply Hnil.
+- apply (Hskip _ _ _ X IHX).
+- apply Htrans with (a :: b :: L).
+  + apply perm_swap.
+  + apply Hswap.
+    apply perm_refl.
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+  + apply perm_refl.
+  + refine (Hskip _ _ _ perm_refl (Hskip _ _ _ perm_refl _)).
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+- apply (Htrans _ _ _ X1 IHX1 X2 IHX2).
+Qed.*)
+
+Theorem perm_ind_type {A : Type} :
+ forall P : list A -> list A -> Type,
+   P [] [] ->
+   (forall a L1 L2, perm L1 L2 -> P L1 L2 -> P (a :: L1) (a :: L2)) ->
+   (forall a b L1 L2, perm L1 L2 -> P L1 L2 -> P (b :: a :: L1) (a :: b :: L2)) ->
+   (forall L1 L2 L3, perm L1 L2 -> P L1 L2 -> perm L2 L3 -> P L2 L3 -> P L1 L3) ->
+   forall L1 L2, perm L1 L2 -> P L1 L2.
+Proof.
+intros P Hnil Hskip Hswap Htrans L1 L2 perm.
+induction perm.
+- apply Hnil.
+- apply (Hskip _ _ _ perm0 IHperm).
+- apply Htrans with (a :: b :: L).
+  + apply perm_swap.
+  + apply Hswap.
+    apply perm_refl.
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+  + apply perm_refl.
+  + refine (Hskip _ _ _ perm_refl (Hskip _ _ _ perm_refl _)).
+    induction L.
+    * apply Hnil.
+    * apply (Hskip _ _ _ perm_refl IHL).
+- apply (Htrans _ _ _ perm1 IHperm1 perm2 IHperm2).
+Qed.
+
+Lemma perm_sym {A : Type} : forall {L1 L2 : list A}, perm L1 L2 -> perm L2 L1.
+Proof.
+intros L1 L2 perm.
+induction perm.
+- apply perm_nil.
+- apply perm_skip, IHperm.
+- apply perm_swap.
+- apply perm_trans with L2.
+  apply IHperm2.
+  apply IHperm1.
+Qed.
+
+Lemma perm_length {A : Type} {L1 L2 : list A} : perm L1 L2 -> length L1 = length L2.
+Proof.
+intros perm.
+induction perm;
+unfold length;
+fold (@length A);
+try rewrite IHperm;
+try rewrite IHperm1;
+try rewrite IHperm2;
+reflexivity.
+Qed.
+
+Lemma set_bury_eq_perm {A : Type} :
+    forall {L1 L2 : list A},
+        perm L1 L2 ->
+            {LN : list nat & set_bury L1 LN = L2}.
+Proof.
+apply perm_ind_type.
+- refine (existT _ [] eq_refl).
+- intros a L1 L2 perm [LN EQ].
+  refine (existT _ (map S LN) _).
+  rewrite set_bury_succ, EQ.
+  reflexivity.
+- intros a b L1 L2 perm [LN1 EQ1].
+  destruct (set_bury_swap L1 b a) as [LN2 EQ2].
+  refine (existT _ (LN2 ++ (map S (map S LN1))) _).
+  rewrite set_bury_app, EQ2, set_bury_succ, set_bury_succ, EQ1.
+  reflexivity.
+- intros L1 L2 L3 perm1 [LN1 EQ1] perm2 [LN2 EQ2].
+  exists (LN1 ++ LN2).
+  rewrite set_bury_app, EQ1, EQ2.
+  reflexivity.
 Qed.
 
 Lemma length_split_n {A : Type} {L : list A} {n : nat} : n < length L -> {L1 : list A & {L2 : list A & {a : A & length L1 = n /\ L1 ++ a :: L2 = L}}}.
@@ -726,6 +1001,66 @@ Proof.
 intros L a b NE NIN IN.
 apply NIN.
 apply (in_in_remove _ _ NE IN).
+Qed.
+
+Lemma no_dup_dec_cases {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L : list A) : {NoDup L} + {~ NoDup L}.
+Proof.
+induction L.
+- left.
+  apply NoDup_nil.
+- destruct IHL as [ND | D].
+  destruct (in_dec DEC a L) as [IN | NIN].
+  + right.
+    intros FAL.
+    apply NoDup_cons_iff in FAL as [FAL _].
+    apply FAL, IN.
+  + left.
+    apply (NoDup_cons _ NIN ND).
+  + right.
+    intros FAL.
+    apply NoDup_cons_iff in FAL as [_ FAL].
+    apply D, FAL.
+Qed.
+
+Lemma has_dups_split {A : Type} {L : list A} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    ~ NoDup L ->
+        {a : A & {L1 : list A & {L2 : list A & {L3 : list A & L = L1 ++ a :: L2 ++ a :: L3}}}}.
+Proof.
+intros D.
+induction L.
+- contradiction D.
+  apply NoDup_nil.
+- destruct (in_dec DEC a L) as [IN | NIN].
+  + destruct (in_split_dec DEC IN) as [L1 [L2 EQ]].
+    subst.
+    refine (existT _ a (existT _ [] (existT _ L1 (existT _ L2 eq_refl)))).
+  + rewrite NoDup_cons_iff in D.
+    assert (~ NoDup L) as D'.
+    { intros FAL.
+      apply D.
+      apply (conj NIN FAL). }
+    destruct (IHL D') as [b [L1 [L2 [L3 EQ]]]].
+    subst.
+    refine (existT _ b (existT _ (a :: L1) (existT _ L2 (existT _ L3 eq_refl)))).
+Qed.
+
+Lemma perm_head {A : Type} {L1 L2 : list A} {a : A} : perm (L1 ++ a :: L2) (a :: L1 ++ L2).
+Proof.
+induction L1.
+- apply perm_refl.
+- apply perm_trans with (a0 :: a :: L1 ++ L2).
+  apply perm_skip.
+  apply IHL1.
+  apply perm_swap.
+Qed.
+
+Lemma double_perm_head {A : Type} {L1 L2 L3 : list A} {a : A} : perm (L1 ++ a :: L2 ++ a :: L3) (a :: a :: L1 ++ L2 ++ L3).
+Proof.
+apply perm_trans with (a :: (L1 ++ L2 ++ a :: L3)).
+apply (@perm_head _ L1 _ a).
+apply perm_skip.
+repeat rewrite app_assoc.
+apply (@perm_head _ _ L3 a).
 Qed.
 
 Lemma incl_head {A : Type} {L1 L2 : list A} {a : A} :

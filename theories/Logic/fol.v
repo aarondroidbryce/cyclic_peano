@@ -26,7 +26,9 @@ Definition ovar := nat.
 
 Inductive ordinal : Type :=
 | cast : ord -> ordinal
-| assn : ovar -> ordinal.
+| assn : ovar -> ordinal
+| oadd : ordinal -> ordinal -> ordinal
+| omax : ordinal -> ordinal -> ordinal.
 
 Lemma ord_eq_dec : forall x y : ord, {x = y} + {x <> y}.
 Proof.
@@ -53,16 +55,22 @@ Qed.
 
 Lemma ordinal_eq_dec : forall x y : ordinal, {x = y} + {x <> y}.
 Proof.
-destruct x, y;
+induction x;
+destruct y;
 try destruct (ord_eq_dec o o0) as [[] | NE];
 try destruct (nat_eq_dec o o0) as [[] | NE].
-1,5 : left;
-      reflexivity.
+
+13,18 :  case (IHx1 y1) as [[] | NE1];
+         case (IHx2 y2) as [[] | NE2].
+1,7,13,17 : left;
+            reflexivity.
+
 all : right;
       intros FAL;
       try apply NE;
       inversion FAL;
-      reflexivity.
+      try reflexivity;
+      contradiction.
 Qed.
 
 Inductive nvec : nat -> Type :=
@@ -204,6 +212,14 @@ refine (existT _ (filter (fun (eta : ovar) => if in_dec nat_eq_dec eta L then fa
 Defined.
 
 Definition assignment (OC : constraint) := {val : (ovar -> ord) & forall (lambda kappa : ovar), OC_rel OC lambda kappa = true -> ord_lt (val lambda) (val kappa)}.
+
+Fixpoint valuate {OC : constraint} (ASN : assignment OC) (o : ordinal) : ord :=
+match o with
+| cast alpha => alpha
+| assn ov => (projT1 ASN) ov
+| oadd o1 o2 => ord_add (valuate ASN o1) (valuate ASN o2)
+| omax o1 o2 => ord_max (valuate ASN o1) (valuate ASN o2)
+end.
 
 Lemma null_strict : StrictOrder (fun (lambda kappa : ovar) => false = true).
 Proof.
@@ -352,14 +368,14 @@ Qed.
 
 Definition coherent (sig : ovar -> ovar) (OC1 OC2 : constraint) : Prop := (forall (lambda : ovar), OC_elt OC2 lambda -> OC_elt OC1 (sig lambda)) /\ (forall (lambda kappa : ovar), OC_rel OC2 lambda kappa = true <-> OC_rel OC1 (sig lambda) (sig kappa) = true) /\ (forall (lambda kappa : ovar), precedence nat_eq_dec (OC_list OC2) lambda kappa = true -> precedence nat_eq_dec (OC_list OC1) (sig lambda) (sig kappa) = true).
 
-Fixpoint num_conn (A : formula) : nat :=
+Fixpoint num_conn (A : formula) : ordinal :=
 match A with
-| fal => 0
-| equ v1 v2 => 0
-| imp B C => S ((num_conn B) + (num_conn C))
-| univ v B => S (num_conn B)
-| bnd o1 o2 B => S (num_conn B)
-| prd pn pure => 0
+| fal => cast Zero
+| equ v1 v2 => cast Zero
+| imp B C => oadd (oadd (num_conn B) (num_conn C)) (cast (nat_ord 1))
+| univ v B => oadd (num_conn B) (cast (nat_ord 1))
+| bnd o1 o2 B => oadd (num_conn B) (cast (nat_ord 1))
+| prd pn pure => cast Zero
 end.
 
 Fixpoint vars_in (a : formula) : list ovar :=
@@ -526,77 +542,6 @@ apply (BC _ pf eq_refl).
 apply (IND _ _ _ _ _ pf eq_refl).
 apply VARS.
 Qed.
-
-(*
-Lemma pred_pure_null_vec :
-    forall {n : nat} {vec : nvec n} (pn : predicate vec) (pf : n = 0),
-        pure_predicate pn = true -> vec = (eq_rect 0 nvec Null n (eq_sym pf)).
-Proof.
-intros n vec.
-induction pn.
-- intros pf' pure.
-  subst.
-  repeat rewrite <- (Eqdep_dec.eq_rect_eq_dec nat_eq_dec).
-  reflexivity.
-- intros pf'.
-  subst.
-  inversion pf'.
-- intros pf pure.
-  inversion pure.
-Qed.
-
-Lemma pred_pure_null :
-    forall {n : nat} {vec : nvec n} (pn : predicate vec) (pf : n = 0) (pure : pure_predicate pn = true),
-        {i : nat & pn = eq_rect _ predicate (Nullary i pf) _ (eq_sym (pred_pure_null_vec pn pf pure))}.
-Proof.
-intros n vec.
-induction pn.
-- intros pf' pure.
-  subst.
-  exists i.
-  rewrite (proof_irrelevance _ pf' eq_refl).
-  apply Eqdep_dec.eq_rect_eq_dec, nvec_eq_dec.
-- intros pf'.
-  subst.
-  inversion pf'.
-- intros pf pure.
-  inversion pure.
-Qed.
-
-Lemma nvec_new_Sn_head : forall {n : nat} (vec : nvec n) (v : ivar), v = (projT1 (projT2 (nvec_Sn_new (eq_rect (S n) nvec (New n v vec) (S n) (eq_sym eq_refl))))).
-Proof.
-intros n vec v.
-destruct vec;
-unfold eq_rect, eq_sym, nvec_Sn_new, nvec_case, nvec_rect, eq_rec_r, eq_rec, eq_rect, eq_sym, f_equal;
-rewrite (proof_irrelevance _ _ eq_refl);
-reflexivity.
-Qed.
-
-Lemma nvec_new_Sn_tail : forall {n : nat} (vec : nvec n) (v : ivar), vec = (projT1 (nvec_Sn_new (eq_rect (S n) nvec (New n v vec) (S n) (eq_sym eq_refl)))).
-Proof.
-intros n vec v.
-destruct vec;
-unfold eq_rect, eq_sym, nvec_Sn_new, nvec_case, nvec_rect, eq_rec_r, eq_rec, eq_rect, eq_sym, f_equal;
-rewrite (proof_irrelevance _ _ eq_refl);
-reflexivity.
-Defined.
-
-Lemma nvec_new_Sn_type : forall {n : nat} (vec : nvec (S n)),
-    vec = eq_rect (S n) nvec (New n (projT1 (projT2 (nvec_Sn_new vec))) (projT1 (nvec_Sn_new vec))) (S n) (eq_sym eq_refl).
-Proof.
-intros n vec.
-apply (nvec_case (S n) (fun (vect : nvec (S n)) => vect = (eq_rect (S n) nvec (New n (projT1 (projT2 (nvec_Sn_new vect))) (projT1 (nvec_Sn_new vect))) (S n) (eq_sym eq_refl)))).
-- intros pf.
-  inversion pf.
-- intros i m vec' pf.
-  inversion pf as [pf'].
-  subst.
-  rewrite (proof_irrelevance _ pf eq_refl).
-  rewrite <- (nvec_new_Sn_head vec' m).
-  rewrite <- (nvec_new_Sn_tail vec' m).
-  reflexivity.
-Defined.
-*)
 
 Lemma prd_eqb_eq :
     forall {n : nat} {vec : nvec n} (pn1 pn2 : predicate vec),
@@ -793,6 +738,16 @@ case (form_eqb a b) eqn:EQ.
   rewrite form_eqb_refl in EQ.
   inversion EQ.
 Qed.
+
+Fixpoint sig_subst (a : formula) (sig : ovar -> ovar) : formula :=
+match a with
+| fal => fal
+| equ v1 v2 => equ v1 v2
+| imp a1 a2 =>  imp (sig_subst a1 sig) (sig_subst a2 sig)
+| univ v a => univ v (sig_subst a sig)
+| bnd o1 o2 a => bnd (sig o1) (sig o2) (sig_subst a sig)
+| prd n pn => prd n pn
+end.
 
 (*Fixpoint num_conn (a : formula) : ordinal :=
 match a with
