@@ -384,7 +384,7 @@ match a with
 | equ v1 v2 => []
 | imp B C => (vars_in B) ++ (vars_in C)
 | univ v B => (vars_in B)
-| bnd o1 o2 B => o1 :: o2 :: (vars_in B)
+| bnd o1 o2 B => o2 :: remove nat_eq_dec o1 (vars_in B)
 | prd pn pure => []
 end.
 
@@ -438,6 +438,25 @@ match A with
 | bnd o1 o2 B => bnd o1 o2 (substitution B i1 i2)
 | prd pn _ => A
 end.
+
+Lemma subst_eq_refl : forall (A : formula) (i : ivar), substitution A i i = A.
+Proof.
+induction A;
+intros iv;
+unfold substitution;
+fold substitution;
+try rewrite IHA;
+try rewrite IHA1;
+try rewrite IHA2;
+try reflexivity.
+all : case (nat_eqb i iv) eqn:EQ1;
+      try reflexivity.
+all : case (nat_eqb i0 iv) eqn:EQ2;
+      try apply nat_eqb_eq in EQ1;
+      try apply nat_eqb_eq in EQ2;
+      subst;
+      reflexivity.
+Qed.
 
 Lemma nvec_case :
     forall (n : nat) (P : nvec n -> Type),

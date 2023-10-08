@@ -287,6 +287,18 @@ intros IN.
     apply IN. 
 Qed.
 
+Lemma in_set_bury {A : Type} {L : list A} {LN : list nat} : forall (a : A), In a L <-> In a (set_bury L LN).
+Proof.
+generalize L.
+induction LN as [| n LN];
+intros L1 a.
+- reflexivity.
+- unfold set_bury;
+  fold @set_bury.
+  rewrite <- IHLN, <- in_bury.
+  reflexivity.
+Qed.
+
 Lemma bury_map {A B : Type} {L : list A} {f : A -> B} {n : nat} : map f (bury L n) = bury (map f L) n.
 Proof.
 generalize n.
@@ -341,7 +353,7 @@ destruct m.
   reflexivity.
 Qed.
 
-Lemma bury_nil {A : Type} {L  : list A} {n : nat} : bury L n = [] <-> L = [].
+Lemma bury_nil {A : Type} {L : list A} {n : nat} : bury L n = [] <-> L = [].
 Proof.
 split;
 intros EQ.
@@ -607,6 +619,142 @@ try rewrite IHperm2;
 reflexivity.
 Qed.
 
+Lemma perm_in {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} :
+    perm L1 L2 ->
+        forall (a : A),
+            In a L1 ->
+                In a L2.
+Proof.
+intros perm.
+induction perm;
+intros c IN.
+- inversion IN.
+- destruct IN as [EQ | IN].
+  + apply (or_introl EQ).
+  + apply (or_intror (IHperm _ IN)).
+- destruct IN as [EQ | [EQ | IN]].
+  + apply (or_intror (or_introl EQ)).
+  + apply (or_introl EQ).
+  + apply (or_intror (or_intror IN)).
+- apply IHperm2, IHperm1, IN.
+Qed.
+
+Lemma perm_head {A : Type} {L1 L2 : list A} {a : A} : perm (L1 ++ a :: L2) (a :: L1 ++ L2).
+Proof.
+induction L1.
+- apply perm_refl.
+- apply perm_trans with (a0 :: a :: L1 ++ L2).
+  apply perm_skip.
+  apply IHL1.
+  apply perm_swap.
+Qed.
+
+Lemma double_perm_head {A : Type} {L1 L2 L3 : list A} {a : A} : perm (L1 ++ a :: L2 ++ a :: L3) (a :: a :: L1 ++ L2 ++ L3).
+Proof.
+apply perm_trans with (a :: (L1 ++ L2 ++ a :: L3)).
+apply (@perm_head _ L1 _ a).
+apply perm_skip.
+repeat rewrite app_assoc.
+apply (@perm_head _ _ L3 a).
+Qed.
+
+Lemma nodup_equiv_perm {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} :
+    NoDup L1 ->
+        NoDup L2 ->
+            (forall (a : A), In a L1 <-> In a L2) ->
+                perm L1 L2.
+Proof.
+intros ND1.
+revert L2.
+induction L1;
+intros L2 ND2 EQUIV.
+- destruct L2.
+  + apply perm_refl.
+  + contradiction (proj2 (EQUIV a) (or_introl eq_refl)).
+- apply NoDup_cons_iff in ND1 as [NIN1 ND1].
+  specialize (IHL1 ND1).
+  pose proof (in_split_dec DEC (proj1 (EQUIV _) (or_introl eq_refl))) as [L3 [L4 EQ]].
+  subst.
+  apply NoDup_remove in ND2 as [ND2 NIN2].
+  refine (perm_trans _ _ _ (perm_skip _ _ _ (IHL1 _ ND2 (fun b => (conj (fun IN => _) (fun IN => _))))) (perm_sym perm_head)).
+  + pose proof (in_app_or _ _ _ (proj1 (EQUIV b) (or_intror IN))) as [IN1 | [EQ | IN2]].
+    * apply (in_or_app _ _ _ (or_introl IN1)).
+    * destruct EQ.
+      contradiction.
+    * apply (in_or_app _ _ _ (or_intror IN2)).
+  + apply in_app_or in IN as [IN | IN]. 
+    * pose proof (proj2 (EQUIV b) (in_or_app _ _ _ (or_introl IN))) as [EQ | IN1].
+      --  subst.
+          rewrite in_app_iff in NIN2.
+          contradiction (NIN2 (or_introl IN)).
+      --  apply IN1.
+    * pose proof (proj2 (EQUIV b) (in_or_app _ (a :: L4) _ (or_intror (or_intror IN)))) as [EQ | IN2].
+      --  subst.
+          rewrite in_app_iff in NIN2.
+          contradiction (NIN2 (or_intror IN)).
+      --  apply IN2.
+Qed.
+
+Lemma equiv_nodup_perm {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} :
+    (forall (a : A), In a L1 <-> In a L2) ->
+          perm (nodup DEC L1) (nodup DEC L2).
+Proof.
+intros EQUIV.
+apply (nodup_equiv_perm DEC (NoDup_nodup _ _) (NoDup_nodup _ _)).
+intros a.
+repeat rewrite nodup_In.
+apply EQUIV.
+Qed.
+
+Lemma perm_nodup {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} :
+    perm L1 L2 ->
+        perm (nodup DEC L1) (nodup DEC L2).
+Proof.
+intros perm.
+induction perm;
+unfold nodup;
+fold (nodup DEC).  
+- apply perm_refl.
+- case (in_dec DEC a L1) as [IN1 | NIN1];
+  case (in_dec DEC a L2) as [IN2 | NIN2].
+  + apply IHperm.
+  + contradiction (NIN2 (perm_in DEC perm0 _ IN1)).
+  + contradiction (NIN1 (perm_in DEC (perm_sym perm0) _ IN2)).
+  + apply perm_skip, IHperm.
+- simpl.
+  case (DEC a b) as [EQ1 | NE1];
+  case (DEC b a) as [EQ2 | NE2];
+  subst;
+  try contradiction (NE1 eq_refl);
+  try contradiction (NE2 eq_refl);
+  try case (in_dec DEC a L) as [IN1 | NIN1];
+  case (in_dec DEC b L) as [IN2 | NIN2];
+  try apply perm_refl.
+  apply perm_swap.
+- apply (perm_trans _ _ _ IHperm1 IHperm2).
+Qed.
+
+Lemma incl_head {A : Type} {L1 L2 : list A} {a : A} :
+    incl L1 L2 -> incl (a :: L1)  (a:: L2).
+Proof.
+intros SUB b IN.
+destruct IN as [EQ | IN].
+- apply (or_introl EQ).
+- apply (or_intror (SUB _ IN)).
+Qed.
+
+Lemma nodup_split_perm {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 : list A} : {L2 : list A & ((perm L1 ((nodup DEC L1) ++ L2)) * (incl L2 L1))%type}.
+Proof.
+induction L1.
+- refine (existT _ [] (pair perm_refl (incl_refl _))).
+- unfold nodup;
+  fold (nodup DEC).
+  destruct IHL1 as [L2 [PERM SUB]].
+  case (in_dec DEC a L1) as [IN | NIN].
+  + refine (existT _ (a :: L2) (pair (perm_trans _ _ _ (perm_skip _ _ _ PERM) (perm_sym perm_head)) (incl_head SUB))).
+  + refine (existT _ L2 (pair (perm_skip _ _ _ PERM) (fun b IN => (or_intror (SUB b IN))))).
+Qed.
+
 Lemma set_bury_eq_perm {A : Type} :
     forall {L1 L2 : list A},
         perm L1 L2 ->
@@ -627,7 +775,7 @@ apply perm_ind_type.
   exists (LN1 ++ LN2).
   rewrite set_bury_app, EQ1, EQ2.
   reflexivity.
-Qed.
+Defined.
 
 Lemma length_split_n {A : Type} {L : list A} {n : nat} : n < length L -> {L1 : list A & {L2 : list A & {a : A & length L1 = n /\ L1 ++ a :: L2 = L}}}.
 Proof.
@@ -1044,34 +1192,6 @@ induction L.
     refine (existT _ b (existT _ (a :: L1) (existT _ L2 (existT _ L3 eq_refl)))).
 Qed.
 
-Lemma perm_head {A : Type} {L1 L2 : list A} {a : A} : perm (L1 ++ a :: L2) (a :: L1 ++ L2).
-Proof.
-induction L1.
-- apply perm_refl.
-- apply perm_trans with (a0 :: a :: L1 ++ L2).
-  apply perm_skip.
-  apply IHL1.
-  apply perm_swap.
-Qed.
-
-Lemma double_perm_head {A : Type} {L1 L2 L3 : list A} {a : A} : perm (L1 ++ a :: L2 ++ a :: L3) (a :: a :: L1 ++ L2 ++ L3).
-Proof.
-apply perm_trans with (a :: (L1 ++ L2 ++ a :: L3)).
-apply (@perm_head _ L1 _ a).
-apply perm_skip.
-repeat rewrite app_assoc.
-apply (@perm_head _ _ L3 a).
-Qed.
-
-Lemma incl_head {A : Type} {L1 L2 : list A} {a : A} :
-    incl L1 L2 -> incl (a :: L1)  (a:: L2).
-Proof.
-intros SUB b IN.
-destruct IN as [EQ | IN].
-- apply (or_introl EQ).
-- apply (or_intror (SUB _ IN)).
-Qed.
-
 Lemma incl_remove {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (a : A) (L : list A),
         incl (remove DEC a L) L.
@@ -1447,6 +1567,18 @@ induction l.
   + rewrite (IHl lE) in IN.
     inversion IN.
   + inversion lE.
+Qed.
+
+Lemma nodup_double_cons {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    forall {L : list A} {a : A},
+        nodup DEC (a :: a :: L) = nodup DEC (a :: L).
+Proof.
+intros L a.
+induction L;
+simpl;
+destruct (DEC a a) as [EQ | NE];
+try reflexivity;
+contradiction (NE eq_refl).
 Qed.
 
 Lemma remove_dups_order :
