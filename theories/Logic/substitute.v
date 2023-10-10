@@ -12,110 +12,151 @@ Lemma subst_eq_dec :
     forall (S1 S2 : subst_ind),
         {S1 = S2} + {S1 <> S2}.
 Proof.
-induction S1;
-destruct S2.
-1 : apply (left eq_refl).
-1-2 : right; discriminate.
-case (IHS1 S2) as [EQ | NE].
-- destruct EQ.
-  case a;
-  case b.
-  1,4 : left; reflexivity.
-  all : right; discriminate.
-- right.
-  intros FAL.
-  apply NE.
-  inversion FAL.
-  reflexivity.
+apply list_eq_dec, Bool.bool_dec.
 Qed.
 
-Definition non_target (L : list formula) : subst_ind := repeat false (length L).
+Definition non_target (gamma : list formula) : subst_ind := repeat false (length gamma).
 
-Definition target (L : list formula) : subst_ind := repeat true (length L).
+Definition target (gamma : list formula) : subst_ind := repeat true (length gamma).
 
-Definition subst_ind_fit (L : list formula) (S : subst_ind) : bool := nat_eqb (length L) (length S).
-
-Fixpoint formula_sub_ind_fit (L : list formula) (D E : formula) (S : subst_ind) : list formula :=
-match L, S with
-| A :: L', i :: S' => (match form_eqb A D, i with
-  | true, true => E :: formula_sub_ind_fit L' D E S'
-  | _, _ => A :: formula_sub_ind_fit L' D E S'
-  end)
-| _,_ => L
+Definition formula_sub (phi A1 A2 : formula) (b : bool) : formula :=
+match form_eqb phi A1, b with
+| true, true => A2
+| _, _ => phi
 end.
 
-Definition formula_sub_ind (L : list formula) (D E : formula) (S : subst_ind) : list formula :=
-match subst_ind_fit L S with
-| false => L
-| true => formula_sub_ind_fit L D E S
+Fixpoint batch_sub_fit (gamma : list formula) (A1 A2 : formula) (S : subst_ind) : list formula :=
+match gamma, S with
+| phi :: gamma', b :: S' => (formula_sub phi A1 A2 b) :: batch_sub_fit gamma' A1 A2 S'
+| _ , _ => gamma
 end.
 
-Fixpoint mass_non_target (L : list formula) : list subst_ind :=
-match L with
-| [] => []
-| hd :: tl => (non_target hd) :: (mass_non_target tl)
+Definition batch_sub (gamma : list formula) (A1 A2 : formula) (S : subst_ind) : list formula :=
+match nat_eqb (length gamma) (length S) with
+| false => gamma
+| true => batch_sub_fit gamma A1 A2 S
 end.
 
-Fixpoint mass_target (L : list formula) : list subst_ind :=
-match L with
-| [] => []
-| hd :: tl => (target hd) :: (mass_target tl)
-end.
+Lemma formula_sub_false {phi A1 A2 : formula} : formula_sub phi A1 A2 false = phi.
+Proof. unfold formula_sub. case (form_eqb phi A1); reflexivity. Qed.
 
-Fixpoint mass_fit (LF : list formula) (LS : list subst_ind) : bool :=
-match LF, LS with
-| [], [] => true
-| a :: LF', s :: LS' => subst_ind_fit a s && mass_fit LF' LS'
-| _, _ => false
-end.
+Lemma batch_sub_nil :
+    forall (gamma : list formula) (A1 A2 : formula),
+        batch_sub_fit gamma A1 A2 [] = gamma.
+Proof. induction gamma; reflexivity. Qed.
 
-Fixpoint mass_form_sub_fit (LF : list formula) (LS : list subst_ind) (D E : formula) : list formula :=
-match LF, LS with
-| a :: LF', s :: LS' => formula_sub_ind_fit a D E s :: mass_form_sub_fit LF' LS' D E
-| _, _ => LF
-end.
+Lemma batch_sub_fit_true :
+    forall {gamma : list formula} {A1 A2 : formula} {S : subst_ind},
+        nat_eqb (length gamma) (length S) = true ->
+            batch_sub_fit gamma A1 A2 S = batch_sub gamma A1 A2 S.
+Proof. intros gamma A1 A2 S EQ. unfold batch_sub. rewrite EQ. reflexivity. Qed.
 
-Definition mass_form_sub (LF : list formula) (LS : list subst_ind) (D E : formula) : list formula :=
-match mass_fit LF LS with
-| false => LF
-| true => mass_form_sub_fit LF LS D E
-end.
+Lemma batch_sub_single :
+    forall (phi : formula) (A1 A2 : formula) (b : bool),
+            batch_sub [phi] A1 A2 [b] = [formula_sub phi A1 A2 b].
+Proof. reflexivity. Qed.
 
-Lemma sub_fit_true :
-    forall (A D E : formula) (S : subst_ind),
-        subst_ind_fit A S = true ->
-            formula_sub_ind A D E S = formula_sub_ind_fit A D E S.
+Lemma batch_app_split :
+    forall (gamma1 gamma2 : list formula) (A1 A2 : formula) (S1 S2 : subst_ind),
+        length gamma1 = length S1 ->
+            length gamma2 = length S2 ->
+                batch_sub (gamma1 ++ gamma2) A1 A2 (S1 ++ S2) = batch_sub gamma1 A1 A2 S1 ++ batch_sub gamma2 A1 A2 S2.
 Proof.
-intros A D E S FS.
+induction gamma1;
+intros gamma2 A1 A2 S1 S2 EQ1 EQ2;
+destruct S1;
+inversion EQ1 as [EQ].
+reflexivity.
+unfold batch_sub.
+rewrite !app_length, EQ1, EQ2, !nat_eqb_refl, <- !app_comm_cons.
+unfold batch_sub_fit;
+fold batch_sub_fit.
+rewrite !batch_sub_fit_true, IHgamma1.
+reflexivity.
+5 : rewrite !app_length.
+all : try rewrite EQ;
+      try rewrite EQ2;
+      try rewrite nat_eqb_refl;
+      reflexivity.
+Qed.
+
+Lemma batch_bury_comm_aux :
+    forall (n : nat) (LF : list formula) (S : subst_ind) (A1 A2 : formula),
+        bury (batch_sub LF A1 A2 S) n = batch_sub (bury LF n) A1 A2 (bury S n).
+Proof.
+induction n;
+intros LF LS A v;
+unfold batch_sub;
+rewrite !bury_length;
+case (nat_eqb (length LF) (length LS)) eqn:EQ;
+try reflexivity;
+destruct LF;
+destruct LS;
+try inversion EQ as [EQ'];
+unfold bury;
+fold @bury;
+unfold batch_sub_fit;
+fold batch_sub_fit;
+unfold bury;
+fold @bury;
+try rewrite !batch_sub_fit_true;
+try rewrite !batch_app_split;
+try rewrite !bury_length;
+try apply (nat_eqb_eq _ _ EQ');
+try rewrite !app_length;
+try apply EQ';
+try rewrite batch_sub_single;
+try rewrite IHn;
+try reflexivity.
+
+unfold length;
+fold (@length formula);
+fold (@length bool).
+rewrite <- !plus_n_Sm, <- !plus_n_O.
+apply EQ.
+Qed.
+
+Lemma batch_bury_comm :
+    forall (LF : list formula) (LS : subst_ind) (n : nat) (A1 A2 : formula),
+        bury (batch_sub LF A1 A2 (unbury LS n)) n = batch_sub (bury LF n) A1 A2 LS.
+Proof.
+intros LF LS n A1 A2.
+rewrite <- (@bury_unbury _ LS n) at 2.
+apply batch_bury_comm_aux.
+Qed.
+
+(*
+Lemma sub_fit_true :
+    forall (L : list formula) (D E : formula) (S : subst_ind),
+        subst_ind_fit L S = true ->
+            formula_sub_ind L D E S = formula_sub_ind_fit L D E S.
+Proof.
+intros L D E S FS.
 unfold formula_sub_ind.
-destruct A;
-rewrite FS;
+rewrite FS.
 reflexivity.
 Qed.
 
 Lemma sub_fit_false :
-    forall (A D E : formula) (S : subst_ind),
-        subst_ind_fit A S = false ->
-            formula_sub_ind A D E S = A.
+    forall (L : list formula) (D E : formula) (S : subst_ind),
+        subst_ind_fit L S = false ->
+            formula_sub_ind L D E S = L.
 Proof.
-intros A D E S FS.
+intros L D E S FS.
 unfold formula_sub_ind.
-destruct A;
-rewrite FS;
+rewrite FS.
 reflexivity.
 Qed.
+*)
 
+(*
 Lemma formula_sub_ind_fit_0 :
-    forall (A D E : formula),
-        formula_sub_ind_fit A D E (0) = A.
+    forall (L : list formula) (D E : formula),
+        formula_sub_ind_fit L D E [] = L.
 Proof.
-intros A D E.
-destruct A;
-unfold formula_sub_ind_fit.
-4 : case (form_eqb (univ n A) D).
-2 : case (form_eqb (neg A) D).
-1 : case (form_eqb (atom a) D).
-all : reflexivity.
+intros L D E.
+destruct L;
+reflexivity.
 Qed.
 
 Lemma formula_sub_ind_0 :
@@ -146,31 +187,11 @@ rewrite FS.
 unfold formula_sub_ind_fit; fold formula_sub_ind_fit.
 reflexivity.
 Qed.
+*)
 
-Lemma non_target_fit :
-    forall (A : formula),
-        subst_ind_fit A (non_target A) = true.
-Proof.
-intros A.
-unfold subst_ind_fit, non_target.
-induction A.
-3 : rewrite IHA1, IHA2.
-all : reflexivity.
-Qed.
-
-Lemma target_fit :
-    forall (A : formula),
-        subst_ind_fit A (target A) = true.
-Proof.
-intros A.
-unfold subst_ind_fit, target.
-induction A.
-3 : rewrite IHA1, IHA2.
-all : reflexivity.
-Qed.
-
-Lemma non_target_sub_fit :
-    forall (A : formula) (n : nat) (t : term),
+(*
+Lemma non_target_eq_sub_non_target :
+    forall (L : list formula) (n : nat) (t : term),
         subst_ind_fit (substitution A n t) (non_target A) = true.
 Proof.
 intros A n t.
@@ -411,3 +432,4 @@ rewrite formula_sub_ind_lor.
 - rewrite FS.
   apply non_target_fit.
 Qed.
+*)

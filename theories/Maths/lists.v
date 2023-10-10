@@ -256,6 +256,81 @@ match L with
     end
 end.
 
+Fixpoint unbury {A : Type} (L : list A) (n : nat) : list A :=
+match L with
+| [] => []
+| hd :: tl => match n with
+    | 0 => match rev tl with
+        | [] => L
+        | tlhd :: tltl => tlhd :: hd :: rev tltl
+        end
+    | S m => hd :: unbury tl m
+    end
+end.
+
+Lemma unbury_bury {A : Type} {L : list A} {n : nat} : unbury (bury L n) n = L.
+Proof.
+revert n.
+induction L;
+intros n.
+- reflexivity.
+- destruct n.
+  + unfold bury.
+    destruct L;
+    try rewrite <- app_comm_cons;
+    unfold unbury;
+    fold @unbury.
+    * reflexivity.
+    * rewrite rev_app_distr.
+      unfold rev at 1.
+      rewrite app_nil_l, <- app_comm_cons, app_nil_l, rev_involutive.
+      reflexivity.
+  + unfold bury;
+    fold @bury.
+    unfold unbury;
+    fold @unbury.
+    rewrite IHL.
+    reflexivity.
+Qed.
+
+Lemma rev_nil {A : Type} {L : list A} : (rev L) = [] <-> L = [].
+Proof.
+destruct L.
+reflexivity.
+split;
+intros EQ.
+apply app_eq_nil in EQ as [EQ1 EQ2].
+inversion EQ2.
+inversion EQ.
+Qed.
+
+Lemma bury_unbury {A : Type} {L : list A} {n : nat} : bury (unbury L n) n = L.
+Proof.
+revert n.
+induction L;
+intros n.
+- reflexivity.
+- destruct n.
+  + unfold unbury.
+    destruct (rev L) eqn:EQ.
+    * rewrite rev_nil in EQ.
+      subst.
+      reflexivity.
+    * unfold bury.
+      rewrite <- rev_involutive.
+      unfold rev at 3.
+      fold (rev L).
+      rewrite EQ.
+      rewrite rev_app_distr.
+      reflexivity.
+  + unfold unbury;
+    fold @unbury.
+    unfold bury;
+    fold @bury.
+    rewrite IHL.
+    reflexivity.
+Qed.
+
 Fixpoint set_bury {A : Type} (LA : list A) (LN : list nat) : list A :=
 match LN with
 | [] => LA
