@@ -56,6 +56,19 @@ Lemma batch_sub_single :
             batch_sub [phi] A1 A2 [b] = [formula_sub phi A1 A2 b].
 Proof. reflexivity. Qed.
 
+Lemma batch_sub_false_head :
+    forall (phi : formula) (gamma : list formula) (A1 A2 : formula) (S : subst_ind),
+            batch_sub (phi :: gamma) A1 A2 (false :: S) = phi :: batch_sub gamma A1 A2 S.
+Proof.
+intros phi gamma A1 A2 S.
+unfold batch_sub, length, nat_eqb.
+fold nat_eqb (@length formula) (@length bool).
+case (nat_eqb (length gamma) (length S));
+unfold batch_sub_fit;
+try rewrite formula_sub_false;
+reflexivity.
+Qed.
+
 Lemma batch_app_split :
     forall (gamma1 gamma2 : list formula) (A1 A2 : formula) (S1 S2 : subst_ind),
         length gamma1 = length S1 ->

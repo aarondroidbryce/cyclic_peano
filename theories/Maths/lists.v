@@ -15,6 +15,24 @@ Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
+Lemma rev_list_ind_type {A : Type} :
+    forall (P : list A -> Type),
+        P [] ->
+            (forall (a : A) (L : list A), P (rev L) -> P (rev (a :: L))) ->
+                forall (L : list A), P (rev L).
+Proof.
+intros P ? ? L; induction L; auto.
+Qed.
+
+Theorem rev_ind_type {A : Type} :
+    forall (P : list A -> Type),
+        P [] ->
+          (forall (a : A) (L : list A), P L -> P (L ++ [a])) ->
+              forall (L : list A), P L.
+Proof.
+intros P ? ? L. rewrite <- (rev_involutive L).
+apply (rev_list_ind_type P); cbn; auto.
+Qed.
 
 Lemma in_single :
     forall {A : Type} {a b : A}, In a [b] -> a = b.
@@ -65,6 +83,26 @@ intros IN.
     destruct (IHL IN') as [L1 [L2 EQ]].
     subst.
     refine (existT _ (a0 :: L1) (existT _ L2 eq_refl)).
+Qed.
+
+Lemma in_split_dec_first {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a : A} : In a L -> {L1 : list A & {L2 : list A & L = L1 ++ a :: L2 /\ ~ In a L1}}.
+Proof.
+induction L;
+intros IN.
+- contradiction IN.
+- destruct (DEC a0 a) as [EQ | NE].
+  + subst.
+    refine (existT _ [] (existT _ L (conj eq_refl (@in_nil _ a)))).
+  + assert (In a L) as IN'.
+    { destruct IN as [EQ | IN].
+      contradiction.
+      apply IN. }
+    destruct (IHL IN') as [L1 [L2 [EQ NIN]]].
+    subst.
+    refine (existT _ (a0 :: L1) (existT _ L2 (conj eq_refl _))).
+    intros [FAL | FAL].
+    apply (NE FAL).
+    apply (NIN FAL).
 Qed.
 
 Lemma combine_eq_len :
@@ -1299,6 +1337,582 @@ match L with
 | [] => false
 | hd :: tl => if DEC hd a then if (in_dec DEC b tl) then true else false else if DEC hd b then false else precedence DEC tl a b
 end.
+
+Fixpoint sublist {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L1 L2 : list A) : bool :=
+match L1 with
+| [] => true
+| a1 :: L1' => match L2 with
+  | [] => false
+  | a2 :: L2' => if DEC a1 a2 then sublist DEC L1' L2' else sublist DEC L1 L2'
+  end
+end.
+
+Fixpoint list_filter {A : Type} (LA : list A) (LB : list bool) : list A :=
+match LA with
+| [] => []
+| a :: LA' => match LB with
+    | [] => LA
+    | false :: LB' => list_filter LA' LB'
+    | true :: LB' => a :: list_filter LA' LB'
+    end
+end.
+
+Lemma filter_false_nil {A : Type} {L : list A} : [] = list_filter L (repeat false (length L)).
+Proof.
+induction L.
+reflexivity.
+rewrite IHL.
+reflexivity.
+Qed.
+
+Lemma sublist_cons {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} (a : A) :
+    sublist DEC L1 L2 = true ->
+        sublist DEC (a :: L1) (a :: L2) = true.
+Proof.
+revert L2.
+induction L1;
+intros L2 SL;
+unfold sublist;
+fold @sublist;
+case (DEC a a) as [_ | FAL];
+try contradiction (FAL eq_refl);
+apply SL.
+Qed.
+
+Lemma sublist_cons_inv {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} {a : A} :
+    sublist DEC (a :: L1) (a :: L2) = true ->
+        sublist DEC L1 L2 = true.
+Proof.
+revert L2.
+induction L1;
+intros L2 SL;
+unfold sublist in *;
+fold @sublist in *;
+case (DEC a a) as [_ | FAL];
+try contradiction (FAL eq_refl).
+destruct L2; reflexivity.
+apply SL.
+Qed.
+
+Lemma sublist_refl {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} : sublist DEC L L = true.
+Proof. induction L. reflexivity. unfold sublist. fold @sublist. case (DEC a a) as [_ | FAL]. apply IHL. contradiction (FAL eq_refl). Qed.
+
+Lemma sublist_head {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a : A} : sublist DEC L (a :: L) = true.
+Proof.
+induction L.
+reflexivity.
+unfold sublist at 1;
+fold @sublist.
+case (DEC a0 a) as [EQ | NE].
+subst.
+apply IHL.
+rewrite sublist_refl.
+case (DEC a0 a0) as [_ | FAL].
+reflexivity.
+contradiction (FAL eq_refl).
+Qed.
+
+Lemma sublist_cons_type {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} {a : A} :
+    sublist DEC L1 (a :: L2) = true ->
+        {L3 : list A & {L1 = a :: L3 /\ sublist DEC L3 L2 = true} + {sublist DEC L1 L2 = true}}.
+Proof.
+revert L2.
+induction L1;
+intros L2 SL.
+exists [].
+right.
+destruct L2;
+reflexivity.
+exists L1.
+unfold sublist in SL;
+fold @sublist in SL.
+case (DEC a0 a) as [EQ | _].
+subst.
+left.
+split.
+reflexivity.
+apply SL.
+right.
+apply SL.
+Qed.
+
+Lemma sublist_cons_inv_front {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} {a : A} :
+    sublist DEC (a :: L1) L2 = true ->
+        sublist DEC L1 L2 = true.
+Proof.
+revert L1 a.
+induction L2;
+intros L1 b SL.
+inversion SL.
+unfold sublist in SL;
+fold @sublist in SL.
+case (DEC b a) as [EQ | NE].
+subst.
+- destruct L1.
+  reflexivity.
+  pose proof (IHL2 _ _ SL) as SL'.
+  unfold sublist;
+  fold @sublist.
+  rewrite SL,SL'.
+  case (DEC a0 a) as [_ | _];
+  reflexivity.
+- pose proof (IHL2 _ _ SL) as SL'.
+  destruct L1.
+  reflexivity.
+  pose proof (IHL2 _ _ SL') as SL''.
+  unfold sublist;
+  fold @sublist.
+  rewrite SL', SL''.
+  case (DEC a0 a) as [_ | _];
+  reflexivity.
+Qed.
+
+Lemma sublist_cons_inv_back {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} {a : A} :
+    sublist DEC L1 L2 = true ->
+        sublist DEC L1 (a :: L2) = true.
+Proof.
+revert L2 a.
+induction L1;
+intros L2 b SL.
+reflexivity.
+unfold sublist;
+fold @sublist.
+rewrite SL.
+rewrite (sublist_cons_inv_front DEC SL).
+case (DEC a b) as [_ | _];
+reflexivity.
+Qed.
+
+Lemma sublist_trans {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 L3 : list A} :
+    sublist DEC L1 L2 = true ->
+        sublist DEC L2 L3 = true ->
+            sublist DEC L1 L3 = true.
+Proof.
+revert L1 L2;
+induction L3;
+intros L1 L2 SL1 SL2.
+- destruct L2.
+  destruct L1.
+  reflexivity.
+  inversion SL1.
+  inversion SL2.
+- destruct (sublist_cons_type DEC SL2) as [L4 [[EQ SL3] | SL3]].
+  subst.
+  destruct (sublist_cons_type DEC SL1) as [L2 [[EQ SL4] | SL4]].
+  subst.
+  apply sublist_cons, (IHL3 _ _ SL4 SL3).
+  apply sublist_cons_inv_back, (IHL3 _ _ SL4 SL3).
+  apply sublist_cons_inv_back, (IHL3 _ _ SL1 SL3).
+Qed.
+
+Lemma sublist_is_filter {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L1 L2 : list A) :
+    sublist DEC L1 L2 = true ->
+        {LB : list bool & L1 = list_filter L2 LB}.
+Proof.
+revert L1.
+induction L2;
+intros L1 SL.
+destruct L1.
+refine (existT _ [] eq_refl).
+inversion SL.
+destruct (sublist_cons_type DEC SL) as [L3 [[EQ SL3] | SL3]];
+subst;
+destruct (IHL2 _ SL3) as [LB EQ];
+subst.
+refine (existT _ (true :: LB) _).
+reflexivity.
+refine (existT _ (false :: LB) _).
+reflexivity.
+Qed.
+
+Lemma precedence_cons {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b c : A} : 
+    a <> b ->
+        precedence DEC (a :: L) b c = true -> precedence DEC L b c = true.
+Proof.
+intros NE Prec.
+unfold precedence in Prec;
+fold @precedence in Prec.
+case (DEC a b) as [FAL | _].
+contradiction.
+case (DEC a c) as [_ | _].
+inversion Prec.
+apply Prec.
+Qed.
+
+Lemma precedence_is_in {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+      precedence DEC L a b = true ->
+          (In a L /\ In b L).
+Proof.
+intros Prec.
+induction L;
+unfold precedence in Prec;
+fold @precedence in Prec.
+inversion Prec.
+case (DEC a0 a) as [EQ | NE].
+subst.
+case (in_dec DEC b L) as [IN | NIN].
+apply (conj (or_introl eq_refl) (or_intror IN)).
+inversion Prec.
+case (DEC a0 b) as [EQ | NE'].
+inversion Prec.
+apply (conj (or_intror (proj1 (IHL Prec))) (or_intror (proj2 (IHL Prec)))).
+Qed.
+
+Lemma in_tail_prec {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+    In b L -> precedence DEC (a :: L) a b = true.
+Proof.
+intros IN.
+unfold precedence;
+fold @precedence.
+case (DEC a a) as [[] | FAL].
+case (in_dec DEC b L) as [_ | FAL].
+reflexivity.
+contradict (FAL IN).
+contradict (FAL eq_refl).
+Qed.
+
+Lemma NoDup_precedence_asym {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+      NoDup L ->
+          precedence DEC L a b = true ->
+            precedence DEC L b a = false.
+Proof.
+intros ND Prec.
+induction L as [ | a1 L].
+- inversion Prec.
+- unfold precedence in *;
+  fold @precedence in *.
+  case (DEC a1 a) as [EQ | NE1].
+  + subst.
+    case (in_dec DEC b L) as [IN1 | _].
+    * case (DEC a b) as [EQ | NE1].
+      subst.
+      inversion ND.
+      contradiction (H1 IN1).
+      reflexivity.
+    * inversion Prec.
+  + case (DEC a1 b) as [_ | NE2].
+    inversion Prec.
+    refine (IHL _ Prec).
+    inversion ND.
+    apply H2.
+Qed.
+
+Lemma precedence_eq_sublist {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+    forall (L1 L2 : list A),
+        incl L1 L2 ->
+            NoDup L1 ->
+                NoDup L2 ->
+                    (forall (a b : A), precedence DEC L1 a b = true -> precedence DEC L2 a b = true) ->
+                        sublist DEC L1 L2 = true.
+Proof.
+intros L1 L2;
+revert L1.
+induction L2;
+intros L1 SUB ND1 ND2 Prec;
+destruct L1.
+reflexivity.
+contradiction (SUB _ (or_introl eq_refl)).
+reflexivity.
+unfold sublist;
+fold @sublist.
+apply NoDup_cons_iff in ND1 as [NIN1 ND1].
+apply NoDup_cons_iff in ND2 as [NIN2 ND2].
+case (DEC a0 a) as [EQ | NE1].
+- subst.
+  assert (forall a b : A, precedence DEC L1 a b = true -> precedence DEC L2 a b = true) as PREC'.
+  { intros a1 b1 Prec1.
+    specialize (Prec a1 b1).
+    case (DEC a a1) as [EQ | NE].
+    subst.
+    contradiction (NIN1 (proj1 (precedence_is_in DEC Prec1))).
+    apply (precedence_cons DEC NE), Prec.
+    unfold precedence;
+    fold @precedence.
+    rewrite Prec1.
+    case (DEC a a1) as [EQ | _].
+    contradiction (NE EQ).
+    case (DEC a b1) as [EQ | _].
+    subst.
+    contradiction (NIN1 (proj2 (precedence_is_in DEC Prec1))).
+    reflexivity. }
+  refine (IHL2 _ (fun b IN => _) ND1 ND2 PREC').
+  destruct (SUB _ (or_intror IN)) as [FAL | IN'].
+  subst.
+  contradict (NIN1 IN).
+  apply IN'.
+- assert (precedence DEC (a :: L2) a a0 = true) as PR1.
+  { apply in_tail_prec.
+    destruct (SUB _ (or_introl eq_refl)) as [FAL | IN'].
+    subst.
+    contradict (NE1 eq_refl).
+    apply IN'. }
+  assert (~ In a L1) as NIN.
+  { intros IN.
+    pose proof (Prec _ _ (in_tail_prec DEC IN)) as FAL.
+    rewrite (NoDup_precedence_asym _ (proj2 (NoDup_cons_iff _ _ ) (conj NIN2 ND2)) PR1) in FAL.
+    inversion FAL. }
+  assert (forall a b : A, precedence DEC (a0 :: L1) a b = true -> precedence DEC L2 a b = true) as PREC'.
+  { intros a1 b1 Prec1.
+    specialize (Prec a1 b1).
+    unfold precedence in *;
+    fold @precedence in *.
+    case (DEC a0 a1) as [EQ | NE2].
+    + subst.
+      case (in_dec DEC b1 L1) as [IN | _].
+      * specialize (Prec Prec1).
+        case (DEC a a1) as [EQ | _].
+        contradiction (NE1 (eq_sym EQ)).
+        case (DEC a b1) as [_ | _].
+        inversion Prec.
+        apply Prec.
+      * inversion Prec1.
+    + case (DEC a0 b1) as [EQ | NE3].
+      inversion Prec1.
+      specialize (Prec Prec1).
+      case (DEC a a1) as [EQ | NE4].
+      * subst.
+        contradiction (NIN (proj1 (precedence_is_in DEC Prec1))).
+      * case (DEC a b1) as [EQ | NE5].
+        inversion Prec.
+        apply Prec. }
+refine (IHL2 _ _ (proj2 (NoDup_cons_iff _ _) (conj NIN1 ND1)) ND2 PREC').
+intros b IN.
+destruct (SUB _ IN) as [EQ | IN'].
+subst.
+destruct IN as [EQ | IN].
+contradiction (NE1 EQ).
+contradict (NIN IN).
+apply IN'.
+Qed.
+
+Lemma in_filter_in {A : Type} {L : list A} {a : A} :
+    forall (LB : list bool),
+        In a (list_filter L LB) -> In a L.
+Proof.
+induction L;
+intros LB IN.
+inversion IN.
+destruct LB.
+apply IN.
+destruct b.
+destruct IN as [EQ | IN].
+apply (or_introl EQ).
+apply (or_intror (IHL _ IN)).
+apply (or_intror (IHL _ IN)).
+Qed.
+
+Lemma NoDup_filter_unique {A : Type} {L : list A} :
+    NoDup L ->
+        forall (L1 L2 : list bool),
+            length L = length L1 ->
+                length L = length L2 ->
+                    list_filter L L1 = list_filter L L2 <-> L1 = L2.
+Proof.
+induction L;
+intros ND L1 L2 EQ1 EQ2;
+split;
+intros EQ.
+1,2 : destruct L1;
+      destruct L2;
+      inversion EQ1;
+      inversion EQ2;
+      reflexivity.
+- apply NoDup_cons_iff in ND as [NIN ND].
+  destruct L1;
+  inversion EQ1 as [EQ1'].
+  destruct L2;
+  inversion EQ2 as [EQ2'].
+  unfold list_filter in EQ;
+  fold @list_filter in EQ.
+  case b eqn:bb;
+  case b0 eqn:b0b.
+  inversion EQ as [EQ'].
+  rewrite (proj1 (IHL ND _ _ EQ1' EQ2') EQ').
+  reflexivity.
+  contradict NIN.
+  apply (in_filter_in L2).
+  rewrite <- EQ.
+  apply (or_introl eq_refl).
+  contradict NIN.
+  apply (in_filter_in L1).
+  rewrite EQ.
+  apply (or_introl eq_refl).
+  inversion EQ as [EQ'].
+  rewrite (proj1 (IHL ND _ _ EQ1' EQ2') EQ').
+  reflexivity.
+- apply NoDup_cons_iff in ND as [NIN ND].
+  destruct L1;
+  inversion EQ1 as [EQ1'].
+  destruct L2;
+  inversion EQ2 as [EQ2'].
+  unfold list_filter;
+  fold @list_filter.
+  case b eqn:bb;
+  case b0 eqn:b0b;
+  inversion EQ as [EQ'];
+  reflexivity.
+Qed.
+  
+(*
+  
+
+  Lemma precedence_type {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+      precedence DEC L a b = true ->
+          {L1 : list A & {L2 : list A & {L3 : list A & L = L1 ++ a :: L2 ++ b :: L3}}}.
+  Proof.
+  intros Prec.
+  induction L.
+  inversion Prec.
+  unfold precedence in Prec;
+  fold @precedence in Prec.
+  case (DEC a0 a) as [EQ | NE].
+  subst.
+  case (in_dec DEC b L) as [IN | NIN].
+  apply (in_split_dec DEC) in IN as [L2 [L3 EQL]].
+  refine (existT _ [] (existT _ L2 (existT _ L3 _))).
+  rewrite app_nil_l, EQL.
+  reflexivity.
+  inversion Prec.
+  case (DEC a0 b) as [_ | _].
+  inversion Prec.
+  destruct (IHL Prec) as [L1 [L2 [L3 EQL]]].
+  refine (existT _ (a0 :: L1) (existT _ L2 (existT _ L3 _))).
+  rewrite <- app_comm_cons, EQL.
+  reflexivity.
+  Qed.
+
+  Lemma precedence_type_strong {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+      precedence DEC L a b = true ->
+          {L1 : list A & {L2 : list A & {L3 : list A & L = L1 ++ a :: L2 ++ b :: L3 /\ ~ In a L1 /\ ~ In b L1 /\ ~ In b L2}}}.
+  Proof.
+  intros Prec.
+  induction L.
+  inversion Prec.
+  unfold precedence in Prec;
+  fold @precedence in Prec.
+  case (DEC a0 a) as [EQ | NE1].
+  subst.
+  case (in_dec DEC b L) as [IN | NIN].
+  apply (in_split_dec_first DEC) in IN as [L2 [L3 [EQL NIN]]].
+  refine (existT _ [] (existT _ L2 (existT _ L3 (conj _ (conj (@in_nil _ a) (conj (@in_nil _ b) NIN)))))).
+  rewrite app_nil_l, EQL.
+  reflexivity.
+  inversion Prec.
+  case (DEC a0 b) as [_ | NE2].
+  inversion Prec.
+  destruct (IHL Prec) as [L1 [L2 [L3 [EQL [NIN1 [NIN2 NIN3]]]]]].
+  refine (existT _ (a0 :: L1) (existT _ L2 (existT _ L3 (conj _ (conj _ (conj _ NIN3)))))).
+  rewrite <- app_comm_cons, EQL.
+  reflexivity.
+  intros [FAL | FAL].
+  apply (NE1 FAL).
+  apply (NIN1 FAL).
+  intros [FAL | FAL].
+  apply (NE2 FAL).
+  apply (NIN2 FAL).
+  Qed.
+
+  Lemma NoDup_precedence_trans {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b c : A} :
+      NoDup L ->
+          precedence DEC L a b = true ->
+            precedence DEC L b c = true ->
+              precedence DEC L a c = true.
+  Proof.
+  intros ND Prec1 Prec2.
+  induction L as [ | a1 L].
+  - inversion Prec1.
+  - unfold precedence in *;
+    fold @precedence in *.
+    case (DEC a1 a) as [EQ | NE1].
+    + subst.
+      case (in_dec DEC b L) as [IN1 | _].
+      * case (DEC a b) as [EQ | NE1].
+        subst.
+        inversion ND.
+        contradiction (H1 IN1).
+        case (DEC a c) as [_ | NE2].
+        inversion Prec2.
+        case (in_dec DEC c L) as [IN2 | NIN2].
+        reflexivity.
+        contradiction (NIN2 (proj2 (precedence_is_in DEC Prec2))).
+      * inversion Prec1.
+    + case (DEC a1 b) as [_ | NE2].
+      inversion Prec1.
+      case (DEC a1 c) as [_ | _].
+      inversion Prec2.
+      refine (IHL _ Prec1 Prec2).
+      inversion ND.
+      apply H2.
+  Qed.
+
+  Lemma precedence_gives_filter {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
+      forall (L1 L2 : list A),
+          incl L1 L2 ->
+              NoDup L1 ->
+                  NoDup L2 ->
+                      (forall (a b : A), precedence DEC L1 a b = true -> precedence DEC L2 a b = true) ->
+                          {Filt : A -> bool & L1 = filter Filt L2}.
+  Proof.
+  induction L1 as [ | a1 L1];
+  intros L2 SUB ND1 ND2 Prec.
+  - exists (fun (a : A) => false).
+    induction L2 as [ | b1 L2].
+    reflexivity.
+    apply IHL2.
+    apply incl_nil_l.
+    apply (proj1 (NoDup_cons_iff _ _) ND2).
+    intros a b FAL.
+    inversion FAL.
+  - apply NoDup_cons_iff in ND1 as [NIN1 ND1].
+    destruct (in_split_dec DEC (SUB _ (or_introl eq_refl))) as [L3 [L4 EQ]].
+    subst.
+    apply NoDup_remove in ND2 as [ND2 NIN2].
+    apply (nin_split DEC) in NIN2 as [NIN3 NIN4].
+    pose proof (fun (b : A) (IN : In b L1) => Prec a1 b (in_tail_prec DEC IN)).
+    assert (forall a b : A, precedence DEC L1 a b = true -> precedence DEC L4 a b = true) as PREC'.
+    { intros a b Prec'.
+      specialize (Prec a b).
+      unfold precedence in Prec;
+      fold @precedence in Prec.
+      rewrite Prec' in Prec.
+      case (DEC a1 a) as [EQ | NE1].
+      subst.
+      contradiction (NIN1 (proj1 (precedence_is_in DEC Prec'))).
+      case (DEC a1 b) as [EQ | NE2].
+      subst.
+      contradiction (NIN1 (proj2 (precedence_is_in DEC Prec'))).
+
+      apply (precedence_skip DEC NE1 NE2 (Prec eq_refl)). }  
+    destruct (IHL1 _ (incl_Add_inv NIN1 SUB (Add_app _ _ _)) ND1 ND2 PREC') as [Filt EQ].
+    exists (fun (a : A) => (if DEC a a1 then true else Filt a)).
+    rewrite filter_app in *.
+    unfold filter;
+    fold (filter (fun (a : A) => (if DEC a a1 then true else Filt a))).
+    case (DEC a1 a1)  as [[] | FAL];
+    try contradict (FAL eq_refl).
+    rewrite (filter_ext_in _ (fun a => false) L3), (filter_ext_in _ Filt L4), EQ.
+      reflexivity.
+      intros a IN.
+      case (DEC a a2) as [FAL | NE].
+      subst.
+      contradict (NIN2 IN).
+      reflexivity.
+    + assert (forall a b : A, precedence DEC L1 a b = true -> precedence DEC (a2 :: L2) a b = true) as PREC'.
+      { intros a b Prec'.
+        specialize (Prec a b).
+        unfold precedence in Prec;
+        fold @precedence in Prec.
+        rewrite Prec' in Prec.
+        case (DEC a1 a) as [EQ | _].
+        subst.
+        contradiction (NIN1 (proj1 (precedence_is_in DEC Prec'))).
+        case (DEC a1 b) as [EQ | _].
+        subst.
+        contradiction (NIN1 (proj2 (precedence_is_in DEC Prec'))).
+        apply Prec.
+        reflexivity. }
+        destruct (IHL1 _ (incl_Add_inv NIN1 SUB (Add_head a2 L2)) ND1 ND2 PREC') as [Filt EQ].
+*)
 
 Lemma flat_map_remove_in {A B : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
     forall (f : A -> list B) (a : A) (L : list A) (b : B),

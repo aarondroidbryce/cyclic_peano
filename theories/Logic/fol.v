@@ -368,6 +368,19 @@ Qed.
 
 Definition coherent (sig : ovar -> ovar) (OC1 OC2 : constraint) : Prop := (forall (lambda : ovar), OC_elt OC2 lambda -> OC_elt OC1 (sig lambda)) /\ (forall (lambda kappa : ovar), OC_rel OC2 lambda kappa = true <-> OC_rel OC1 (sig lambda) (sig kappa) = true) /\ (forall (lambda kappa : ovar), precedence nat_eq_dec (OC_list OC2) lambda kappa = true -> precedence nat_eq_dec (OC_list OC1) (sig lambda) (sig kappa) = true).
 
+Lemma coherent_acts_as_filter :
+    forall (sig : ovar -> ovar) (OC1 OC2 : constraint),
+        coherent sig OC1 OC2 ->
+            {Filt : ovar -> bool &
+                (OC_list OC2) = filter Filt (map sig (OC_list OC1))}.
+Proof.
+intros sig [LV1 [REL1 [ND1 [NULL1 ORD1]]]] [LV2 [REL2 [ND2 [NULL2 ORD2]]]] [OC_Sub [Order Coherent]].
+unfold OC_elt, OC_rel, OC_list, projT1, projT2 in *.
+unfold precedence in Coherent;
+fold @precedence in Coherent.
+Qed.
+
+
 Fixpoint num_conn (A : formula) : ordinal :=
 match A with
 | fal => cast Zero
