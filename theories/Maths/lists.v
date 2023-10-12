@@ -1357,6 +1357,18 @@ match LA with
     end
 end.
 
+Fixpoint list_filter_eq {A : Type} (LA : list A) (LB : list bool) : list A :=
+match LB with
+| [] => []
+| b :: LB' => match LA with
+    | [] => []
+    | a :: LA' => match b with 
+        | true => a :: list_filter_eq LA' LB'
+        | false => list_filter_eq LA' LB'
+        end
+    end
+end.
+
 Lemma filter_false_nil {A : Type} {L : list A} : [] = list_filter L (repeat false (length L)).
 Proof.
 induction L.
@@ -1752,7 +1764,58 @@ intros EQ.
   inversion EQ as [EQ'];
   reflexivity.
 Qed.
-  
+
+Fixpoint bool_cascade (L1 L2 : list bool) : list bool :=
+match L1 with
+| [] => []
+| b1 :: L1' => match b1 with
+    | true => match L2 with
+        | [] => L1
+        | b2 :: L2' => b2 :: (bool_cascade L1' L2')
+        end
+    | false => false :: (bool_cascade L1' L2)
+    end
+end.
+
+Lemma cascade_nil :
+    forall (L : list bool),
+        bool_cascade L [] = L.
+Proof.
+induction L.
+reflexivity.
+unfold bool_cascade;
+fold bool_cascade.
+case a.
+reflexivity.
+rewrite IHL.
+reflexivity.
+Qed.
+
+Lemma cascade_filter_eq :
+    forall (L1 L2 L3 : list bool),
+        L1 = list_filter L2 L3 ->
+            list_filter (bool_cascade L2 L1) L3 = L1.
+Proof.
+induction L1;
+intros L2 L3 SL.
+rewrite cascade_nil, SL.
+reflexivity.
+destruct L2.
+inversion SL.
+unfold bool_cascade;
+fold bool_cascade.
+destruct L3.
+- inversion SL.
+  subst.
+  case b eqn:EB;
+  unfold list_filter.
+  admit.
+  reflexivity.
+unfold list_filter;
+fold @list_filter.
+unfold bool_cascade;
+fold bool_cascade.
+
 (*
   
 
@@ -1861,7 +1924,8 @@ Qed.
     apply IHL2.
     apply incl_nil_l.
     apply (proj1 (NoDup_cons_iff _ _) ND2).
-    intros a b FAL.
+    intros aLemma 
+ b FAL.
     inversion FAL.
   - apply NoDup_cons_iff in ND1 as [NIN1 ND1].
     destruct (in_split_dec DEC (SUB _ (or_introl eq_refl))) as [L3 [L4 EQ]].
