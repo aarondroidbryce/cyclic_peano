@@ -1347,6 +1347,7 @@ match L1 with
   end
 end.
 
+(*
 Fixpoint list_filter {A : Type} (LA : list A) (LB : list bool) : list A :=
 match LA with
 | [] => []
@@ -1356,15 +1357,16 @@ match LA with
     | true :: LB' => a :: list_filter LA' LB'
     end
 end.
+*)
 
-Fixpoint list_filter_eq {A : Type} (LA : list A) (LB : list bool) : list A :=
+Fixpoint list_filter {A : Type} (LA : list A) (LB : list bool) : list A :=
 match LB with
 | [] => []
 | b :: LB' => match LA with
     | [] => []
     | a :: LA' => match b with 
-        | true => a :: list_filter_eq LA' LB'
-        | false => list_filter_eq LA' LB'
+        | true => a :: list_filter LA' LB'
+        | false => list_filter LA' LB'
         end
     end
 end.
@@ -1519,23 +1521,21 @@ Qed.
 
 Lemma sublist_is_filter {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L1 L2 : list A) :
     sublist DEC L1 L2 = true ->
-        {LB : list bool & L1 = list_filter L2 LB}.
+        {LB : list bool & L1 = list_filter L2 LB /\ length LB = length L2}.
 Proof.
 revert L1.
 induction L2;
 intros L1 SL.
 destruct L1.
-refine (existT _ [] eq_refl).
+refine (existT _ [] (conj eq_refl eq_refl)).
 inversion SL.
 destruct (sublist_cons_type DEC SL) as [L3 [[EQ SL3] | SL3]];
 subst;
-destruct (IHL2 _ SL3) as [LB EQ];
+destruct (IHL2 _ SL3) as [LB [EQ1 EQ2]];
 subst.
-refine (existT _ (true :: LB) _).
-reflexivity.
-refine (existT _ (false :: LB) _).
-reflexivity.
-Qed.
+refine (existT _ (true :: LB) (conj eq_refl (eq_S _ _ EQ2))).
+refine (existT _ (false :: LB) (conj eq_refl (eq_S _ _ EQ2))).
+Defined.
 
 Lemma precedence_cons {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b c : A} : 
     a <> b ->
@@ -1702,10 +1702,9 @@ Lemma in_filter_in {A : Type} {L : list A} {a : A} :
         In a (list_filter L LB) -> In a L.
 Proof.
 induction L;
-intros LB IN.
-inversion IN.
-destruct LB.
-apply IN.
+intros LB IN;
+destruct LB;
+try inversion IN.
 destruct b.
 destruct IN as [EQ | IN].
 apply (or_introl EQ).
@@ -1752,8 +1751,7 @@ intros EQ.
   inversion EQ as [EQ'].
   rewrite (proj1 (IHL ND _ _ EQ1' EQ2') EQ').
   reflexivity.
-- apply NoDup_cons_iff in ND as [NIN ND].
-  destruct L1;
+- destruct L1;
   inversion EQ1 as [EQ1'].
   destruct L2;
   inversion EQ2 as [EQ2'].
@@ -1791,30 +1789,230 @@ rewrite IHL.
 reflexivity.
 Qed.
 
-Lemma cascade_filter_eq :
-    forall (L1 L2 L3 : list bool),
-        L1 = list_filter L2 L3 ->
-            list_filter (bool_cascade L2 L1) L3 = L1.
+Lemma filter_nil {A : Type} {L : list A} : list_filter L [] = [].
+Proof. induction L; reflexivity. Qed.
+
+Fixpoint count_true (L : list bool) : nat :=
+match L with
+| [] => 0
+| false :: L' => count_true L'
+| true :: L' => S (count_true L')
+end.
+
+Lemma bool_cascade_length :
+    forall {L1 L2 : list bool},
+        length L1 = length (bool_cascade L1 L2).
 Proof.
 induction L1;
-intros L2 L3 SL.
-rewrite cascade_nil, SL.
+intros L2.
 reflexivity.
 destruct L2.
-inversion SL.
+rewrite cascade_nil.
+reflexivity.
 unfold bool_cascade;
 fold bool_cascade.
-destruct L3.
+destruct a;
+unfold length;
+fold (@length bool);
+rewrite <- IHL1;
+reflexivity.
+Qed.
+
+Lemma bool_cascade_count :
+    forall (L1 L2 : list bool),
+        length L2 = count_true L1 ->
+            count_true L2 = count_true (bool_cascade L1 L2).
+Proof.
+induction L1;
+intros L2 LEN.
+destruct L2.
+reflexivity.
+inversion LEN.
+unfold bool_cascade;
+fold bool_cascade.
+unfold count_true in LEN;
+fold count_true in LEN.
+destruct a.
+destruct L2;
+inversion LEN as [LEN'].
+unfold count_true;
+fold count_true.
+rewrite (IHL1 _ LEN').
+destruct b;
+reflexivity.
+unfold count_true;
+fold count_true.
+apply IHL1, LEN.
+Qed.
+
+Lemma sublist_count_length {A : Type} : 
+    forall (L1 L2 : list A) (L3 : list bool),
+        length L2 = length L3 ->
+            L1 = list_filter L2 L3 ->
+                length L1 = count_true L3.
+Proof.
+induction L1;
+intros L2 L3;
+revert L2;
+induction L3;
+intros L2 LEN SL;
+destruct L2;
+inversion LEN as [LEN'].
+- reflexivity.
+- unfold list_filter in SL;
+  fold @list_filter in SL.
+  destruct a.
+  inversion SL.
+  apply (IHL3 _ LEN' SL).
 - inversion SL.
+- unfold list_filter in SL;
+  fold @list_filter in SL.
+  destruct a0;
+  inversion SL as [[EQ1 EQ2]];
   subst.
-  case b eqn:EB;
-  unfold list_filter.
-  admit.
-  reflexivity.
+  + apply eq_S.
+    apply (IHL1 _ _ LEN' eq_refl).
+  + apply (IHL3 _ LEN' EQ1).
+Qed.
+
+Lemma cascade_filter_eq :
+    forall (L1 L2 : list bool),
+        L1 = list_filter L2 L2 ->
+            L1 = list_filter (bool_cascade L2 L1) L2.
+Proof.
+induction L1 as [ | a1 L1];
+intros L2 SL.
+rewrite cascade_nil.
+apply SL.
+induction L2.
+inversion SL.
+unfold list_filter in SL;
+fold @list_filter in SL.
+unfold bool_cascade;
+fold bool_cascade.
+destruct a;
 unfold list_filter;
 fold @list_filter.
+inversion SL as [[EQ1 EQ2]].
+subst.
+rewrite (IHL1 _ eq_refl) at 1.
+reflexivity.
+apply IHL2, SL.
+Qed.
+
+Require Import Sumbool.
+
+Definition sublist_gen {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) (L1 L2 : list A) : list bool :=
+match sumbool_of_bool (sublist DEC L1 L2) with
+| left SL => projT1 (sublist_is_filter DEC L1 L2 SL)
+| right _ => repeat false (length L2)
+end.
+
+Lemma sublist_gen_eq_len {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} : length (sublist_gen DEC L1 L2) = length L2.
+Proof.
+unfold sublist_gen.
+destruct sumbool_of_bool.
+apply (proj2 (projT2 (sublist_is_filter _ _ _ _))).
+apply repeat_length.
+Qed.
+
+Lemma sublist_gen_true_len {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L1 L2 : list A} :
+    sublist DEC L1 L2 = true ->
+        length L1 = count_true (sublist_gen DEC L1 L2).
+Proof.
+intros SL.
+apply (sublist_count_length L1 L2 (sublist_gen DEC L1 L2) (eq_sym (sublist_gen_eq_len DEC))).
+unfold sublist_gen.
+destruct (sumbool_of_bool (sublist DEC _ L2)) as [SL' | FAL];
+try rewrite SL in FAL;
+try inversion FAL.
+apply (proj1 (projT2 (sublist_is_filter DEC L1 L2 SL'))).
+Qed.
+
+
+(*
+Lemma cascade_filter_eq_2 :
+    forall (L1 L2 L3 : list bool),
+        length L2 = length L3 ->
+            L1 = list_filter L2 L3 ->
+                L1 = list_filter (bool_cascade L2 L1) L3.
+Proof.
+induction L1 as [ | a1 L1];
+intros L2 L3 LEN SL.
+rewrite cascade_nil.
+apply SL.
+destruct L2;
+destruct L3;
+inversion LEN as [LEN'].
+inversion SL.
+pose proof (sublist_count_length _ _ _ LEN SL) as HELP1.
+pose proof (bool_cascade_count _ _ HELP1) as HELP2.
+simpl in HELP1, HELP2.
 unfold bool_cascade;
 fold bool_cascade.
+unfold list_filter in SL;
+fold @list_filter in SL.
+destruct b.
+- unfold list_filter;
+  fold @list_filter.
+  destruct b0.
+  + inversion SL as [[EQ1 EQ2]].
+    subst.
+    rewrite (IHL1 _ _ LEN');
+    reflexivity.
+  + destruct a1.
+    admit.
+
+
+
+
+- inversion SL as [[EQ1 EQ2]].
+  subst.
+  destruct b;
+  unfold list_filter;
+  fold @list_filter.
+  rewrite (IHL1 _ _ LEN');
+  reflexivity.
+
+
+intros L1 L2 L3;
+revert L1 L2.
+induction L3;
+intros L1 L2 LEN SL.
+rewrite !filter_nil in *.
+apply (eq_sym SL).
+destruct L1.
+rewrite cascade_nil.
+apply (eq_sym SL).
+destruct L2.
+inversion SL as [SL'].
+unfold bool_cascade;
+fold bool_cascade.
+unfold list_filter in SL;
+fold @list_filter in SL.
+apply eq_add_S in LEN.
+fold (@length bool) in LEN.
+case b0 eqn:EB0;
+unfold list_filter;
+fold @list_filter.
+- case a eqn:EA.
++ inversion SL as [[EB SL']].
+  subst.
+  rewrite (IHL3 _ _ LEN);
+  reflexivity.
++ rewrite (IHL3 _ _ LEN).
+  admit.
+  admit.
+- case a eqn:EA.
++ inversion SL as [[EB SL']].
+  subst.
+  rewrite IHL3.
+  admit.
+  admit.
++ rewrite IHL3.
+  reflexivity.
+  apply SL.
+*)
 
 (*
   

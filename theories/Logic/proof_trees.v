@@ -19,7 +19,7 @@ Inductive ptree : Type :=
 | equal : forall (v1 v2 : ivar), ptree
 
 
-| loop_head : forall (OC : constraint) (gamma delta : list formula) (P_Target : ptree), ptree
+| loop_head : forall (OC1 : constraint) (OC2 : constraint) (gamma delta : list formula) (sig : (constraint_type OC2) -> (constraint_type OC1)) (P_Target : ptree), ptree
 
 (*| deg_up : forall (OC : constraint) (gamma delta : list formula) (alpha beta : ordinal) (LT : ord_lt alpha beta) (P' : ptree), ptree *)
 
@@ -66,7 +66,7 @@ match P with
 
 | equal v1 v2 => [equ v1 v2]
 
-| loop_head OC gamma delta P_Target => gamma
+| loop_head OC1 OC2 gamma delta sig P_Target => gamma
 
 | @con_l OC gamma delta phi v1 v2 alpha P' => (equ v1 v2) :: phi :: gamma
 
@@ -111,7 +111,7 @@ match P with
 
 | equal v1 v2 => [equ v1 v2]
 
-| loop_head OC gamma delta P_Target => delta
+| loop_head OC1 OC2 gamma delta sig P_Target => delta
 
 | @con_l OC gamma delta phi v1 v2 alpha P' => delta
 
@@ -156,7 +156,7 @@ match P with
 
 | equal v1 v2 => empty
 
-| loop_head OC gamma delta P_Target => OC
+| loop_head OC1 OC2 gamma delta sig P_Target => OC1
 
 | @con_l OC gamma delta phi v1 v2 alpha P' => OC
 
@@ -201,7 +201,7 @@ match P with
 
 | equal v1 v2 => cast Zero
 
-| loop_head OC1 OC2 gamma delta => cast Zero
+| loop_head OC1 OC2 gamma delta sig P_Target => cast Zero
 
 | @con_l OC gamma delta phi v1 v2 alpha P' => alpha
 
@@ -261,6 +261,22 @@ destruct P2.
 17-35 : right; discriminate.
 18-36 : right; discriminate.
 19-37 : right; discriminate.
+
+4 : { try destruct (IHP1 P2) as [EQ | NE];
+      try destruct (constraint_eq_dec OC1 OC0) as [EQO | NEO];
+      try destruct (constraint_eq_dec OC2 OC3) as [EQO' | NEO'];
+      try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
+      try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NED];
+      subst;
+			try destruct (sig_dec sig sig0) as [EQS | NES];
+      subst;
+      try apply (left (eq_refl));
+      right;
+      try intros FAL;
+      inversion FAL as [FAL'];
+      try contradiction.
+      repeat apply inj_pair2 in FAL'.
+      contradiction. }
 
 2 : { try destruct (nat_eq_dec n n0) as [EQN | NEN];
       subst;
@@ -330,7 +346,7 @@ match P with
 
 | equal v1 v2 => false
 
-| loop_head OC gamma delta P_Target => false
+| loop_head OC1 OC2 gamma delta sig P_Target => false
 
 | con_l phi v1 v2 P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
 
@@ -375,7 +391,10 @@ match P1, P2 with
 
 | equal v1 v2, equal v3 v4 => v1 = v3 /\ v2 = v4
 
-| loop_head OC1 gamma1 delta1 P_Target1, loop_head OC2 gamma2 delta2 P_Target2 => OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ (P_Target1 = bot \/ P_Target2 = bot \/ P_Target1 = P_Target2)
+| loop_head OC1 OC2 gamma1 delta1 sig1 P_Target1, loop_head OC3 OC4 gamma2 delta2 sig2 P_Target2 =>
+    OC1 = OC3 /\ gamma1 = gamma2 /\ delta1 = delta2 /\
+    (forall (PF1 : OC1 = OC3) (PF2 : OC2 = OC4), sig2 = (eq_rect _ (fun OC' => constraint_type OC4 -> constraint_type OC') (eq_rect _ (fun OC'' => constraint_type OC'' -> constraint_type OC1) sig1 _ PF2) _ PF1)) /\
+    (P_Target1 = bot \/ P_Target2 = bot \/ (P_Target1 = P_Target2 /\ OC2 = OC4))
 
 | con_l phi1 v1 v2 P1, con_l phi2 v3 v4 P2 => phi1 = phi2 /\ v1 = v3 /\ v2 = v4 /\ ptree_equiv P1 P2
 
@@ -422,7 +441,7 @@ match P with
 
 | equal v1 v2 => []
 
-| loop_head OC gamma delta P_Target => [pair P P_Target]
+| loop_head OC1 OC2 gamma delta sig P_Target => [pair P P_Target]
 
 | con_l phi v1 v2 P' => leaves P'
 
@@ -469,7 +488,7 @@ match P, M with
 
 | equal v1 v2, [true] => [P]
 
-| loop_head OC gamma delta P_Target, true :: M' => P :: path_fit P_Target M'
+| loop_head OC1 OC2 gamma delta sig P_Target, true :: M' => P :: path_fit P_Target M'
 
 | con_l phi v1 v2 P', true :: M' => P :: path_fit P' M'
 
@@ -522,7 +541,17 @@ match P with
 
 | equal v1 v2 => true = true
 
-| loop_head OC gamma delta P_Target => (struct_valid P_Target) * applicable OC gamma delta * applicable (ptree_constraint P_Target) gamma delta * inhabited {sig : ovar -> ovar & coherent sig OC (ptree_constraint P_Target) /\ (incl (map (fun lambda => sig_subst lambda sig) (ptree_left P_Target)) gamma) /\ (incl (map (fun lambda => sig_subst lambda sig) (ptree_right P_Target)) delta)} * (In (pair (loop_head OC gamma delta bot) bot) (leaves P_Target))
+| loop_head OC1 OC2 gamma delta sig P_Target =>
+
+  (struct_valid P_Target) * applicable OC1 gamma delta *
+
+  applicable OC1 gamma delta * (P_Target = bot \/ ptree_constraint P_Target = OC2) *
+
+  (coherent OC1 OC2 sig /\
+      (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_left P_Target)) gamma = true) /\
+      (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_right P_Target)) delta = true)) *
+
+  (In (pair (loop_head OC1 OC2 gamma delta sig bot) bot) (leaves P_Target))
 
 | @con_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: phi :: (substitution phi v1 v2) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 

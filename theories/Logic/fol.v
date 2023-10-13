@@ -366,20 +366,124 @@ case (list_eq_dec nat_eq_dec (OC_list OC1) (OC_list OC2)) as [EQL | NEL].
   reflexivity.
 Qed.
 
-Definition coherent (sig : ovar -> ovar) (OC1 OC2 : constraint) : Prop := (forall (lambda : ovar), OC_elt OC2 lambda -> OC_elt OC1 (sig lambda)) /\ (forall (lambda kappa : ovar), OC_rel OC2 lambda kappa = true <-> OC_rel OC1 (sig lambda) (sig kappa) = true) /\ (forall (lambda kappa : ovar), precedence nat_eq_dec (OC_list OC2) lambda kappa = true -> precedence nat_eq_dec (OC_list OC1) (sig lambda) (sig kappa) = true).
+Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
 
-Lemma coherent_acts_as_filter :
-    forall (sig : ovar -> ovar) (OC1 OC2 : constraint),
-        coherent sig OC1 OC2 ->
-            {Filt : ovar -> bool &
-                (OC_list OC2) = filter Filt (map sig (OC_list OC1))}.
+Lemma constraint_type_eq_dec (OC : constraint) :
+    forall (o1 o2 : constraint_type OC),
+        {o1 = o2} + {o1 <> o2}.
 Proof.
-intros sig [LV1 [REL1 [ND1 [NULL1 ORD1]]]] [LV2 [REL2 [ND2 [NULL2 ORD2]]]] [OC_Sub [Order Coherent]].
-unfold OC_elt, OC_rel, OC_list, projT1, projT2 in *.
-unfold precedence in Coherent;
-fold @precedence in Coherent.
+intros [o1 IN1] [o2 IN2].
+destruct OC as [L [REL [ND [NULL ORD]]]].
+unfold OC_elt, OC_list, projT1 in *.
+case (nat_eq_dec o1 o2) as [EQ | NE].
+- left.
+  subst.
+  rewrite (proof_irrelevance _ IN1 IN2).
+  reflexivity.
+- right.
+  intros FAL.
+  apply NE.
+  inversion FAL.
+  reflexivity.
 Qed.
 
+Definition constraint_type_eqb {OC : constraint} (o1 o2 : constraint_type OC) : bool :=
+match o1, o2 with
+| (existT _ o1' _), (existT _ o2' _) => nat_eqb o1' o2'
+end.
+
+Lemma constraint_type_eqb_eq {OC : constraint} :
+    forall (o1 o2 : constraint_type OC),
+        constraint_type_eqb o1 o2 = true <-> o1 = o2.
+Proof.
+intros [o1 IN1] [o2 IN2].
+split;
+intros EQ.
+unfold constraint_type_eqb in EQ.
+apply nat_eqb_eq in EQ.
+subst.
+rewrite (proof_irrelevance _ IN1 IN2).
+reflexivity.
+inversion EQ as [EQ'].
+subst.
+unfold constraint_type_eqb.
+apply nat_eqb_refl.
+Qed.
+
+Lemma sig_dec {OC1 OC2 : constraint} :
+    forall (f g : (constraint_type OC1) -> constraint_type OC2),
+        {f = g} + {f <> g}.
+Proof.
+intros f g.
+assert (forall (F : constraint_type OC1 -> Type), (forall (o : ovar) (IN : OC_elt OC1 o), F (existT _ o IN)) -> forall (v : constraint_type OC1), F v) as FUNEXT.
+{ intros F HYP v.
+  destruct v as [o IN].
+  apply HYP. }
+assert ({forall (v : constraint_type OC1), f v = g v} + {~ forall (v : constraint_type OC1), f v = g v}) as [ALL | EXISTS].
+{ assert ({forall v, constraint_type_eqb (f v) (g v) = true} + {~ forall v, constraint_type_eqb (f v) (g v) = true}) as [ALL | EXISTS].
+  { assert ({forall (o : ovar) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true} + {~ forall (o : ovar) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true}) as [ALL | EXISTS].
+    { assert (forall x : ovar,
+    {(fun o : ovar =>
+      forall IN : In o (OC_list OC1),
+      constraint_type_eqb
+        (f (existT (fun o0 : ovar => OC_elt OC1 o0) o IN))
+        (g (existT (fun o0 : ovar => OC_elt OC1 o0) o IN)) = true) x} +
+    {~
+     (fun o : ovar =>
+      forall IN : In o (OC_list OC1),
+      constraint_type_eqb
+        (f (existT (fun o0 : ovar => OC_elt OC1 o0) o IN))
+        (g (existT (fun o0 : ovar => OC_elt OC1 o0) o IN)) = true) x}) as HELP.
+    { intros o.
+      case (in_dec nat_eq_dec o (OC_list OC1)) as [IN | NIN].
+      case (constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN))) eqn:b.
+      left.
+      intros IN'.
+      rewrite (proof_irrelevance _ IN' IN).
+      apply b.
+      right.
+      intros FAL.
+      rewrite (FAL IN) in b.
+      inversion b.
+      left.
+      intros IN.
+      contradiction (NIN IN). }
+    destruct (Forall_dec (fun (o : ovar) => forall (IN : In o (OC_list OC1)), (constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN))) = true) HELP (OC_list OC1)) as [ALL | EXISTS].
+    left.
+    rewrite Forall_forall in ALL.
+    intros o IN.
+    apply ALL, IN.
+    right.
+    intros FAL.
+    apply EXISTS.
+    rewrite Forall_forall.
+    intros o IN IN'.
+    rewrite (proof_irrelevance _ IN' IN).
+    apply FAL. }
+    left.
+    apply FUNEXT, ALL.
+    right.
+    intros FAL.
+    apply EXISTS.
+    intros o IN.
+    apply FAL. }
+  left.
+  intros v.
+  apply constraint_type_eqb_eq, ALL.
+  right.
+  intros FAL.
+  apply EXISTS. 
+  intros v.
+  apply constraint_type_eqb_eq, FAL. }
+
+- apply left, functional_extensionality, ALL.
+- right.
+  intros FAL.
+  apply EXISTS.
+  intros v.
+  destruct FAL.
+  reflexivity.
+Qed.
 
 Fixpoint num_conn (A : formula) : ordinal :=
 match A with
@@ -771,6 +875,13 @@ case (form_eqb a b) eqn:EQ.
   inversion EQ.
 Qed.
 
+Definition sig_generalise {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) : ovar -> ovar := fun o =>
+match
+in_dec nat_eq_dec o (OC_list OC1) with
+| left IN => projT1 (sig (existT _ o IN))
+| right _ => O
+end.
+
 Fixpoint sig_subst (a : formula) (sig : ovar -> ovar) : formula :=
 match a with
 | fal => fal
@@ -780,6 +891,43 @@ match a with
 | bnd o1 o2 a => bnd (sig o1) (sig o2) (sig_subst a sig)
 | prd n pn => prd n pn
 end.
+
+Definition coherent (OC1 OC2 : constraint) (sig : constraint_type OC2 -> constraint_type OC1) : Prop :=
+      (forall (lambda : constraint_type OC2),
+          OC_elt OC1 (projT1 (sig lambda))) /\
+      (forall (lambda kappa : constraint_type OC2),
+          OC_rel OC2 (projT1 lambda) (projT1 kappa) = true <-> OC_rel OC1 (projT1 (sig lambda)) (projT1 (sig kappa)) = true) /\
+          (forall (lambda kappa : constraint_type OC2),
+              precedence nat_eq_dec (OC_list OC2) (projT1 lambda) (projT1 kappa) = true ->
+                  precedence nat_eq_dec (OC_list OC1) (projT1 (sig lambda)) (projT1 (sig kappa)) = true).
+
+(*
+Lemma coherent_acts_as_filter :
+    forall (sig : ovar -> ovar) (OC1 OC2 : constraint),
+        coherent sig OC1 OC2 ->
+            sublist nat_eq_dec (map sig (OC_list OC2)) (OC_list OC1) = true.
+Proof.
+intros sig [LV1 [REL1 [ND1 [NULL1 ORD1]]]] [LV2 [REL2 [ND2 [NULL2 ORD2]]]] [OC_Sub [Order Coherent]].
+unfold OC_elt, OC_rel, OC_list, projT1, projT2 in *.
+apply precedence_eq_sublist.
+intros o IN.
+apply in_map_iff in IN as [o' [EQ IN]].
+subst.
+apply OC_Sub, IN.
+admit.
+apply ND1.
+intros o1 o2 Prec.
+pose proof (precedence_is_in nat_eq_dec Prec) as [IN1 IN2].
+apply in_map_iff in IN1 as [o3 [EQ1 IN1]].
+apply in_map_iff in IN2 as [o4 [EQ2 IN2]].
+subst.
+apply Coherent.
+
+
+apply NoDup_map.
+ND1.
+Qed.
+*)
 
 (*Fixpoint num_conn (a : formula) : ordinal :=
 match a with
