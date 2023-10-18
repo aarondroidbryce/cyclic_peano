@@ -138,6 +138,145 @@ rewrite <- (@bury_unbury _ LS n) at 2.
 apply batch_bury_comm_aux.
 Qed.
 
+Lemma batch_sub_app {A1 A2 : formula} :
+    forall (L1 L2 : list formula) (S : subst_ind),
+        length (L1 ++ L2) = length S ->
+            batch_sub (L1 ++ L2) A1 A2 S = batch_sub L1 A1 A2 (firstn (length L1) S) ++ batch_sub L2 A1 A2 (skipn (length L1) S).
+Proof.
+induction L1;
+intros L2 S EQ.
+rewrite !app_nil_l in *.
+reflexivity.
+destruct S.
+inversion EQ.
+unfold batch_sub.
+rewrite firstn_length, skipn_length, <- !EQ, nat_eqb_refl, app_length, minus_n_plus_m, nat_eqb_refl, min_l, nat_eqb_refl.
+rewrite <- !app_comm_cons in *.
+unfold length in *;
+fold (@length formula) (@length bool) in *.
+apply eq_add_S in EQ.
+unfold firstn, skipn;
+fold (@firstn bool) (@skipn bool).
+unfold batch_sub_fit;
+fold batch_sub_fit.
+rewrite !batch_sub_fit_true, (IHL1 _ _ EQ).
+reflexivity.
+rewrite skipn_length, <- EQ, app_length, minus_n_plus_m.
+apply nat_eqb_refl.
+rewrite firstn_length, <- EQ, app_length, min_l.
+apply nat_eqb_refl.
+apply PeanoNat.Nat.le_add_r.
+rewrite EQ.
+apply nat_eqb_refl.
+apply PeanoNat.Nat.le_add_r.
+Qed.
+
+(*Lemma batch_sub_is_map_combine : 
+    forall L A1 A2 S,
+        length L = length S ->
+            batch_sub L A1 A2 S = (map (fun PAIR => formula_sub (fst PAIR) A1 A2 (snd (PAIR))) (combine L S)).
+Proof.
+induction L;
+intros A1 A2 S EQ;
+unfold combine, batch_sub, batch_sub_fit, map;
+fold batch_sub_fit (@combine formula bool);
+rewrite EQ, nat_eqb_refl.
+- reflexivity.
+- destruct S;
+  inversion EQ as [EQ'].
+  fold (map (fun PAIR => formula_sub (fst PAIR) A1 A2 (snd (PAIR)))).
+  unfold fst at 1, snd at 1.
+  rewrite batch_sub_fit_true, IHL.
+  reflexivity.
+  apply EQ'.
+  rewrite EQ'.
+  apply nat_eqb_refl.
+Qed.
+*)
+
+Lemma map_batch_sub : 
+    forall (gamma : list formula) (A1 A2 : formula) (S : subst_ind) (F : formula -> formula),
+        map F (batch_sub gamma A1 A2 S) = batch_sub (map F gamma) (F A1) (F A2) S.
+Proof.
+
+Admitted.
+
+Lemma batch_sub_sublist :
+    forall (L1 L2 : list formula) (A1 A2 : formula) (S : subst_ind),
+        sublist form_eq_dec L1 L2 = true ->
+            length L2 = length S ->
+                sublist form_eq_dec (batch_sub L1 A1 A2 (list_filter S ((sublist_filter form_eq_dec L1 L2)))) (batch_sub L2 A1 A2 S) = true.
+Proof.
+induction L1;
+intros L2 A1 A2 S SL EQ.
+unfold batch_sub, batch_sub_fit.
+fold batch_sub_fit.
+rewrite EQ at 1.
+rewrite nat_eqb_refl.
+case nat_eqb;
+apply sublist_nil.
+destruct (sublist_cons_split form_eq_dec _ _ _ SL) as [L3 [L4 [SL' [EQ' NIN]]]].
+subst.
+assert (Nat.min (length L3) (length S) = length L3) as EQ'.
+{ rewrite <- EQ, app_length.
+  apply min_l, PeanoNat.Nat.le_add_r. }
+
+rewrite (sublist_cons_split_filter form_eq_dec _ _ _ _ SL NIN).
+rewrite (batch_sub_app _ _ _ EQ).
+rewrite <- (firstn_skipn (length L3) S) at 1.
+rewrite list_filter_app.
+- rewrite firstn_length.
+  rewrite EQ'.
+  rewrite plus_n_O at 2 5.
+  rewrite <- (repeat_length false (length L3)) at 2 5.
+  rewrite firstn_app_2.
+  rewrite skipn_app2.
+  rewrite firstn_O.
+  rewrite app_nil_r.
+  rewrite <- EQ' at 2.
+  rewrite <- firstn_length.
+  rewrite <- filter_false_nil.
+  rewrite app_nil_l.
+  unfold skipn at 2.
+  apply sublist_app.
+  unfold batch_sub.
+  assert (length (skipn (length L3) S) = length (a :: L4)) as LEN.
+  { rewrite skipn_length, <- EQ, app_length.
+    apply minus_n_plus_m. }
+  rewrite LEN, nat_eqb_refl.
+  rewrite sublist_count_length.
+  2 : rewrite LEN;
+      apply eq_S, eq_sym, sublist_filter_length, SL'.
+  unfold count_true;
+  fold count_true.
+  unfold length at 1;
+  fold (@length formula).
+  rewrite (sublist_filter_true _ _ _ SL'), nat_eqb_refl.
+  destruct (skipn (length L3) S) eqn:EQ'';
+  inversion LEN as [LEN'].
+  unfold list_filter;
+  fold @list_filter.
+  unfold batch_sub_fit;
+  fold batch_sub_fit.
+  unfold sublist;
+  fold @sublist.
+  rewrite !batch_sub_fit_true.
+  + case form_eq_dec as [_ | FAL].
+    apply (IHL1 _ _ _ _ SL' (eq_sym LEN')).
+    contradiction (FAL eq_refl).
+  + rewrite LEN'.
+    apply nat_eqb_refl.
+  + rewrite sublist_count_length, (sublist_filter_true _ _ _ SL').
+    apply nat_eqb_refl.
+    rewrite (sublist_filter_length _ _ _ SL').
+    apply LEN'.
+- rewrite (firstn_skipn (length L3) S), <- EQ, !app_length, repeat_length.
+  unfold length at 2 4;
+  fold (@length formula) (@length bool).
+  rewrite (sublist_filter_length _ _ _ SL').
+  reflexivity.
+Qed.
+
 (*
 Lemma sub_fit_true :
     forall (L : list formula) (D E : formula) (S : subst_ind),
