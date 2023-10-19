@@ -196,10 +196,53 @@ Qed.
 
 Lemma map_batch_sub : 
     forall (gamma : list formula) (A1 A2 : formula) (S : subst_ind) (F : formula -> formula),
-        map F (batch_sub gamma A1 A2 S) = batch_sub (map F gamma) (F A1) (F A2) S.
+        (forall (phi1 phi2 : formula),
+            phi1 = phi2 <-> F phi1 = F phi2) ->
+            map F (batch_sub gamma A1 A2 S) = batch_sub (map F gamma) (F A1) (F A2) S.
 Proof.
-
-Admitted.
+induction gamma;
+intros A1 A2 S F INJ;
+unfold batch_sub, batch_sub_fit.
+- destruct S;
+  rewrite map_length;
+  reflexivity.
+- unfold map;
+  fold (map F) batch_sub_fit.
+  unfold length;
+  fold (@length bool) (@length formula).
+  rewrite map_length.
+  destruct S.
+  reflexivity.
+  unfold length at 2 4.
+  fold (@length bool).
+  unfold nat_eqb;
+  fold nat_eqb.
+  case (nat_eqb (length gamma) (length S)) eqn:EQB.
+  + unfold map;
+    fold (map F).
+    rewrite !batch_sub_fit_true.
+    rewrite IHgamma.
+    unfold formula_sub.
+    case (form_eqb a A1) eqn:EQF;
+    destruct b;
+    try apply form_eqb_eq in EQF;
+    subst;
+    try rewrite form_eqb_refl;
+    try reflexivity.
+    * case (form_eqb (F a) (F A1)) eqn:FAL.
+      apply form_eqb_eq, INJ in FAL.
+      subst.
+      rewrite form_eqb_refl in EQF.
+      inversion EQF.
+      reflexivity.
+    * case (form_eqb (F a) (F A1)) eqn:FAL;
+      reflexivity.
+    * apply INJ.
+    * rewrite map_length.
+      apply EQB.
+    * apply EQB.
+  + reflexivity.
+Qed.
 
 Lemma batch_sub_sublist :
     forall (L1 L2 : list formula) (A1 A2 : formula) (S : subst_ind),

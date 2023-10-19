@@ -1625,6 +1625,54 @@ induction L as [ | a1 L].
     apply H2.
 Qed.
 
+Lemma precedence_cases {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) {L : list A} {a b : A} :
+    In a L ->
+        In b L ->
+            {precedence DEC L a b = true} +
+                {precedence DEC L b a = true} +
+                    {a = b}.
+Proof.
+induction L;
+intros INa INb.
+inversion INa.
+unfold precedence;
+fold @precedence.
+case (DEC a0 a) as [EQ1 | NE1];
+case (DEC a0 b) as [EQ2 | NE2];
+subst.
+- right.
+  reflexivity.
+- left.
+  left.
+  destruct INb as [FAL | INb].
+  contradiction (NE2 FAL).
+  case (in_dec DEC b L) as [_ | FAL].
+  reflexivity.
+  contradiction (FAL INb).
+- left.
+  right.
+  destruct INa as [FAL | INa].
+  contradiction (NE1 FAL).
+  case (in_dec DEC a L) as [_ | FAL].
+  reflexivity.
+  contradiction (FAL INa).
+- destruct IHL as [[Prec1 | Prec2] | EQ].
+  destruct INa as [FAL | INa].
+  contradiction (NE1 FAL).
+  apply INa.
+  destruct INb as [FAL | INb].
+  contradiction (NE2 FAL).
+  apply INb.
+  + left.
+    left.
+    apply Prec1.
+  + left.
+    right.
+    apply Prec2.
+  + right.
+    apply EQ.
+Qed.
+
 Lemma precedence_eq_sublist {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L1 L2 : list A),
         incl L1 L2 ->

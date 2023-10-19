@@ -338,6 +338,12 @@ apply left, eq_refl.
 all : right; intros FAL; apply NE; inversion FAL; reflexivity.
 Qed.
 
+Definition ptree_sigma (P : ptree) : ovar -> ovar :=
+match P with
+| loop_head OC1 OC2 gamma delta sig P_Target => sig_generalise sig
+| _ => fun (o : ovar) => o
+end.
+
 Fixpoint ptree_descends_from (P Source : ptree) : bool :=
 match P with
 | bot => false
@@ -690,6 +696,7 @@ Definition valid (P : ptree) : Type :=
                       (forall (P_path : ptree),
                           In P_path (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
                               OC_elt (ptree_constraint P_path) kappa) *
+                      (ptree_sigma P_Leaf kappa = kappa) *
                       { P_reset : ptree & In P_reset (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) /\ resets_var P_reset kappa}}})%type})}.
 
 Definition P_proves (P : ptree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
