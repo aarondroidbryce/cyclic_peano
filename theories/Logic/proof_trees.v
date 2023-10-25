@@ -549,11 +549,13 @@ match P with
 
 | loop_head OC1 OC2 gamma delta sig P_Target =>
 
-  (struct_valid P_Target) * applicable OC1 gamma delta *
+  (struct_valid P_Target) *
+  
+  applicable OC1 gamma delta *
+  
+  (P_Target = bot \/ ptree_constraint P_Target = OC2) *
 
-  applicable OC1 gamma delta * (P_Target = bot \/ ptree_constraint P_Target = OC2) *
-
-  (coherent OC1 OC2 sig /\
+  (coherent sig /\
       (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_left P_Target)) gamma = true) /\
       (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_right P_Target)) delta = true)) *
 

@@ -15,6 +15,25 @@ Import ListNotations.
 
 Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
+Lemma Exists_sig {A : Type} {L : list A} {P : A -> Prop} :
+    (forall (a : A), {P a} + {~ P a}) ->
+        Exists P L -> {a : A & In a L /\ P a}.
+Proof.
+intros P_DEC.
+induction L;
+intros EX.
+contradiction (proj1 (Exists_nil _) EX).
+apply Exists_cons in EX.
+destruct (P_DEC a) as [Pa | nPa].
+refine (existT _ a (conj (or_introl eq_refl) Pa)).
+assert (Exists P L) as EX'.
+{ destruct EX as [Pa | EX].
+  contradiction.
+  assumption. }
+destruct (IHL EX') as [b [IN Pb]].
+refine (existT _ b (conj (or_intror IN) Pb)).
+Qed.
+
 Lemma rev_list_ind_type {A : Type} :
     forall (P : list A -> Type),
         P [] ->

@@ -882,6 +882,17 @@ in_dec nat_eq_dec o (OC_list OC1) with
 | right _ => o
 end.
 
+(*
+Fixpoint vec_map {n : nat} (F : nat -> nat) (vec : nvec n) : nvec n :=
+match n as n' return n' = n -> nvec n with
+| 0 => fun pf => (eq_rect _ _ Null _ pf)
+| S m => match vec with
+    | Null => fun pf => Null
+    | New _ v vec' => fun pf => New _ (F v) (vec_map F vec')
+    end
+end eq_refl.
+*)
+
 Fixpoint sig_subst (a : formula) (sig : ovar -> ovar) : formula :=
 match a with
 | fal => fal
@@ -889,7 +900,7 @@ match a with
 | imp a1 a2 =>  imp (sig_subst a1 sig) (sig_subst a2 sig)
 | univ v a => univ v (sig_subst a sig)
 | bnd o1 o2 a => bnd o1 (sig o2) (sig_subst a (fun o => if nat_eq_dec o o1 then o else sig o))
-| prd n pn => prd n pn
+| prd pn pure => prd pn pure
 end.
 
 Definition coherent {OC1 OC2 : constraint} (sig : constraint_type OC2 -> constraint_type OC1) : Prop :=
@@ -901,6 +912,18 @@ Definition coherent {OC1 OC2 : constraint} (sig : constraint_type OC2 -> constra
               precedence nat_eq_dec (OC_list OC2) (projT1 lambda) (projT1 kappa) = true ->
                   precedence nat_eq_dec (OC_list OC1) (projT1 (sig lambda)) (projT1 (sig kappa)) = true).
 
+Definition coherent_bijection {OC1 OC2 : constraint} (sig : constraint_type OC2 -> constraint_type OC1) : Type :=
+  ((forall (lambda : constraint_type OC2),
+      OC_elt OC1 (projT1 (sig lambda))) *
+  (forall (lambda : constraint_type OC1),
+      {kappa : constraint_type OC2 & sig kappa = lambda}) *
+  (forall (lambda kappa : constraint_type OC2),
+      OC_rel OC2 (projT1 lambda) (projT1 kappa) = true <-> OC_rel OC1 (projT1 (sig lambda)) (projT1 (sig kappa)) = true) *
+      (forall (lambda kappa : constraint_type OC2),
+          precedence nat_eq_dec (OC_list OC2) (projT1 lambda) (projT1 kappa) = true ->
+              precedence nat_eq_dec (OC_list OC1) (projT1 (sig lambda)) (projT1 (sig kappa)) = true))%type.
+
+(*
 Lemma coherent_is_injective_aux {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
     coherent sig ->
         forall (o1 o2 : constraint_type OC1),
@@ -925,10 +948,36 @@ destruct (precedence_cases nat_eq_dec (projT2 o1) (projT2 o2)) as [[Prec1 | Prec
   reflexivity.
 Qed.
 
+Lemma coherent_bijective_is_injective {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
+    coherent_bijection sig ->
+        forall (o1 o2 : constraint_type OC1),
+            o1 = o2 <-> sig o1 = sig o2.
+Proof.
+intros [[[INJ SUR] REL_iff] ORD] o1 o2.
+split;
+intros EQ.
+subst.
+reflexivity.
+destruct (precedence_cases nat_eq_dec (projT2 o1) (projT2 o2)) as [[Prec1 | Prec2] | EQ'].
+- pose proof (ORD _ _ Prec1) as FAL.
+  rewrite EQ in FAL.
+  contradiction (eq_true_false_abs _ FAL (NoDup_precedence_asym _ (OC_unique OC2) FAL)).
+- pose proof (ORD _ _ Prec2) as FAL.
+  rewrite EQ in FAL.
+  contradiction (eq_true_false_abs _ FAL (NoDup_precedence_asym _ (OC_unique OC2) FAL)).
+- destruct o1 as [o1 IN1], o2 as [o2 IN2].
+  unfold projT1 in EQ'.
+  subst.
+  rewrite (proof_irrelevance _ IN1 IN2).
+  reflexivity.
+Qed.
+*)
+
 Definition sig_inverse_single {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o2 : constraint_type OC2) := {o1 : constraint_type OC1 & sig o1 = o2}.
 
-Definition sig_image {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o2 : constraint_type OC2) : Prop := inhabited {o1 : constraint_type OC1 & sig o1 = o2}.
+Definition sig_image {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o2 : constraint_type OC2) : Prop := inhabited (sig_inverse_single sig o2).
 
+(*
 Lemma sig_inverse_single_is_unique {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o : constraint_type OC2) :
     coherent sig ->
         sig_image sig o ->
@@ -944,7 +993,9 @@ subst.
 rewrite (proof_irrelevance _ EQ1 EQ2).
 reflexivity.
 Qed.
+*)
 
+(*
 Lemma sig_image_dec {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o : constraint_type OC2) : {sig_image sig o} + {~ sig_image sig o}.
 Proof.
 unfold sig_image.
@@ -977,38 +1028,276 @@ destruct (fun X => Forall_Exists_dec (fun (o1 : ovar) => forall (IN : OC_elt OC1
   rewrite (proof_irrelevance _ IN' IN).
   apply NE.
 Qed.
+*)
 
+Lemma sig_image_dec_alt {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o : constraint_type OC2) : {o1 : constraint_type OC1 & sig o1 = o} + {forall o1 : constraint_type OC1, sig o1 <> o}.
+Proof.
+destruct (fun X => Forall_Exists_dec (fun (o1 : ovar) => forall (IN : OC_elt OC1 o1), (sig (existT _ o1 IN)) <> o) X (OC_list OC1)) as [FORALL | EXISTS].
+- intros o'.
+  case (in_dec nat_eq_dec o' (OC_list OC1)) as [IN | NIN].
+  case (constraint_type_eq_dec _ (sig (existT (OC_elt OC1) o' IN)) o) as [EQ | NE].
+  right.
+  intros FAL.
+  apply (FAL IN), EQ.
+  left.
+  intros IN'.
+  rewrite (proof_irrelevance _ IN' IN).
+  apply NE.
+  left.
+  intros FAL1 FAL2.
+  apply NIN, FAL1.
+- right.
+  intros [o1 IN] FAL.
+  rewrite Forall_forall in FORALL.
+  apply (FORALL o1 IN IN), FAL.
+- left.
+  assert ({o1 : ovar & OC_elt OC1 o1 /\ ~ (forall (IN : OC_elt OC1 o1), sig (existT (OC_elt OC1) o1 IN) <> o)}) as [o1 [IN NNEQ]].
+  { refine (Exists_sig _ EXISTS).
+    intros o'.
+    case (in_dec nat_eq_dec o' (OC_list OC1)) as [IN | NIN].
+    case (constraint_type_eq_dec _ (sig (existT (OC_elt OC1) o' IN)) o) as [EQ | NE].
+    left.
+    intros FAL.
+    apply (FAL IN), EQ.
+    right.
+    intros FAL.
+    apply FAL.
+    intros IN'.
+    rewrite (proof_irrelevance _ IN' IN).
+    apply NE.
+    right.
+    intros FAL.
+    apply FAL.
+    intros IN'.
+    contradiction. }
+  refine (existT _ (existT _ o1 IN) _).
+  case (constraint_type_eq_dec _ (sig (existT (OC_elt OC1) o1 IN)) o) as [EQ | NE].
+  apply EQ.
+  contradict NNEQ.
+  intros IN'.
+  rewrite (proof_irrelevance _ IN' IN).
+  apply NE.
+Qed.
+
+Definition sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) : ovar -> ovar := fun o =>
+match in_dec nat_eq_dec o (OC_list OC2) with
+| left IN2 => match sig_image_dec_alt sig (existT _ o IN2) with
+    | inleft IN1 => (projT1 (projT1 IN1))
+    | inright _ => o
+    end
+| right _ => o
+end.
 
 (*
-Lemma coherent_is_injective {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
-    coherent OC2 OC1 sig ->
-        forall phi1 phi2 : formula,
-            phi1 = phi2 <-> sig_subst phi1 (sig_generalise sig) = sig_subst phi2 (sig_generalise sig).
+Program Definition sig_inverse_true {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (COH : coherent_bijection sig) : constraint_type OC2 -> constraint_type OC1 := fun o2 =>
+match sig_image_dec_alt sig o2 with
+| inleft IN => (projT1 IN)
+| inright NE => _
+end.
+Next Obligation.
+destruct COH as [[[INJ SUR] REL_iff] PREC].
+destruct (SUR o2) as [o1 EQ].
+contradiction (NE _ EQ).
+Defined.
+
+Lemma coherent_bijection_sig_inverse_better {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (COH : coherent_bijection sig) :
+    forall (o : constraint_type OC2),
+        sig (sig_inverse_true sig COH o) = o.
 Proof.
-intros [SUB [REL_iff ORD]].
-induction phi1;
-intros phi2;
-split;
-intros EQ;
-subst;
-try reflexivity;
-destruct phi2;
-inversion EQ;
-subst.
-reflexivity.
-reflexivity.
-rewrite (proj2 (IHphi1_1 _) H0).
-rewrite (proj2 (IHphi1_2 _) H1).
-reflexivity.
-rewrite (proj2 (IHphi1 _) H1).
-reflexivity.
-admit.
-apply inj_pair2 in H1.
-subst.
-apply inj_pair2 in H2.
-apply inj_pair2 in H2.
-subst.
-rewrite (proof_irrelevance _ e e0).
-reflexivity.
-Admitted.
+intros o.
+destruct COH as [[[INJ SUR] REL_iff] PREC].
+unfold sig_inverse_true.
+case (sig_image_dec_alt sig o) as [[[o1 IN1] EQ] | NE].
+- unfold projT1.
+  apply EQ.
+- destruct (SUR o) as [o1 EQ].
+  contradiction (NE _ EQ).
+Qed.
+
+Lemma coherent_bijection_sig_inverse_aux {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (COH : coherent_bijection sig) :
+    forall (o : constraint_type OC2),
+        (sig_generalise sig) (projT1 (sig_inverse_true sig COH o)) = (projT1 o).
+Proof.
+intros o.
+destruct COH as [[[INJ SUR] REL_iff] PREC].
+unfold sig_inverse_true, sig_generalise.
+case (sig_image_dec_alt sig o) as [[[o1 IN1] EQ] | NE].
+- unfold projT1 at 1 2 8 9 10 11.
+  case (in_dec nat_eq_dec o1 (OC_list OC1)) as [IN | FAL].
+  rewrite (proof_irrelevance _ IN IN1), EQ.
+  reflexivity.
+  contradiction (FAL IN1).
+- destruct (SUR o) as [o1 EQ].
+  contradiction (NE _ EQ).
+Qed.
 *)
+
+Lemma coherent_bijection_sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
+    coherent_bijection sig ->
+        forall (o : ovar),
+            OC_elt OC2 o ->
+                (sig_generalise sig) (sig_inverse sig o) = o.
+Proof.
+intros [[[INJ SUR] REL_iff] PREC] o IN.
+unfold sig_inverse, sig_generalise.
+case (in_dec nat_eq_dec o (OC_list OC2)) as [IN' | FAL].
+rewrite (proof_irrelevance _ IN' IN).
+clear IN'.
+case (sig_image_dec_alt sig (existT _ o IN)) as [[[o1 IN1] EQ] | NE].
+- unfold projT1 at 1 2 8 9 10 11.
+  case (in_dec nat_eq_dec o1 (OC_list OC1)) as [IN' | FAL].
+  rewrite (proof_irrelevance _ IN' IN1), EQ.
+  reflexivity.
+  contradiction (FAL IN1).
+- destruct (SUR (existT _ o IN)) as [o1 EQ].
+  contradiction (NE _ EQ).
+- contradiction (FAL IN).
+Qed.
+
+Lemma sig_subst_id :
+    forall (phi : formula),
+        sig_subst phi (fun o => o) = phi.
+Proof.
+induction phi;
+unfold sig_subst;
+fold sig_subst;
+try reflexivity.
+rewrite IHphi1, IHphi2.
+reflexivity.
+rewrite IHphi.
+reflexivity.
+assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else o1) = fun o2 => o2) as FEQ.
+{ apply functional_extensionality.
+  intros o1.
+  case nat_eq_dec;
+  reflexivity. }
+rewrite FEQ, IHphi.
+reflexivity.
+Qed.
+
+Lemma sig_subst_ext :
+    forall (phi : formula) (f g : ovar -> ovar),
+        f = g ->
+            sig_subst phi f = sig_subst phi g.
+Proof.
+intros phi f g FEQ.
+rewrite FEQ.
+reflexivity.
+Qed.
+
+(*
+Lemma sig_subst_con :
+    forall (phi : formula) (f g : ovar -> ovar),
+        (forall (o : ovar), g (f o) = o) ->
+            sig_subst (sig_subst phi f) g = sig_subst phi (fun o => g (f o)).
+Proof.
+induction phi;
+intros f g FEQ;
+unfold sig_subst;
+fold sig_subst;
+try reflexivity.
+rewrite (IHphi1 _ _ FEQ), (IHphi2 _ _ FEQ).
+reflexivity.
+rewrite (IHphi _ _ FEQ).
+reflexivity.
+assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else g (f o1)) = fun o2 : ovar => if nat_eq_dec (if nat_eq_dec o2 o then o2 else f o2) o then (if nat_eq_dec o2 o then o2 else f o2) else g (if nat_eq_dec o2 o then o2 else f o2)) as FEQ'.
+{ apply functional_extensionality.
+  intros o1.
+  case nat_eq_dec as [EQ | NE];
+  case nat_eq_dec as [EQ' | NE'].
+  reflexivity.
+  contradict (NE' EQ).
+  pose proof (FEQ o1) as FAL.
+  rewrite EQ' in FAL.
+  rewrite EQ'.
+  apply eq_sym.
+  admit.
+  reflexivity. }
+(* rewrite FEQ. *)
+rewrite FEQ', IHphi.
+reflexivity.
+- intros o1.
+  case nat_eq_dec as [EQ | NE];
+  case nat_eq_dec as [EQ' | NE'].
+  reflexivity.
+  admit.
+  contradiction (NE EQ').
+  apply FEQ.
+Qed.
+*)
+
+Lemma sig_applicable_sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
+    forall (phi : formula),
+        incl (vars_in phi) (OC_list OC2) ->
+            coherent_bijection sig -> 
+                sig_subst (sig_subst phi (sig_inverse sig)) (sig_generalise sig) = phi.
+Proof.
+intros phi.
+revert sig.
+induction phi;
+intros sig SUB COH;
+try reflexivity.
+- unfold sig_subst;
+  fold sig_subst.
+  unfold vars_in in *;
+  fold vars_in in *.
+  rewrite IHphi1, IHphi2;
+  try assumption.
+  reflexivity.
+  refine (fun o IN => SUB _ (in_or_app _ _ _ (or_intror IN))).
+  refine (fun o IN => SUB _ (in_or_app _ _ _ (or_introl IN))).
+- unfold sig_subst;
+  fold sig_subst.
+  unfold vars_in in *;
+  fold vars_in in *.
+  rewrite IHphi.
+  reflexivity.
+  apply SUB.
+  apply COH.
+- unfold sig_subst;
+  fold sig_subst.
+  unfold vars_in in *;
+  fold vars_in in *.
+  rewrite (coherent_bijection_sig_inverse _ COH _ (SUB _ (or_introl eq_refl))).
+  assert ((sig_subst (sig_subst phi (fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_inverse sig o1)) (fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_generalise sig o1)) = sig_subst phi (fun o1 : ovar => o1)) as EQ.
+  { case (in_dec nat_eq_dec o (OC_list OC2)) as [IN | NIN].
+    + assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_inverse sig o1) = sig_inverse (fun o1 : constraint_type OC1 => if nat_eq_dec (projT1 o1) o then (existT _ o IN) else sig o1)) as EQ1.
+      { admit. }
+      assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_generalise sig o1) = sig_generalise (fun o1 : constraint_type OC1 => if nat_eq_dec (projT1 o1) o then (existT _ o IN) else sig o1)) as EQ2.
+      { admit. }
+      rewrite EQ1, EQ2, IHphi, sig_subst_id.
+      reflexivity.
+      admit.
+      destruct COH as [[[INJ SUR] REL_iff] PREC].
+      repeat split.
+      * intros lambda.
+        case (nat_eq_dec (projT1 lambda) o) as [EQ | NE].
+        apply IN.
+        apply INJ.
+      * intros [lambda IN'].
+        case (nat_eq_dec lambda o) as [EQ | NE].
+        --  refine (existT _ (existT _ o _) _).
+            unfold projT1.
+            case (nat_eq_dec o o) as [_ | FAL].
+            subst.
+            rewrite (proof_irrelevance _ IN IN').
+            reflexivity.
+            contradiction (FAL eq_refl).
+        --  destruct (SUR (existT _ lambda IN')) as [[kappa IN''] EQ].
+            refine (existT _ (existT _ kappa _) _).
+            unfold projT1.
+            rewrite EQ.
+            
+    + assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_inverse sig o1) = sig_inverse sig) as EQ1.
+      { admit. }
+      assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else sig_generalise sig o1) = sig_generalise sig) as EQ2.
+      { admit. }
+      rewrite EQ1, EQ2, IHphi, sig_subst_id.
+      reflexivity.
+      admit.
+      apply COH.
+      
+    admit. }
+  rewrite EQ, sig_subst_id.
+  reflexivity.
+Admitted.
