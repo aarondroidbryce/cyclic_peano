@@ -321,6 +321,21 @@ unfold constraint_type_eqb.
 apply nat_eqb_refl.
 Qed.
 
+Lemma constraint_type_eq_proj {OC : constraint} :
+    forall (o1 o2 : constraint_type OC),
+        projT1 o1 = projT1 o2 <-> o1 = o2.
+Proof.
+intros [o1 IN1] [o2 IN2];
+split;
+intros EQ;
+unfold projT1 in *;
+subst.
+rewrite (proof_irrelevance _ IN1 IN2).
+reflexivity.
+inversion EQ as [EQ'].
+reflexivity.
+Qed.
+
 Lemma sig_dec {OC1 OC2 : constraint} :
     forall (f g : (constraint_type OC1) -> constraint_type OC2),
         {f = g} + {f <> g}.
@@ -447,6 +462,7 @@ destruct (precedence_cases nat_eq_dec (projT2 o1) (projT2 o2)) as [[Prec1 | Prec
   rewrite (proof_irrelevance _ IN1 IN2).
   reflexivity.
 Qed.
+*)
 
 Lemma coherent_bijective_is_injective {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
     coherent_bijection sig ->
@@ -471,7 +487,6 @@ destruct (precedence_cases nat_eq_dec (projT2 o1) (projT2 o2)) as [[Prec1 | Prec
   rewrite (proof_irrelevance _ IN1 IN2).
   reflexivity.
 Qed.
-*)
 
 Definition sig_inverse_single {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o2 : constraint_type OC2) := {o1 : constraint_type OC1 & sig o1 = o2}.
 

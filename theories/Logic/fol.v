@@ -499,6 +499,48 @@ rewrite FEQ.
 reflexivity.
 Qed.
 
+Lemma sig_subst_coherent_bi_is_inj {OC1 OC2 : constraint} :
+    forall (phi1 phi2 : formula) (sig : constraint_type OC1 -> constraint_type OC2),
+        coherent_bijection sig ->
+            incl (vars_in phi1) (OC_list OC1) ->
+                incl (vars_in phi2) (OC_list OC1) ->
+                    phi1 = phi2 <-> sig_subst phi1 (sig_generalise sig) = sig_subst phi2 (sig_generalise sig).
+Proof.
+induction phi1;
+destruct phi2;
+intros sig COH SUB1 SUB2;
+split;
+intros EQ;
+try inversion EQ;
+subst;
+try reflexivity.
+- rewrite (proj2 (IHphi1_1 phi2_1 sig COH (fun o IN => (SUB1 _ (in_or_app _ _ _ (or_introl IN)))) (fun o IN => (SUB2 _ (in_or_app _ _ _ (or_introl IN))))) H0).
+  rewrite (proj2 (IHphi1_2 phi2_2 sig COH (fun o IN => (SUB1 _ (in_or_app _ _ _ (or_intror IN)))) (fun o IN => (SUB2 _ (in_or_app _ _ _ (or_intror IN))))) H1).
+  reflexivity.
+- rewrite (proj2 (IHphi1 phi2 sig COH (fun o IN => (SUB1 _ IN)) (fun o IN => (SUB2 _ IN))) H1).
+  reflexivity.
+- unfold vars_in in *;
+  fold vars_in in *.
+  unfold sig_generalise in H1.
+  case (in_dec nat_eq_dec o0 (OC_list OC1)) as [IN1 | FAL].
+  case (in_dec nat_eq_dec o2 (OC_list OC1)) as [IN2 | FAL].
+  + apply constraint_type_eq_proj in H1.
+    apply (coherent_bijective_is_injective _ COH) in H1.
+    inversion H1.
+    subst.
+    pose proof (proof_irrelevance _ IN1 IN2).
+    subst.
+    assert (incl (vars_in phi1) (OC_list OC1)) as SUB1'.
+    admit.
+    assert (incl (vars_in phi2) (OC_list OC1)) as SUB2'.
+    admit.
+    case (in_dec nat_eq_dec o1 (OC_list OC1)) as [IN1 | NIN1].
+    assert ((fun o : ovar => if nat_eq_dec o o1 then o else (sig_generalise sig o)) = sig_generalise (fun o => if nat_eq_dec (projT1 o) o1 then (existT (OC_elt OC2) (projT1 o) ((fst (fst (fst COH))) _)) else sig o)) as EQF.
+    rewrite (proj2 (IHphi1 _ _ _ SUB1' SUB2')).
+    admit.
+  + contradiction (FAL (SUB2 _ (or_introl eq_refl))).
+  + contradiction (FAL (SUB1 _ (or_introl eq_refl))).
+Qed.
 (*
 Lemma sig_applicable_sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
     forall (phi : formula),
