@@ -22,11 +22,33 @@ Import ListNotations.
 (*Language*)
 Definition ivar := nat.
 
-Definition ovar := nat.
+Inductive ovar : Type :=
+| bound : nat -> ovar
+| unbound : nat -> ovar.
+
+Definition ovar_eqb (o1 o2 : ovar) : bool :=
+match o1, o2 with
+| bound n, bound m => nat_eqb n m
+| unbound n, unbound m => nat_eqb n m
+| _, _ => false
+end.
+
+Lemma ovar_eqb_eq {o1 o2 : ovar} :
+    ovar_eqb o1 o2 = true ->
+        o1 = o2.
+Proof.
+destruct o1, o2;
+intros EQB;
+unfold ovar_eqb in EQB.
+2,3 : inversion EQB.
+all : apply nat_eqb_eq in EQB;
+      subst;
+      reflexivity.
+Qed.
 
 Inductive ordinal : Type :=
 | cast : ord -> ordinal
-| assn : ovar -> ordinal
+| assn : nat -> ordinal
 | oadd : ordinal -> ordinal -> ordinal
 | omax : ordinal -> ordinal -> ordinal.
 
@@ -53,12 +75,30 @@ all : right;
       reflexivity.
 Qed.
 
+Lemma ovar_eq_dec : forall x y : ovar, {x = y} + {x <> y}.
+Proof.
+destruct x, y.
+2,3 : right;
+      discriminate.
+
+all : case (nat_eq_dec n n0) as [[] | NE].
+
+1,3 : left;
+      reflexivity.
+
+all : right;
+      intros FAL;
+      apply NE;
+      inversion FAL;
+      reflexivity.
+Qed.
+
 Lemma ordinal_eq_dec : forall x y : ordinal, {x = y} + {x <> y}.
 Proof.
 induction x;
 destruct y;
 try destruct (ord_eq_dec o o0) as [[] | NE];
-try destruct (nat_eq_dec o o0) as [[] | NE].
+try destruct (nat_eq_dec n n0) as [[] | NE].
 
 13,18 :  case (IHx1 y1) as [[] | NE1];
          case (IHx2 y2) as [[] | NE2].
@@ -75,7 +115,7 @@ Qed.
 
 Inductive nvec : nat -> Type :=
 | Null : nvec 0
-| New : forall (i : nat), nat -> nvec i -> nvec (S i).
+| New : forall (n : nat), ivar -> nvec n -> nvec (S n).
 
 Inductive predicate {n : nat} : nvec n -> Type :=
 | Nullary : forall (i : nat) (pf : n = 0), predicate (eq_rect _ _ Null _ (eq_sym pf))
@@ -100,20 +140,20 @@ Inductive formula : Type :=
 | equ : ivar -> ivar -> formula
 | imp : formula -> formula -> formula
 | univ : ivar -> formula -> formula
-| bnd : ovar -> ovar -> formula -> formula
+| bnd : forall (lambda : nat) (kappa : ovar) (phi : formula), formula
 | prd : forall {n : nat} {vec : nvec n} (pn : predicate vec), pure_predicate pn = true -> formula.
 (*
 | mu : forall n, (predicate n) -> formula -> formula
 | muk : forall n, (predicate n) -> ordinal -> formula -> formula.
 *)
 
-Definition constraint := {L : list ovar & {R : (ovar -> ovar -> bool) & (NoDup L) /\ (forall (lambda kappa : ovar), R kappa lambda = true -> In kappa L /\ In lambda L) /\ StrictOrder (fun (lambda kappa : ovar) => R lambda kappa = true)}}.
+Definition constraint := {L : list nat & {R : (nat -> nat -> bool) & (NoDup L) /\ (forall (lambda kappa : nat), R kappa lambda = true -> In kappa L /\ In lambda L) /\ StrictOrder (fun (lambda kappa : nat) => R lambda kappa = true)}}.
 
 (*Definition constraint := {L : list ovar & {R : ((ovar_sub L) -> (ovar_sub L) -> bool) & (NoDup L) /\ StrictOrder (fun (lambda kappa : ovar_sub L) => R lambda kappa = true)}}.*)
 
 Definition OC_list (OC : constraint) := (projT1 OC).
 
-Definition OC_elt (OC : constraint) (lambda : ovar) : Prop := In lambda (OC_list OC).
+Definition OC_elt (OC : constraint) (lambda : nat) : Prop := In lambda (OC_list OC).
 
 Definition OC_rel (OC : constraint) := (projT1 (projT2 OC)).
 
@@ -123,17 +163,17 @@ Definition OC_null (OC : constraint) := proj1 (proj2 (projT2 (projT2 OC))).
 
 Definition OC_order (OC : constraint) := proj2 (proj2 (projT2 (projT2 OC))).
 
-Definition progeny (OC : constraint) (kappa : ovar) : list ovar := filter (fun (lambda : ovar) => OC_rel OC lambda kappa) (OC_list OC).
+Definition progeny (OC : constraint) (kappa : nat) : list nat := filter (fun (lambda : nat) => OC_rel OC lambda kappa) (OC_list OC).
 
-Definition child (OC : constraint) (lambda kappa : ovar) : Prop := OC_rel OC lambda kappa = true /\ (forall eta, OC_rel OC eta kappa = true -> OC_rel OC lambda eta = false).
+Definition child (OC : constraint) (lambda kappa : nat) : Prop := OC_rel OC lambda kappa = true /\ (forall eta, OC_rel OC eta kappa = true -> OC_rel OC lambda eta = false).
 
-Definition children (OC : constraint) (kappa : ovar) : list ovar := filter (fun (lambda : ovar) => if in_dec nat_eq_dec lambda (flat_map (fun eta => progeny OC eta) (progeny OC kappa)) then false else true) (progeny OC kappa).
+Definition children (OC : constraint) (kappa : nat) : list nat := filter (fun (lambda : nat) => if in_dec nat_eq_dec lambda (flat_map (fun eta => progeny OC eta) (progeny OC kappa)) then false else true) (progeny OC kappa).
 
-Definition add_fresh (OC : constraint) (lambda : ovar) (NEW : ~ OC_elt OC lambda) : constraint := (existT _ (lambda :: OC_list OC) (existT _ (OC_rel OC) (conj ((proj2 (NoDup_cons_iff _ _)) (conj NEW (OC_unique OC))) (conj (fun (eta iota : ovar) (REL : OC_rel OC iota eta = true) => conj (or_intror (proj1 (OC_null OC eta iota REL))) (or_intror (proj2 (OC_null OC eta iota REL)))) (OC_order OC))))).
+Definition add_fresh (OC : constraint) (lambda : nat) (NEW : ~ OC_elt OC lambda) : constraint := (existT _ (lambda :: OC_list OC) (existT _ (OC_rel OC) (conj ((proj2 (NoDup_cons_iff _ _)) (conj NEW (OC_unique OC))) (conj (fun (eta iota : nat) (REL : OC_rel OC iota eta = true) => conj (or_intror (proj1 (OC_null OC eta iota REL))) (or_intror (proj2 (OC_null OC eta iota REL)))) (OC_order OC))))).
 
-Definition add_fresh_child (OC : constraint) (lambda kappa : ovar) (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa) : constraint.
+Definition add_fresh_child (OC : constraint) (lambda kappa : nat) (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa) : constraint.
 Proof.
-refine (existT _ (lambda :: OC_list OC) (existT _ (fun (eta iota : ovar) => OC_rel OC eta iota || ((nat_eqb eta lambda && nat_eqb kappa iota) || (nat_eqb eta lambda && OC_rel OC kappa iota))) (conj ((proj2 (NoDup_cons_iff _ _)) (conj NEW (OC_unique OC))) (conj _ _)))).
+refine (existT _ (lambda :: OC_list OC) (existT _ (fun (eta iota : nat) => OC_rel OC eta iota || ((nat_eqb eta lambda && nat_eqb kappa iota) || (nat_eqb eta lambda && OC_rel OC kappa iota))) (conj ((proj2 (NoDup_cons_iff _ _)) (conj NEW (OC_unique OC))) (conj _ _)))).
 intros eta iota COND.
 case (OC_rel OC iota eta) eqn:REL1.
 - apply (conj (or_intror (proj1 (OC_null OC eta iota REL1))) (or_intror (proj2 (OC_null OC eta iota REL1)))).
@@ -187,9 +227,9 @@ case (OC_rel OC iota eta) eqn:REL1.
     * apply (TRANS _ _ _ LT1 LT2).
 Defined.
 
-Definition restriction (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) : constraint.
+Definition restriction (OC : constraint) (L : list nat) (SUB : incl L (OC_list OC)) : constraint.
 Proof.
-refine (existT _ (filter (fun (eta : ovar) => if in_dec nat_eq_dec eta L then false else true) (OC_list OC)) (existT _ (fun eta iota => OC_rel OC eta iota && (if in_dec nat_eq_dec eta L then false else true) && if in_dec nat_eq_dec iota L then false else true) (conj (NoDup_filter _ (OC_unique OC)) (conj _ _)))).
+refine (existT _ (filter (fun (eta : nat) => if in_dec nat_eq_dec eta L then false else true) (OC_list OC)) (existT _ (fun eta iota => OC_rel OC eta iota && (if in_dec nat_eq_dec eta L then false else true) && if in_dec nat_eq_dec iota L then false else true) (conj (NoDup_filter _ (OC_unique OC)) (conj _ _)))).
 - intros lambda kappa COND.
   apply and_bool_prop in COND as [COND NIN2].
   apply and_bool_prop in COND as [REL NIN1].
@@ -211,7 +251,7 @@ refine (existT _ (filter (fun (eta : ovar) => if in_dec nat_eq_dec eta L then fa
     apply (TRANS _ _ _ LT1 LT2).
 Defined.
 
-Definition assignment (OC : constraint) := {val : (ovar -> ord) & forall (lambda kappa : ovar), OC_rel OC lambda kappa = true -> ord_lt (val lambda) (val kappa)}.
+Definition assignment (OC : constraint) := {val : (nat -> ord) & forall (lambda kappa : nat), OC_rel OC lambda kappa = true -> ord_lt (val lambda) (val kappa)}.
 
 Fixpoint valuate {OC : constraint} (ASN : assignment OC) (o : ordinal) : ord :=
 match o with
@@ -221,26 +261,26 @@ match o with
 | omax o1 o2 => ord_max (valuate ASN o1) (valuate ASN o2)
 end.
 
-Lemma null_strict : StrictOrder (fun (lambda kappa : ovar) => false = true).
+Lemma null_strict : StrictOrder (fun (lambda kappa : nat) => false = true).
 Proof.
 split.
-exact (fun (lambda : ovar) => diff_false_true).
-exact (fun (lambda kappa eta : ovar) (FAL1 FAL2 : false = true) => FAL1).
+exact (fun (lambda : nat) => diff_false_true).
+exact (fun (lambda kappa eta : nat) (FAL1 FAL2 : false = true) => FAL1).
 Defined.
 
 Definition empty : constraint.
-refine (existT _ [] (existT _ (fun (lambda kappa : ovar) => false) (conj (NoDup_nil _) (conj (fun (lambda kappa : ovar) (FAL : false = true) => _) null_strict)))).
+refine (existT _ [] (existT _ (fun (lambda kappa : nat) => false) (conj (NoDup_nil _) (conj (fun (lambda kappa : nat) (FAL : false = true) => _) null_strict)))).
 inversion FAL.
 Defined.
 
-Lemma progeny_irref : forall (OC : constraint) (lambda : ovar), ~ In lambda (progeny OC lambda).
+Lemma progeny_irref : forall (OC : constraint) (lambda : nat), ~ In lambda (progeny OC lambda).
 intros OC lambda FAL.
 pose proof (OC_order OC) as [IREF TRANS].
 apply filter_In in FAL as [ELT FAL].
 apply (IREF lambda FAL).
 Qed.
 
-Lemma rel_progeny_hd : forall (OC : constraint) (lambda kappa : ovar), (OC_rel OC) lambda kappa = true -> forall (L : list ovar), incl L (progeny OC lambda) -> incl (L ++ [lambda]) (progeny OC kappa).
+Lemma rel_progeny_hd : forall (OC : constraint) (lambda kappa : nat), (OC_rel OC) lambda kappa = true -> forall (L : list nat), incl L (progeny OC lambda) -> incl (L ++ [lambda]) (progeny OC kappa).
 Proof.
 intros OC lambda kappa REL1.
 induction L;
@@ -260,7 +300,7 @@ Qed.
 Lemma assignment_exists : forall (OC : constraint), assignment OC.
 Proof.
 intros OC.
-exists (fun (lambda : ovar) => nat_ord (length (progeny OC lambda))).
+exists (fun (lambda : nat) => nat_ord (length (progeny OC lambda))).
 intros lambda kappa REL.
 apply nat_ord_lt.
 unfold "<".
@@ -278,9 +318,9 @@ apply NoDup_incl_length.
 - apply (rel_progeny_hd _ _ _ REL _ (incl_refl _)).
 Defined.
 
-Lemma children_subset : forall (OC : constraint) (kappa : ovar), incl (children OC kappa) (OC_list OC). exact (fun OC kappa => incl_tran (incl_filter _ _) (incl_filter _ _)). Qed.
+Lemma children_subset : forall (OC : constraint) (kappa : nat), incl (children OC kappa) (OC_list OC). exact (fun OC kappa => incl_tran (incl_filter _ _) (incl_filter _ _)). Qed.
 
-Lemma children_are_child : forall (OC : constraint) (lambda kappa : ovar), In lambda (children OC kappa) -> child OC lambda kappa.
+Lemma children_are_child : forall (OC : constraint) (lambda kappa : nat), In lambda (children OC kappa) -> child OC lambda kappa.
 Proof.
 intros OC lambda kappa IN.
 repeat apply filter_In in IN as [IN ?COND].
@@ -296,7 +336,7 @@ exists eta.
 apply (conj (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ REL)) REL)) (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ FAL)) FAL))).
 Qed.
 
-Lemma all_child_are_children : forall (OC : constraint) (lambda kappa : ovar), child OC lambda kappa -> In lambda (children OC kappa).
+Lemma all_child_are_children : forall (OC : constraint) (lambda kappa : nat), child OC lambda kappa -> In lambda (children OC kappa).
 Proof.
 intros OC lambda kappa [REL COND].
 apply filter_In.
@@ -310,13 +350,13 @@ inversion COND.
 reflexivity.
 Qed.
 
-Lemma rel_eq_dec : forall (OC1 OC2 : constraint), (OC_list OC1) = (OC_list OC2) -> {forall (lambda kappa : ovar), OC_rel OC1 lambda kappa = OC_rel OC2 lambda kappa} + {exists (lambda kappa : ovar), OC_rel OC1 lambda kappa <> OC_rel OC2 lambda kappa}.
+Lemma rel_eq_dec : forall (OC1 OC2 : constraint), (OC_list OC1) = (OC_list OC2) -> {forall (lambda kappa : nat), OC_rel OC1 lambda kappa = OC_rel OC2 lambda kappa} + {exists (lambda kappa : nat), OC_rel OC1 lambda kappa <> OC_rel OC2 lambda kappa}.
 Proof.
 intros OC1 OC2 EQ.
 destruct OC1 as [L1 [R1 [NDL1 [NULL1 ORD1]]]], OC2 as [L2 [R2 [NDL2 [NULL2 ORD2]]]].
 unfold OC_list, OC_rel, projT1, projT2 in *.
 destruct EQ.
-assert (forall (lambda kappa : ovar), (~ In lambda L1 \/ ~ In kappa L1) -> R1 lambda kappa = R2 lambda kappa) as NULL_EQUIV.
+assert (forall (lambda kappa : nat), (~ In lambda L1 \/ ~ In kappa L1) -> R1 lambda kappa = R2 lambda kappa) as NULL_EQUIV.
 { intros lambda kappa [NIN1 | NIN2];
   case (R1 lambda kappa) eqn:REL1;
   case (R2 lambda kappa) eqn:REL2;
@@ -366,7 +406,7 @@ case (list_eq_dec nat_eq_dec (OC_list OC1) (OC_list OC2)) as [EQL | NEL].
   reflexivity.
 Qed.
 
-Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
+Definition constraint_type (OC : constraint) : Type := {o : nat & OC_elt OC o}.
 
 Lemma constraint_type_eq_dec (OC : constraint) :
     forall (o1 o2 : constraint_type OC),
@@ -407,6 +447,7 @@ reflexivity.
 inversion EQ as [EQ'].
 subst.
 unfold constraint_type_eqb.
+destruct o2;
 apply nat_eqb_refl.
 Qed.
 
@@ -415,25 +456,25 @@ Lemma sig_dec {OC1 OC2 : constraint} :
         {f = g} + {f <> g}.
 Proof.
 intros f g.
-assert (forall (F : constraint_type OC1 -> Type), (forall (o : ovar) (IN : OC_elt OC1 o), F (existT _ o IN)) -> forall (v : constraint_type OC1), F v) as FUNEXT.
+assert (forall (F : constraint_type OC1 -> Type), (forall (o : nat) (IN : OC_elt OC1 o), F (existT _ o IN)) -> forall (v : constraint_type OC1), F v) as FUNEXT.
 { intros F HYP v.
   destruct v as [o IN].
   apply HYP. }
 assert ({forall (v : constraint_type OC1), f v = g v} + {~ forall (v : constraint_type OC1), f v = g v}) as [ALL | EXISTS].
 { assert ({forall v, constraint_type_eqb (f v) (g v) = true} + {~ forall v, constraint_type_eqb (f v) (g v) = true}) as [ALL | EXISTS].
-  { assert ({forall (o : ovar) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true} + {~ forall (o : ovar) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true}) as [ALL | EXISTS].
-    { assert (forall x : ovar,
-    {(fun o : ovar =>
+  { assert ({forall (o : nat) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true} + {~ forall (o : nat) (IN : OC_elt OC1 o), constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN)) = true}) as [ALL | EXISTS].
+    { assert (forall x : nat,
+    {(fun o : nat =>
       forall IN : In o (OC_list OC1),
       constraint_type_eqb
-        (f (existT (fun o0 : ovar => OC_elt OC1 o0) o IN))
-        (g (existT (fun o0 : ovar => OC_elt OC1 o0) o IN)) = true) x} +
+        (f (existT (fun o0 : nat => OC_elt OC1 o0) o IN))
+        (g (existT (fun o0 : nat => OC_elt OC1 o0) o IN)) = true) x} +
     {~
-     (fun o : ovar =>
+     (fun o : nat =>
       forall IN : In o (OC_list OC1),
       constraint_type_eqb
-        (f (existT (fun o0 : ovar => OC_elt OC1 o0) o IN))
-        (g (existT (fun o0 : ovar => OC_elt OC1 o0) o IN)) = true) x}) as HELP.
+        (f (existT (fun o0 : nat => OC_elt OC1 o0) o IN))
+        (g (existT (fun o0 : nat => OC_elt OC1 o0) o IN)) = true) x}) as HELP.
     { intros o.
       case (in_dec nat_eq_dec o (OC_list OC1)) as [IN | NIN].
       case (constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN))) eqn:b.
@@ -448,7 +489,7 @@ assert ({forall (v : constraint_type OC1), f v = g v} + {~ forall (v : constrain
       left.
       intros IN.
       contradiction (NIN IN). }
-    destruct (Forall_dec (fun (o : ovar) => forall (IN : In o (OC_list OC1)), (constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN))) = true) HELP (OC_list OC1)) as [ALL | EXISTS].
+    destruct (Forall_dec (fun (o : nat) => forall (IN : In o (OC_list OC1)), (constraint_type_eqb (f (existT _ o IN)) (g (existT _ o IN))) = true) HELP (OC_list OC1)) as [ALL | EXISTS].
     left.
     rewrite Forall_forall in ALL.
     intros o IN.
@@ -491,7 +532,7 @@ match A with
 | equ v1 v2 => cast Zero
 | imp B C => oadd (oadd (num_conn B) (num_conn C)) (cast (nat_ord 1))
 | univ v B => oadd (num_conn B) (cast (nat_ord 1))
-| bnd o1 o2 B => oadd (num_conn B) (cast (nat_ord 1))
+| bnd lambda kappa B => oadd (num_conn B) (cast (nat_ord 1))
 | prd pn pure => cast Zero
 end.
 
@@ -501,13 +542,13 @@ match a with
 | equ v1 v2 => []
 | imp B C => (vars_in B) ++ (vars_in C)
 | univ v B => (vars_in B)
-| bnd o1 o2 B => o2 :: remove nat_eq_dec o1 (vars_in B)
+| bnd lambda kappa B => (bound lambda) :: kappa :: remove ovar_eq_dec (unbound lambda) (vars_in B)
 | prd pn pure => []
 end.
 
 Fixpoint nvec_eqb {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2) : bool :=
 match vec1, vec2 with
-| Null, Null => true (*nat_eqb m1 m2*)
+| Null, Null => true
 | New _ m1 vec1', New _ m2 vec2' => nat_eqb m1 m2 && nvec_eqb vec1' vec2'
 | _, _ => false
 end.
@@ -532,7 +573,7 @@ match A1, A2 with
 | equ v1 v2, equ v3 v4 => nat_eqb v1 v3 && nat_eqb v2 v4
 | imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
 | univ v1 B1, univ v2 B2 => nat_eqb v1 v2 && form_eqb B1 B2
-| bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
+| bnd lambda1 kappa1 B1, bnd lambda2 kappa2 B2 => nat_eqb lambda1 lambda2 && ovar_eqb kappa1 kappa2 && form_eqb B1 B2
 | prd pn1 _, prd pn2 _ => prd_eqb pn1 pn2
 | _, _ => false
 end.
@@ -829,7 +870,8 @@ inversion EQ as [EQ'];
 repeat apply and_bool_prop in EQ as [EQ ?EQ];
 try apply nat_eqb_eq in EQ as [];
 try apply nat_eqb_eq in EQ0 as [];
-try apply nat_eqb_eq in EQ1 as [].
+try apply nat_eqb_eq in EQ1 as [];
+try apply ovar_eqb_eq in EQ1 as [].
 - reflexivity.
 - reflexivity.
 - rewrite (IHA1 _ EQ),(IHA2 _ EQ0).
@@ -856,6 +898,8 @@ intros a.
 induction a;
 unfold form_eqb;
 fold form_eqb;
+try destruct kappa;
+unfold ovar_eqb;
 repeat rewrite nat_eqb_refl;
 try rewrite IHa;
 try rewrite IHa1;
@@ -877,9 +921,13 @@ Qed.
 
 Definition sig_generalise {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) : ovar -> ovar := fun o =>
 match
-in_dec nat_eq_dec o (OC_list OC1) with
-| left IN => projT1 (sig (existT _ o IN))
-| right _ => o
+o with
+| bound n => o
+| unbound n => match
+  in_dec nat_eq_dec n (OC_list OC1) with
+  | left IN => unbound (projT1 (sig (existT _ n IN)))
+  | right _ => o
+  end
 end.
 
 (*
@@ -893,13 +941,13 @@ match n as n' return n' = n -> nvec n with
 end eq_refl.
 *)
 
-Fixpoint sig_subst (a : formula) (sig : ovar -> ovar) : formula :=
-match a with
+Fixpoint sig_subst (A : formula) (sig : ovar -> ovar) : formula :=
+match A with
 | fal => fal
 | equ v1 v2 => equ v1 v2
 | imp a1 a2 =>  imp (sig_subst a1 sig) (sig_subst a2 sig)
-| univ v a => univ v (sig_subst a sig)
-| bnd o1 o2 a => bnd o1 (sig o2) (sig_subst a (fun o => if nat_eq_dec o o1 then o else sig o))
+| univ v B => univ v (sig_subst B sig)
+| bnd lambda kappa B => bnd lambda (sig kappa) (sig_subst B sig)
 | prd pn pure => prd pn pure
 end.
 
@@ -1032,7 +1080,7 @@ Qed.
 
 Lemma sig_image_dec_alt {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) (o : constraint_type OC2) : {o1 : constraint_type OC1 & sig o1 = o} + {forall o1 : constraint_type OC1, sig o1 <> o}.
 Proof.
-destruct (fun X => Forall_Exists_dec (fun (o1 : ovar) => forall (IN : OC_elt OC1 o1), (sig (existT _ o1 IN)) <> o) X (OC_list OC1)) as [FORALL | EXISTS].
+destruct (fun X => Forall_Exists_dec (fun (o1 : nat) => forall (IN : OC_elt OC1 o1), (sig (existT _ o1 IN)) <> o) X (OC_list OC1)) as [FORALL | EXISTS].
 - intros o'.
   case (in_dec nat_eq_dec o' (OC_list OC1)) as [IN | NIN].
   case (constraint_type_eq_dec _ (sig (existT (OC_elt OC1) o' IN)) o) as [EQ | NE].
@@ -1051,7 +1099,7 @@ destruct (fun X => Forall_Exists_dec (fun (o1 : ovar) => forall (IN : OC_elt OC1
   rewrite Forall_forall in FORALL.
   apply (FORALL o1 IN IN), FAL.
 - left.
-  assert ({o1 : ovar & OC_elt OC1 o1 /\ ~ (forall (IN : OC_elt OC1 o1), sig (existT (OC_elt OC1) o1 IN) <> o)}) as [o1 [IN NNEQ]].
+  assert ({o1 : nat & OC_elt OC1 o1 /\ ~ (forall (IN : OC_elt OC1 o1), sig (existT (OC_elt OC1) o1 IN) <> o)}) as [o1 [IN NNEQ]].
   { refine (Exists_sig _ EXISTS).
     intros o'.
     case (in_dec nat_eq_dec o' (OC_list OC1)) as [IN | NIN].
@@ -1080,12 +1128,16 @@ destruct (fun X => Forall_Exists_dec (fun (o1 : ovar) => forall (IN : OC_elt OC1
 Qed.
 
 Definition sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) : ovar -> ovar := fun o =>
-match in_dec nat_eq_dec o (OC_list OC2) with
-| left IN2 => match sig_image_dec_alt sig (existT _ o IN2) with
-    | inleft IN1 => (projT1 (projT1 IN1))
-    | inright _ => o
-    end
-| right _ => o
+match o with
+| bound n => o
+| unbound n =>
+  match in_dec nat_eq_dec n (OC_list OC2) with
+  | left IN2 => match sig_image_dec_alt sig (existT _ n IN2) with
+      | inleft IN1 => unbound (projT1 (projT1 IN1))
+      | inright _ => o
+      end
+  | right _ => o
+  end
 end.
 
 (*
@@ -1132,13 +1184,20 @@ case (sig_image_dec_alt sig o) as [[[o1 IN1] EQ] | NE].
 Qed.
 *)
 
+Definition ovar_index : ovar -> nat := fun o =>
+match o with
+| bound n => n
+| unbound n => n
+end.
+
 Lemma coherent_bijection_sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
     coherent_bijection sig ->
         forall (o : ovar),
-            OC_elt OC2 o ->
+            OC_elt OC2 (ovar_index o) ->
                 (sig_generalise sig) (sig_inverse sig o) = o.
 Proof.
-intros [[[INJ SUR] REL_iff] PREC] o IN.
+intros [[[INJ SUR] REL_iff] PREC] [o | o] IN.
+reflexivity.
 unfold sig_inverse, sig_generalise.
 case (in_dec nat_eq_dec o (OC_list OC2)) as [IN' | FAL].
 rewrite (proof_irrelevance _ IN' IN).
@@ -1166,12 +1225,7 @@ rewrite IHphi1, IHphi2.
 reflexivity.
 rewrite IHphi.
 reflexivity.
-assert ((fun o1 : ovar => if nat_eq_dec o1 o then o1 else o1) = fun o2 => o2) as FEQ.
-{ apply functional_extensionality.
-  intros o1.
-  case nat_eq_dec;
-  reflexivity. }
-rewrite FEQ, IHphi.
+rewrite IHphi.
 reflexivity.
 Qed.
 
@@ -1226,6 +1280,7 @@ reflexivity.
 Qed.
 *)
 
+(*
 Lemma sig_applicable_sig_inverse {OC1 OC2 : constraint} (sig : constraint_type OC1 -> constraint_type OC2) :
     forall (phi : formula),
         incl (vars_in phi) (OC_list OC2) ->
@@ -1301,3 +1356,4 @@ try reflexivity.
   rewrite EQ, sig_subst_id.
   reflexivity.
 Admitted.
+*)
