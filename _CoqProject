@@ -17,6 +17,7 @@ theories/Maths/naturals.v
 theories/Maths/lists.v
 theories/Maths/ordinals.v
 
+theories/Logic/constraints.v
 theories/Logic/fol.v
 theories/Logic/substitute.v
 theories/Logic/proof_trees.v

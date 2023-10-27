@@ -3050,4 +3050,54 @@ destruct (IND (f alpha) NF DECR COND) as [n REP].
 exists (S n).
 apply REP.
 Qed.
+
+Inductive ordinal : Type :=
+| cast : ord -> ordinal
+| assn : ovar -> ordinal
+| oadd : ordinal -> ordinal -> ordinal
+| omax : ordinal -> ordinal -> ordinal.
+
+Lemma ord_eq_dec : forall x y : ord, {x = y} + {x <> y}.
+Proof.
+induction x, y.
+2,3 : right;
+      discriminate.
+
+1 : left.
+    reflexivity.
+
+destruct (IHx1 y1) as [[] | NE].
+destruct (IHx2 y2) as [[] | NE].
+destruct (nat_eq_dec n n0) as [[] | NE].
+
+1 : left.
+    reflexivity.
+
+all : right;
+      intros FAL;
+      apply NE;
+      inversion FAL;
+      reflexivity.
+Qed.
+
+Lemma ordinal_eq_dec : forall x y : ordinal, {x = y} + {x <> y}.
+Proof.
+induction x;
+destruct y;
+try destruct (ord_eq_dec o o0) as [[] | NE];
+try destruct (nat_eq_dec o o0) as [[] | NE].
+
+13,18 :  case (IHx1 y1) as [[] | NE1];
+         case (IHx2 y2) as [[] | NE2].
+1,7,13,17 : left;
+            reflexivity.
+
+all : right;
+      intros FAL;
+      try apply NE;
+      inversion FAL;
+      try reflexivity;
+      contradiction.
+Qed.
+
 Close Scope cantor_scope.

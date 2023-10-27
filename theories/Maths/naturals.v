@@ -3,8 +3,10 @@ Require Import Nat.
 
 Open Scope bool_scope.
 
+
 Notation nat_eqb := Nat.eqb.
 Notation nat_ltb := Nat.ltb.
+Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
 
 Lemma nat_eqb_refl :
     forall (n : nat),

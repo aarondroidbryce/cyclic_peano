@@ -3,6 +3,7 @@ From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Maths Require Import ordinals.
 
 From Cyclic_PA.Logic Require Import definitions.
+From Cyclic_PA.Logic Require Import constraints.
 From Cyclic_PA.Logic Require Import fol.
 From Cyclic_PA.Logic Require Import proof_trees.
 From Cyclic_PA.Logic Require Import substitute.
@@ -97,7 +98,7 @@ unfold ptree_left in EQ;
 fold ptree_left in EQ.
 
 1-3 : destruct PSV.
-4 : destruct PSV as [[[[PSV [PG_app PD_app]] PL_app] Psig] PLoop].
+4 : destruct PSV as [[[PSV [PG_app PD_app]] Psig] PLoop].
 5-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
 12 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
 13-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
@@ -221,7 +222,7 @@ unfold ptree_ug_l_inv;
 unfold ug_left_inv_batch, batch_sub.
 
 1-3 : destruct PSV.
-4 : destruct PSV as [[[[PSV [PG_app PD_app]] PL_app] Psig] PLoop].
+4 : destruct PSV as [[[PSV [PG_app PD_app]] Psig] PLoop].
 5-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
 12 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
 13-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
@@ -275,7 +276,7 @@ unfold ptree_ug_l_inv;
 unfold ug_left_inv_batch, batch_sub.
 
 1-3 : destruct PSV.
-4 : destruct PSV as [[[[PSV [PG_app PD_app]] PL_app] Psig] PLoop].
+4 : destruct PSV as [[[PSV [PG_app PD_app]] Psig] PLoop].
 5-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
 12 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
 13-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
@@ -328,7 +329,7 @@ unfold ptree_ug_l_inv;
 unfold ug_left_inv_batch, batch_sub.
 
 1-3 : destruct PSV.
-4 : destruct PSV as [[[[PSV [PG_app PD_app]] PL_app] Psig] PLoop].
+4 : destruct PSV as [[[PSV [PG_app PD_app]] Psig] PLoop].
 5-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
 12 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
 13-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
@@ -452,7 +453,7 @@ all : unfold ptree_ug_l_inv_fit;
 2 : destruct S as [ | b1 [ | b2 S]];
     try apply PSV.
 
-1 : destruct PSV as [[[[[PSV [PG_app PD_app]] PL_app] PL_OC] Psig] PLoop].
+1 : destruct PSV as [[[[[PSV [PG_app PD_app]] PL_OC] sig_C] [SUBG SUBD]] PLoop].
 2-8 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
 9 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
 10-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
@@ -467,7 +468,7 @@ all : subst.
 10 :  case (nat_eqb v vf && form_eqb phi AF) eqn:EQfn;
       case b.
 
-1 : { destruct Psig as [[OC_Sub [Order Coherent]] [SUBG SUBD]].
+1 : { destruct sig_C as [[[OC_Inj OC_Sur] Order] Coherent].
       rewrite ptree_ug_l_inv_fit_true.
       2 : { rewrite sublist_count_length, sublist_filter_true, map_length.
             apply nat_eqb_refl.
@@ -517,10 +518,7 @@ all : subst.
           subst.
           reflexivity.
           
-
-        apply coherent_is_injective.
-        apply batch_sub_sublist. _ _ _ _ _ SUBG (nat_eqb_eq _ _ EQ)). *)
-        admit.
+          admit.
       - admit.
 }
 

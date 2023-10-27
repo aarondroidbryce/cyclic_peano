@@ -2,6 +2,7 @@ From Cyclic_PA.Maths Require Import naturals.
 From Cyclic_PA.Maths Require Import ordinals.
 From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
+From Cyclic_PA.Logic Require Import constraints.
 From Cyclic_PA.Logic Require Import fol.
 (*From Cyclic_PA.Logic Require Import substitute.*)
 Require Import Lia.
@@ -301,31 +302,31 @@ destruct P2.
         inversion FAL as [[FAL' FAL'' FAL''']].
         apply NEN, FAL'. }
 
-all : try destruct (nat_eq_dec n n0) as [EQN | NEN];
+all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (IHP1 P2) as [EQ | NE];
-			try destruct (IHP1_1 P2_1) as [EQ1 | NE1];
-      try destruct (IHP1_2 P2_2) as [EQ2 | NE2];
-      try destruct (constraint_eq_dec OC OC0) as [EQO | NEO];
-			try destruct (nat_eq_dec v v0) as [EQV | NEV];
-			try destruct (nat_eq_dec v1 v0) as [EQV1 | NEV1];
-			try destruct (nat_eq_dec v2 v3) as [EQV2 | NEV2];
-      try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
-      try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NED];
-			try destruct (list_eq_dec form_eq_dec pi pi0) as [EQPI | NEPI];
-			try destruct (list_eq_dec form_eq_dec sigma sigma0) as [EQS | NES];
-      try destruct (form_eq_dec phi phi0) as [EQP1 | NEP1];
-			try destruct (form_eq_dec psi psi0) as [EQP2 | NEP2];
-			try destruct (ordinal_eq_dec alpha alpha0) as [EQA | NEA];
-      try destruct (ordinal_eq_dec alpha1 alpha0) as [EQA1 | NEA1];
-      try destruct (ordinal_eq_dec alpha2 alpha3) as [EQA2 | NEA2];
-			try destruct (nat_eq_dec kappa kappa0) as [EQK | NEK];
-      try destruct (nat_eq_dec lambda lambda0) as [EQL | NEL];
+			try destruct (IHP1_1 P2_1) as [EQ1 | NE];
+      try destruct (IHP1_2 P2_2) as [EQ2 | NE];
+      try destruct (constraint_eq_dec OC OC0) as [EQO | NE];
+			try destruct (nat_eq_dec v v0) as [EQV | NE];
+			try destruct (nat_eq_dec v1 v0) as [EQV1 | NE];
+			try destruct (nat_eq_dec v2 v3) as [EQV2 | NE];
+      try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NE];
+      try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NE];
+			try destruct (list_eq_dec form_eq_dec pi pi0) as [EQPI | NE];
+			try destruct (list_eq_dec form_eq_dec sigma sigma0) as [EQS | NE];
+      try destruct (form_eq_dec phi phi0) as [EQP1 | NE];
+			try destruct (form_eq_dec psi psi0) as [EQP2 | NE];
+			try destruct (ordinal_eq_dec alpha alpha0) as [EQA | NE];
+      try destruct (ordinal_eq_dec alpha1 alpha0) as [EQA1 | NE];
+      try destruct (ordinal_eq_dec alpha2 alpha3) as [EQA2 | NE];
+			try destruct (nat_eq_dec kappa kappa0) as [EQK | NE];
+      try destruct (nat_eq_dec lambda lambda0) as [EQL | NE];
       subst;
 			try apply (left (eq_refl));
       right;
       intros FAL;
       inversion FAL as [FAL'];
-      try contradiction.
+      try contradiction (NE).
 Qed.
 
 Lemma ptree_pair_eq_dec : forall (P1 P2 : ptree * ptree), {P1 = P2} + {P1 <> P2}.
@@ -539,7 +540,7 @@ end.
 
 Definition applicable (OC : constraint) (gamma delta : list formula) : Prop := (incl (flat_map vars_in gamma) (OC_list OC)) * (incl (flat_map vars_in delta) (OC_list OC)).
 
-Fixpoint struct_valid (P : ptree) : Prop :=
+Fixpoint struct_valid (P : ptree) : Type :=
 match P with
 | bot => true = true
 
@@ -555,8 +556,8 @@ match P with
   
   (P_Target = bot \/ ptree_constraint P_Target = OC2) *
 
-  (coherent sig /\
-      (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_left P_Target)) gamma = true) /\
+  coherent_bijection sig *
+      ((sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_left P_Target)) gamma = true) /\
       (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_right P_Target)) delta = true)) *
 
   (In (pair (loop_head OC1 OC2 gamma delta sig bot) bot) (leaves P_Target))

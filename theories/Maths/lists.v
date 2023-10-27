@@ -13,8 +13,6 @@ Open Scope list_scope.
 
 Import ListNotations.
 
-Notation nat_eq_dec := PeanoNat.Nat.eq_dec.
-
 Lemma Exists_sig {A : Type} {L : list A} {P : A -> Prop} :
     (forall (a : A), {P a} + {~ P a}) ->
         Exists P L -> {a : A & In a L /\ P a}.
