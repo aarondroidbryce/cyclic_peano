@@ -4,6 +4,7 @@ From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import fol.
 
 Require Import List.
+Require Import Bool.
 Import ListNotations.
 
 Definition subst_ind : Type := list bool.
@@ -19,11 +20,485 @@ Definition non_target (gamma : list formula) : subst_ind := repeat false (length
 
 Definition target (gamma : list formula) : subst_ind := repeat true (length gamma).
 
+(*
 Definition formula_sub (phi A1 A2 : formula) (b : bool) : formula :=
 match form_eqb phi A1, b with
 | true, true => A2
 | _, _ => phi
 end.
+*)
+
+Fixpoint form_equiv (A1 A2 : formula) : bool :=
+match A1, A2 with
+| fal, fal => true
+| equ v1 v2, equ v3 v4 => (nat_eqb v3 0 || nat_eqb v1 v3) && (nat_eqb v4 0 || nat_eqb v2 v4)
+| imp B1 C1, imp B2 C2 => form_equiv B1 B2 && form_equiv C1 C2
+| univ v1 B1, univ v2 B2 => nat_eqb v1 v2 && form_equiv B1 B2
+| bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_equiv B1 B2
+| prd pn1 _, prd pn2 _ => prd_eqb pn1 pn2
+| _, _ => false
+end.
+
+Fixpoint weak_formula (A : formula) : bool :=
+match A with
+| fal => false
+| equ v1 v2 => nat_eqb v1 0 || nat_eqb v2 0
+| imp B C => weak_formula B || weak_formula C
+| univ v B => (* (negb (nat_eqb v 0)) && *) weak_formula B
+| bnd o1 o2 B => weak_formula B
+| prd pn pure => false
+end.
+
+Fixpoint binds0 (A : formula) : bool :=
+match A with
+| fal => false
+| equ v1 v2 => false
+| imp B C => binds0 B || binds0 C
+| univ v B => (nat_eqb v 0 && weak_formula B) || binds0 B
+| bnd o1 o2 B => binds0 B
+| prd pn pure => false
+end.
+
+Definition formula_sub (phi A1 A2 : formula) (b : bool) : formula :=
+match form_equiv phi A1, b with
+| true, true => A2
+| _, _ => phi
+end.
+
+Lemma form_equiv_refl :
+    forall (phi : formula),
+        form_equiv phi phi = true.
+Proof.
+induction phi;
+unfold form_equiv;
+fold form_equiv;
+try rewrite !nat_eqb_refl;
+try rewrite IHphi;
+try rewrite IHphi1, IHphi2;
+try rewrite !orb_true_r;
+try rewrite prd_eqb_refl;
+reflexivity.
+Qed.
+
+Lemma form_equiv_sub0 :
+    forall (phi : formula) (v : ivar),
+        form_equiv (substitution phi 0 v) phi = true.
+Proof.
+induction phi;
+intros v;
+unfold substitution;
+fold substitution;
+unfold form_equiv;
+fold form_equiv;
+try case (nat_eqb i 0) eqn:EQ1;
+try case (nat_eqb i0 0) eqn:EQ2;
+try apply nat_eqb_eq in EQ1;
+try apply nat_eqb_eq in EQ2;
+subst;
+unfold form_equiv;
+fold form_equiv;
+try rewrite !nat_eqb_refl;
+try rewrite IHphi;
+try rewrite IHphi1, IHphi2;
+try rewrite !orb_true_r;
+try rewrite prd_eqb_refl;
+try rewrite form_equiv_refl;
+try reflexivity.
+Qed.
+
+Lemma not_weak_equiv_eqb :
+    forall (A1 A2 : formula),
+        weak_formula A2 = false ->
+            form_equiv A1 A2 = form_eqb A1 A2.
+Proof.
+induction A1;
+destruct A2;
+intros WF;
+try apply orb_false_elim in WF as [WF1 WF2];
+unfold form_equiv, form_eqb;
+fold form_equiv form_eqb;
+try rewrite IHA1;
+try rewrite IHA1_1, IHA1_2;
+try apply WF;
+try apply WF1;
+try apply WF2;
+try reflexivity.
+rewrite WF1, WF2, !orb_false_l.
+reflexivity.
+Qed.
+
+Lemma equiv_trans :
+    forall (A1 A2 A3 : formula),
+        form_equiv A1 A2 = true ->
+            form_equiv A2 A3 = true ->
+                form_equiv A1 A3 = true.
+Proof.
+induction A1;
+destruct A2, A3;
+intros EQ1 EQ2;
+try inversion EQ1 as [EQ1'];
+try inversion EQ2 as [EQ2'];
+try rewrite EQ1'.
+- reflexivity.
+- unfold form_equiv;
+  fold form_equiv.
+  case (nat_eqb i1 0) eqn:EQB1;
+  try apply nat_eqb_eq in EQB1;
+  subst;
+  case (nat_eqb i2 0) eqn:EQB2;
+  try apply nat_eqb_eq in EQB2;
+  subst;
+  case (nat_eqb i3 0) eqn:EQB3;
+  try apply nat_eqb_eq in EQB3;
+  subst;
+  case (nat_eqb i4 0) eqn:EQB4;
+  try apply nat_eqb_eq in EQB4;
+  subst;
+  try rewrite !orb_false_l in *;
+  try rewrite !orb_false_r in *;
+  try rewrite !orb_true_l in *;
+  try rewrite !orb_true_r in *;
+  try rewrite !andb_true_l in *;
+  try rewrite !andb_true_r in *;
+  try apply and_bool_prop in EQ1' as [EQ1_1 EQ1_2];
+  try apply and_bool_prop in EQ2' as [EQ2_1 EQ2_2];
+  try apply nat_eqb_eq in EQ1';
+  try apply nat_eqb_eq in EQ2';
+  try apply nat_eqb_eq in EQ1_1;
+  try apply nat_eqb_eq in EQ1_2;
+  try apply nat_eqb_eq in EQ2_1;
+  try apply nat_eqb_eq in EQ2_2;
+  subst;
+  try rewrite !nat_eqb_refl in *;
+  try reflexivity;
+  try discriminate.
+- unfold form_equiv;
+  fold form_equiv.
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply and_bool_prop in EQ2 as [EQ2_1 EQ2_2].
+  rewrite (IHA1_1 _ _ EQ1_1 EQ2_1).
+  rewrite (IHA1_2 _ _ EQ1_2 EQ2_2).
+  reflexivity.
+- unfold form_equiv;
+  fold form_equiv.
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply and_bool_prop in EQ2 as [EQ2_1 EQ2_2].
+  apply nat_eqb_eq in EQ1_1, EQ2_1.
+  subst.
+  rewrite (IHA1 _ _ EQ1_2 EQ2_2).
+  rewrite nat_eqb_refl.
+  reflexivity.
+- unfold form_equiv;
+  fold form_equiv.
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply and_bool_prop in EQ2 as [EQ2_1 EQ2_2].
+  apply and_bool_prop in EQ1_1 as [EQN1 EQN2], EQ2_1 as [EQN3 EQN4].
+  apply nat_eqb_eq in EQN1, EQN2, EQN3, EQN4.
+  subst.
+  rewrite (IHA1 _ _ EQ1_2 EQ2_2).
+  rewrite !nat_eqb_refl.
+  reflexivity.
+- pose proof (prd_eqb_type _ _ EQ1') as [EQN1 EQV1].
+  pose proof (prd_eqb_type _ _ EQ2') as [EQN2 EQV2].
+  apply nat_eqb_eq in EQN1, EQN2.
+  subst.
+  apply nvec_eqb_eq in EQV1, EQV2.
+  subst.
+  apply prd_eqb_eq in EQ1', EQ2'.
+  subst.
+  apply EQ2.
+Qed.
+
+(*
+Lemma equiv_anti_trans :
+    forall (A1 A2 A3 : formula),
+        weak_formula A3 = false ->
+            form_equiv A1 A2 = true ->
+                form_equiv A2 A3 = false ->
+                    form_equiv A1 A3 = false.
+Proof.
+induction A1;
+destruct A2, A3;
+intros WF EQ1 EQ2;
+try inversion EQ1 as [EQ1'];
+try inversion EQ2 as [EQ2'];
+try rewrite EQ1';
+try rewrite EQ2';
+try reflexivity.
+- unfold form_equiv;
+  fold form_equiv.
+  case (nat_eqb i1 0) eqn:EQB1;
+  try apply nat_eqb_eq in EQB1;
+  subst;
+  case (nat_eqb i2 0) eqn:EQB2;
+  try apply nat_eqb_eq in EQB2;
+  subst.
+  case (nat_eqb i3 0) eqn:EQB3;
+  try apply nat_eqb_eq in EQB3;
+  subst;
+  case (nat_eqb i4 0) eqn:EQB4;
+  try apply nat_eqb_eq in EQB4;
+  subst;
+  try rewrite !orb_false_l in *;
+  try rewrite !orb_false_r in *;
+  try rewrite !orb_true_l in *;
+  try rewrite !orb_true_r in *;
+  try rewrite !andb_true_l in *;
+  try rewrite !andb_true_r in *;
+  try apply and_bool_prop in EQ1' as [EQ1_1 EQ1_2];
+  try apply and_bool_prop in EQ2' as [EQ2_1 EQ2_2];
+  try apply nat_eqb_eq in EQ1';
+  try apply nat_eqb_eq in EQ2';
+  try apply nat_eqb_eq in EQ1_1;
+  try apply nat_eqb_eq in EQ1_2;
+  try apply nat_eqb_eq in EQ2_1;
+  try apply nat_eqb_eq in EQ2_2;
+  subst;
+  try rewrite !nat_eqb_refl in *;
+  try reflexivity;
+  try discriminate.
+- unfold form_equiv;
+  fold form_equiv.
+  apply orb_false_elim in WF as [WF1 WF2].
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply andb_false_elim in EQ2 as [EQ2_1 | EQ2_2].
+  rewrite (IHA1_1 _ _ WF1 EQ1_1 EQ2_1).
+  apply andb_false_l.
+  rewrite (IHA1_2 _ _ WF2 EQ1_2 EQ2_2).
+  apply andb_false_r.
+- unfold form_equiv;
+  fold form_equiv.
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply andb_false_elim in EQ2 as [EQ2_1 | EQ2_2].
+  apply nat_eqb_eq in EQ1_1.
+  subst.
+  rewrite EQ2_1.
+  apply andb_false_l.
+  unfold weak_formula in WF.
+  rewrite (IHA1 _ _ WF EQ1_2 EQ2_2).
+  apply andb_false_r.
+- unfold form_equiv;
+  fold form_equiv.
+  apply and_bool_prop in EQ1 as [EQ1_1 EQ1_2].
+  apply and_bool_prop in EQ1_1 as [EQN1 EQN2].
+  apply nat_eqb_eq in EQN1,EQN2.
+  subst.
+  apply andb_false_elim in EQ2 as [EQ2_1 | EQ2_2].
+  rewrite EQ2_1.
+  apply andb_false_l.
+  unfold weak_formula in WF.
+  rewrite (IHA1 _ _ WF EQ1_2 EQ2_2).
+  apply andb_false_r.
+- pose proof (prd_eqb_type _ _ EQ1') as [EQN1 EQV1].
+  apply nat_eqb_eq in EQN1.
+  subst.
+  apply nvec_eqb_eq in EQV1.
+  subst.
+  apply prd_eqb_eq in EQ1'.
+  subst.
+  apply EQ2.
+Admitted.
+*)
+
+Lemma not_weak_sub0_not_weak :
+    forall (phi : formula) (v : ivar),
+        weak_formula phi = false ->
+            weak_formula (substitution phi 0 (S v)) = false.
+Proof.
+induction phi;
+intros v WF;
+unfold substitution;
+fold substitution;
+unfold weak_formula in *;
+fold weak_formula in *;
+try reflexivity.
+apply orb_false_elim in WF as [WF1 WF2].
+rewrite WF1, WF2.
+unfold weak_formula.
+rewrite WF1, WF2.
+reflexivity.
+apply orb_false_elim in WF as [WF1 WF2].
+rewrite (IHphi1 _ WF1), (IHphi2 _ WF2).
+reflexivity.
+case (nat_eqb i 0) eqn:EQB.
+apply WF.
+apply (IHphi _ WF).
+apply (IHphi _ WF).
+Qed.
+
+Lemma not_weak_sub0_triv :
+    forall (phi : formula) (v : ivar),
+        weak_formula phi = false ->
+            (substitution phi 0 v) = phi.
+Proof.
+induction phi;
+intros v WF;
+unfold substitution;
+fold substitution;
+unfold weak_formula in *;
+fold weak_formula in *;
+try reflexivity.
+apply orb_false_elim in WF as [WF1 WF2].
+rewrite WF1, WF2.
+reflexivity.
+apply orb_false_elim in WF as [WF1 WF2].
+rewrite (IHphi1 _ WF1), (IHphi2 _ WF2).
+reflexivity.
+case (nat_eqb i 0) eqn:EQB.
+reflexivity.
+rewrite (IHphi _ WF).
+reflexivity.
+rewrite (IHphi _ WF).
+reflexivity.
+Qed.
+
+Lemma no_bind_sub0_not_weak :
+    forall (phi : formula) (v : ivar),
+        binds0 phi = false -> 
+            weak_formula (substitution phi 0 (S v)) = false.
+Proof.
+induction phi;
+intros v BO;
+unfold substitution;
+fold substitution;
+unfold binds0;
+fold binds0;
+unfold weak_formula;
+fold weak_formula.
+- reflexivity.
+- case (nat_eqb i 0) eqn:EQB1;
+  case (nat_eqb i0 0) eqn:EQB2;
+  unfold weak_formula;
+  try rewrite EQB1;
+  try rewrite EQB2;
+  reflexivity.
+- apply orb_false_elim in BO as [BO1 BO2].
+  rewrite (IHphi1 _ BO1), (IHphi2 _ BO2).
+  reflexivity.
+- apply orb_false_elim in BO as [BO1 BO2].
+  case (nat_eqb i 0) eqn:EQ.
+  apply BO1.
+  apply (IHphi _ BO2).  
+- apply (IHphi _ BO).
+- reflexivity.
+Qed.
+
+Lemma sub0_not_weak_no_bind :
+    forall (phi : formula) (v : ivar),
+        weak_formula (substitution phi 0 (S v)) = false ->
+            binds0 phi = false.
+Proof.
+induction phi;
+intros v WF;
+unfold substitution in *;
+fold substitution in *;
+unfold binds0 in *;
+fold binds0 in *;
+unfold weak_formula in *;
+fold weak_formula in *;
+try reflexivity.
+- apply orb_false_elim in WF as [WF1 WF2].
+  rewrite (IHphi1 _ WF1), (IHphi2 _ WF2).
+  reflexivity.
+- case (nat_eqb i 0) eqn:EQ.
+  + unfold weak_formula in WF;
+    fold weak_formula in WF.
+    rewrite WF.
+    apply (IHphi 0 (not_weak_sub0_not_weak _ _ WF)).
+  + apply (IHphi _ WF).
+- apply (IHphi _ WF).
+Qed.
+
+Lemma equiv_test :
+    forall (phi A : formula) (v1 v2 : ivar) ,
+        formula_sub (substitution phi 0 v1) phi A true = formula_sub (substitution phi 0 v2) phi A true.
+Proof.
+intros phi A v1 v2.
+unfold formula_sub.
+rewrite !form_equiv_sub0.
+reflexivity.
+Qed.
+
+Lemma form_sub_sub0_comm :
+    forall (phi A1 A2 : formula) (v : ivar) (b : bool),
+        weak_formula A1 = false ->
+            weak_formula A2 = false ->
+                (substitution (formula_sub phi A1 A2 b) 0 v) = formula_sub (substitution phi 0 v) A1 A2 b.
+Proof.
+intros phi A1 A2 v b WF1 WF2.
+unfold formula_sub.
+case (form_equiv (substitution phi 0 v) A1) eqn:EQF1;
+case (form_equiv phi A1) eqn:EQF2.
+1,2 : destruct b.
+all : try reflexivity.
+- apply not_weak_sub0_triv, WF2.
+
+- rewrite (not_weak_equiv_eqb _ _ WF1) in EQF1. admit.
+
+- rewrite (equiv_trans _ _ _ (form_equiv_sub0 _ _) EQF2) in EQF1.
+  inversion EQF1.
+Qed.
+  
+induction phi;
+intros A1 A2 v b WF1 WF2;
+unfold formula_sub;
+unfold substitution;
+fold substitution.
+- case (form_equiv fal A1) eqn:EQF.
+  destruct b.
+  apply not_weak_sub0_triv, WF2.
+  reflexivity.
+  reflexivity.
+- admit.
+- case (form_equiv _ A1) eqn:EQF.
+  destruct A1;
+  inversion EQF.
+  apply and_bool_prop in H0 as [EQF1 EQF2].
+  unfold form_equiv;
+  fold form_equiv.
+  rewrite (equiv_trans _ _ _ (form_equiv_sub0 _ _) EQF1).
+  rewrite (equiv_trans _ _ _ (form_equiv_sub0 _ _) EQF2).
+  unfold "&&".
+  destruct b.
+  apply not_weak_sub0_triv, WF2.
+  reflexivity.
+  unfold
+
+  admit.
+- admit.
+- admit.
+- admit.
+
+  
+Admitted.
+
+Lemma not_weak_sub_not_weak : 
+    forall (phi A1 A2 : formula),
+        weak_formula phi = false ->
+            weak_formula A2 = false ->
+                forall (b : bool),
+                    weak_formula (formula_sub phi A1 A2 b) = false.
+Proof.
+induction phi;
+intros A1 A2 WF1 WF2 b;
+unfold formula_sub;
+case (form_equiv _ A1) eqn:EQF;
+destruct b;
+try apply WF1;
+apply WF2.
+Qed.
+
+(*
+Lemma equiv_test :
+    forall (phi A : formula) (v1 v2 : ivar) ,
+        formula_sub (substitution phi 0 v1) phi A true = formula_sub (substitution phi 0 v2) phi A true.
+Proof.
+intros phi A v1 v2.
+unfold formula_sub.
+rewrite !form_equiv_sub0.
+reflexivity.
+Qed.
+*)
 
 Fixpoint batch_sub_fit (gamma : list formula) (A1 A2 : formula) (S : subst_ind) : list formula :=
 match gamma, S with
@@ -38,7 +513,7 @@ match nat_eqb (length gamma) (length S) with
 end.
 
 Lemma formula_sub_false {phi A1 A2 : formula} : formula_sub phi A1 A2 false = phi.
-Proof. unfold formula_sub. case (form_eqb phi A1); reflexivity. Qed.
+Proof. unfold formula_sub. case (form_equiv phi A1); reflexivity. Qed.
 
 Lemma batch_sub_nil :
     forall (gamma : list formula) (A1 A2 : formula),
@@ -171,7 +646,7 @@ apply nat_eqb_refl.
 apply PeanoNat.Nat.le_add_r.
 Qed.
 
-(*Lemma batch_sub_is_map_combine : 
+Lemma batch_sub_is_map_combine : 
     forall L A1 A2 S,
         length L = length S ->
             batch_sub L A1 A2 S = (map (fun PAIR => formula_sub (fst PAIR) A1 A2 (snd (PAIR))) (combine L S)).
@@ -192,8 +667,8 @@ rewrite EQ, nat_eqb_refl.
   rewrite EQ'.
   apply nat_eqb_refl.
 Qed.
-*)
 
+(*
 Lemma map_batch_sub : 
     forall (gamma : list formula) (A1 A2 : formula) (S : subst_ind) (F : formula -> formula),
         (forall (phi1 phi2 : formula),
@@ -223,13 +698,14 @@ unfold batch_sub, batch_sub_fit.
     rewrite !batch_sub_fit_true.
     rewrite IHgamma.
     unfold formula_sub.
-    case (form_eqb a A1) eqn:EQF;
+    case (form_equiv a A1) eqn:EQF;
     destruct b;
     try apply form_eqb_eq in EQF;
     subst;
-    try rewrite form_eqb_refl;
+    try rewrite !form_equiv_refl;
     try reflexivity.
-    * case (form_eqb (F a) (F A1)) eqn:FAL.
+    * case (form_equiv (F a) (F A1)) eqn:FAL.
+      reflexivity.
       apply form_eqb_eq, INJ in FAL.
       subst.
       rewrite form_eqb_refl in EQF.
@@ -627,4 +1103,5 @@ rewrite formula_sub_ind_lor.
 - rewrite FS.
   apply non_target_fit.
 Qed.
+*)
 *)

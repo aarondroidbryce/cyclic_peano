@@ -4,7 +4,7 @@ From Cyclic_PA.Maths Require Import lists.
 From Cyclic_PA.Logic Require Import definitions.
 From Cyclic_PA.Logic Require Import constraints.
 From Cyclic_PA.Logic Require Import fol.
-(*From Cyclic_PA.Logic Require Import substitute.*)
+From Cyclic_PA.Logic Require Import substitute.
 Require Import Lia.
 Require Import List.
 Import ListNotations.
@@ -20,13 +20,17 @@ Inductive ptree : Type :=
 | equal : forall (v1 v2 : ivar), ptree
 
 
-| loop_head : forall (OC1 : constraint) (OC2 : constraint) (gamma delta : list formula) (sig : (constraint_type OC2) -> (constraint_type OC1)) (P_Target : ptree), ptree
+| loop_head : forall (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (P_Target : ptree), ptree
 
 (*| deg_up : forall (OC : constraint) (gamma delta : list formula) (alpha beta : ordinal) (LT : ord_lt alpha beta) (P' : ptree), ptree *)
 
-| con_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (v1 v2 : ivar) {alpha : ordinal} (P' : ptree), ptree
+| con_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) {alpha : ordinal} (P' : ptree), ptree
 
 | con_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) {alpha : ordinal} (P' : ptree), ptree
+
+| sub_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (v1 v2 : ivar) {alpha : ordinal} (P' : ptree), ptree
+
+| sub_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (v1 v2 : ivar) {alpha : ordinal} (P' : ptree), ptree
 
 | refl : forall {OC : constraint} {gamma delta : list formula} (v : ivar) {alpha : ordinal} (P' : ptree), ptree
 
@@ -65,13 +69,17 @@ match P with
 
 | pred vec pn pure => [prd pn pure]
 
-| equal v1 v2 => [equ v1 v2]
+| equal v1 v2 => [equ (S v1) (S v2)]
 
-| loop_head OC1 OC2 gamma delta sig P_Target => gamma
+| loop_head OC gamma delta alpha P_Target => gamma
 
-| @con_l OC gamma delta phi v1 v2 alpha P' => (equ v1 v2) :: phi :: gamma
+| @con_l OC gamma delta phi alpha P' => phi :: gamma
 
 | @con_r OC gamma delta phi alpha P' => gamma
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => equ (S v1) (S v2) :: (substitution phi 0 (S v2)) :: gamma
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => equ (S v1) (S v2) :: gamma
 
 | @refl OC gamma delta v alpha P' => gamma
 
@@ -110,13 +118,17 @@ match P with
 
 | pred vec pn pure => [prd pn pure]
 
-| equal v1 v2 => [equ v1 v2]
+| equal v1 v2 => [equ (S v1) (S v2)]
 
-| loop_head OC1 OC2 gamma delta sig P_Target => delta
+| loop_head OC gamma delta alpha P_Target => delta
 
-| @con_l OC gamma delta phi v1 v2 alpha P' => delta
+| @con_l OC gamma delta phi alpha P' => delta
 
 | @con_r OC gamma delta phi alpha P' => phi :: delta
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => delta
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => (substitution phi 0 (S v2)) :: delta
 
 | @refl OC gamma delta v alpha P' => delta
 
@@ -157,11 +169,15 @@ match P with
 
 | equal v1 v2 => empty
 
-| loop_head OC1 OC2 gamma delta sig P_Target => OC1
+| loop_head OC gamma delta alpha P_Target => OC
 
-| @con_l OC gamma delta phi v1 v2 alpha P' => OC
+| @con_l OC gamma delta phi alpha P' => OC
 
 | @con_r OC gamma delta phi alpha P' => OC
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => OC
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => OC
 
 | @refl OC gamma delta v alpha P' => OC
 
@@ -202,11 +218,15 @@ match P with
 
 | equal v1 v2 => cast Zero
 
-| loop_head OC1 OC2 gamma delta sig P_Target => cast Zero
+| loop_head OC gamma delta alpha P_Target => alpha
 
-| @con_l OC gamma delta phi v1 v2 alpha P' => alpha
+| @con_l OC gamma delta phi alpha P' => alpha
 
 | @con_r OC gamma delta phi alpha P' => alpha
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => alpha
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => alpha
 
 | @refl OC gamma delta v alpha P' => alpha
 
@@ -244,63 +264,38 @@ Proof.
 induction P1;
 destruct P2.
 
-2-20 : right; discriminate.
-3-21 : right; discriminate.
-4-22 : right; discriminate.
-5-23 : right; discriminate.
-6-24 : right; discriminate.
-7-25 : right; discriminate.
-8-26 : right; discriminate.
-9-27 : right; discriminate.
-10-28 : right; discriminate.
-11-29 : right; discriminate.
-12-30 : right; discriminate.
-13-31 : right; discriminate.
-14-32 : right; discriminate.
-15-33 : right; discriminate.
-16-34 : right; discriminate.
-17-35 : right; discriminate.
-18-36 : right; discriminate.
-19-37 : right; discriminate.
+2-22 : right; discriminate.
+3-23 : right; discriminate.
+4-24 : right; discriminate.
+5-25 : right; discriminate.
+6-26 : right; discriminate.
+7-27 : right; discriminate.
+8-28 : right; discriminate.
+9-29 : right; discriminate.
+10-30 : right; discriminate.
+11-31 : right; discriminate.
+12-32 : right; discriminate.
+13-33 : right; discriminate.
+14-34 : right; discriminate.
+15-35 : right; discriminate.
+16-36 : right; discriminate.
+17-37 : right; discriminate.
+18-38 : right; discriminate.
+19-39 : right; discriminate.
 
-4 : { try destruct (IHP1 P2) as [EQ | NE];
-      try destruct (constraint_eq_dec OC1 OC0) as [EQO | NEO];
-      try destruct (constraint_eq_dec OC2 OC3) as [EQO' | NEO'];
-      try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NEG];
-      try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NED];
+2 : { try destruct (nat_eq_dec n n0) as [EQN | NE];
       subst;
-			try destruct (sig_dec sig sig0) as [EQS | NES];
+      try destruct (nvec_eq_dec vec vec0) as [EQVC | NE];
       subst;
+      try destruct (prd_eq_dec pn pn0) as [EQP | NE];
+      subst;
+      try rewrite (proof_irrelevance _ e e0); 
       try apply (left (eq_refl));
       right;
-      try intros FAL;
+      intros FAL;
       inversion FAL as [FAL'];
-      try contradiction.
-      repeat apply inj_pair2 in FAL'.
-      contradiction. }
-
-2 : { try destruct (nat_eq_dec n n0) as [EQN | NEN];
-      subst;
-      try destruct (nvec_eq_dec vec vec0) as [EQVC | NEVC];
-      subst;
-      try destruct (prd_eq_dec pn pn0) as [EQP | NEP];
-      subst.
-      - rewrite (proof_irrelevance _ e e0). 
-        apply (left (eq_refl)).
-      - right.
-        intros FAL.
-        inversion FAL as [FAL'].
-        repeat apply inj_pair2 in FAL'.
-        apply NEP, FAL'.
-      - right.
-        intros FAL.
-        inversion FAL as [[FAL' FAL'']].
-        repeat apply inj_pair2 in FAL'.
-        apply NEVC, FAL'.
-      - right.
-        intros FAL.
-        inversion FAL as [[FAL' FAL'' FAL''']].
-        apply NEN, FAL'. }
+      repeat apply inj_pair2 in FAL';
+      contradiction NE. }
 
 all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (IHP1 P2) as [EQ | NE];
@@ -326,7 +321,7 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       right;
       intros FAL;
       inversion FAL as [FAL'];
-      try contradiction (NE).
+      try contradiction NE.
 Qed.
 
 Lemma ptree_pair_eq_dec : forall (P1 P2 : ptree * ptree), {P1 = P2} + {P1 <> P2}.
@@ -339,12 +334,6 @@ apply left, eq_refl.
 all : right; intros FAL; apply NE; inversion FAL; reflexivity.
 Qed.
 
-Definition ptree_sigma (P : ptree) : ovar -> ovar :=
-match P with
-| loop_head OC1 OC2 gamma delta sig P_Target => sig_generalise sig
-| _ => fun (o : ovar) => o
-end.
-
 Fixpoint ptree_descends_from (P Source : ptree) : bool :=
 match P with
 | bot => false
@@ -353,11 +342,15 @@ match P with
 
 | equal v1 v2 => false
 
-| loop_head OC1 OC2 gamma delta sig P_Target => false
+| loop_head OC gamma delta alpha P_Target => false
 
-| con_l phi v1 v2 P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
+| con_l phi P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
 
 | con_r phi P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
+
+| sub_l phi v1 v2 P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
+
+| sub_r phi v1 v2 P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
 
 | refl v P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
 
@@ -398,14 +391,17 @@ match P1, P2 with
 
 | equal v1 v2, equal v3 v4 => v1 = v3 /\ v2 = v4
 
-| loop_head OC1 OC2 gamma1 delta1 sig1 P_Target1, loop_head OC3 OC4 gamma2 delta2 sig2 P_Target2 =>
-    OC1 = OC3 /\ gamma1 = gamma2 /\ delta1 = delta2 /\
-    (forall (PF1 : OC1 = OC3) (PF2 : OC2 = OC4), sig2 = (eq_rect _ (fun OC' => constraint_type OC4 -> constraint_type OC') (eq_rect _ (fun OC'' => constraint_type OC'' -> constraint_type OC1) sig1 _ PF2) _ PF1)) /\
-    (P_Target1 = bot \/ P_Target2 = bot \/ (P_Target1 = P_Target2 /\ OC2 = OC4))
+| loop_head OC1 gamma1 delta1 alpha1 P_Target1, loop_head OC2 gamma2 delta2 alpha2 P_Target2 =>
+    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\
+    (P_Target1 = bot \/ P_Target2 = bot \/ (P_Target1 = P_Target2)) /\ alpha1 = alpha2
 
-| con_l phi1 v1 v2 P1, con_l phi2 v3 v4 P2 => phi1 = phi2 /\ v1 = v3 /\ v2 = v4 /\ ptree_equiv P1 P2
+| con_l phi1 P1, con_l phi2 P2 => phi1 = phi2 /\ ptree_equiv P1 P2
 
 | con_r phi1 P1, con_r phi2 P2 => phi1 = phi2 /\ ptree_equiv P1 P2
+
+| sub_l phi1 v1 v2 P1, sub_l phi2 v3 v4 P2 => phi1 = phi2 /\ v1 = v3 /\ v2 = v4 /\ ptree_equiv P1 P2
+
+| sub_r phi1 v1 v2 P1, sub_r phi2 v3 v4 P2 => phi1 = phi2 /\ v1 = v3 /\ v2 = v4 /\ ptree_equiv P1 P2
 
 | refl v1 P1, refl v2 P2 => v1 = v2 /\ ptree_equiv P1 P2
 
@@ -448,11 +444,15 @@ match P with
 
 | equal v1 v2 => []
 
-| loop_head OC1 OC2 gamma delta sig P_Target => [pair P P_Target]
+| loop_head OC gamma delta alpha P_Target => [pair P P_Target]
 
-| con_l phi v1 v2 P' => leaves P'
+| con_l phi P' => leaves P'
 
 | con_r phi P' => leaves P'
+
+| sub_l phi v1 v2 P' => leaves P'
+
+| sub_r phi v1 v2 P' => leaves P'
 
 | refl v P' => leaves P'
 
@@ -495,11 +495,15 @@ match P, M with
 
 | equal v1 v2, [true] => [P]
 
-| loop_head OC1 OC2 gamma delta sig P_Target, true :: M' => P :: path_fit P_Target M'
+| loop_head OC gamma delta alpha P_Target, true :: M' => P :: path_fit P_Target M'
 
-| con_l phi v1 v2 P', true :: M' => P :: path_fit P' M'
+| con_l phi P', true :: M' => P :: path_fit P' M'
 
 | con_r phi P', true :: M' => P :: path_fit P' M'
+
+| sub_l phi v1 v2 P', true :: M' => P :: path_fit P' M'
+
+| sub_r phi v1 v2 P', true :: M' => P :: path_fit P' M'
 
 | refl v P', true :: M' => P :: path_fit P' M'
 
@@ -548,23 +552,15 @@ match P with
 
 | equal v1 v2 => true = true
 
-| loop_head OC1 OC2 gamma delta sig P_Target =>
+| loop_head OC gamma delta alpha P_Target => (struct_valid P_Target) * applicable OC gamma delta * ((P_Target = bot) + ((P_Target <> bot) * (ptree_left P_Target = gamma) * (ptree_right P_Target = delta) * (ptree_constraint P_Target = OC) * (ptree_deg P_Target = alpha))) * (forall (phi : formula), In phi gamma \/ In phi delta -> weak_formula phi = false)
 
-  (struct_valid P_Target) *
-  
-  applicable OC1 gamma delta *
-  
-  (P_Target = bot \/ ptree_constraint P_Target = OC2) *
-
-  coherent_bijection sig *
-      ((sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_left P_Target)) gamma = true) /\
-      (sublist form_eq_dec (map (fun lambda => sig_subst lambda (sig_generalise sig)) (ptree_right P_Target)) delta = true)) *
-
-  (In (pair (loop_head OC1 OC2 gamma delta sig bot) bot) (leaves P_Target))
-
-| @con_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: phi :: (substitution phi v1 v2) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @con_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
 | @con_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = phi :: phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ (S v1) (S v2)) :: (substitution phi 0 (S v1)) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ (S v1) (S v2)) :: gamma) * (ptree_right P' = (substitution phi 0 (S v1)) :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
 | @refl OC gamma delta v alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = equ v v :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
@@ -574,9 +570,9 @@ match P with
 | @ex_r OC gamma delta n alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
 
-| @wkn_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC (phi :: gamma) delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @wkn_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC (phi :: gamma) delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha) * (weak_formula phi = false)
 
-| @wkn_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC gamma (phi :: delta) * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @wkn_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC gamma (phi :: delta) * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha) * (weak_formula phi = false)
 
 | @rst OC gamma delta kappa alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_in gamma)) * (~ In kappa (flat_map vars_in delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha)
 
@@ -626,7 +622,7 @@ all : unfold ptree_descends_from in DESC;
 
 1-4 : inversion DESC.
 
-15 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
+17 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
         subst.
         refine (existT _ [false; true] (existT _ [] _)).
         2 : case (ptree_eq_dec P_Target2 P_Source) as [EQ2 | NE2];
@@ -645,7 +641,7 @@ all : unfold ptree_descends_from in DESC;
               try rewrite EQ;
               reflexivity. }
 
-13 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
+15 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
         subst.
         refine (existT _ [false; true] (existT _ [] _)).
         2 : case (ptree_eq_dec P_Target2 P_Source) as [EQ2 | NE2];
@@ -667,7 +663,7 @@ all : unfold ptree_descends_from in DESC;
 all : case (ptree_eq_dec P_Target P_Source) as [EQ | NE];
       subst.
 
-1,3,5,7,9,11,13,15,17,19,21,23,25 :
+1,3,5,7,9,11,13,15,17,19,21,23,25,27,29 :
   refine (existT _ [true; true] (existT _ [] _));
   rewrite app_nil_l;
   unfold path_fit;
@@ -699,7 +695,6 @@ Definition valid (P : ptree) : Type :=
                       (forall (P_path : ptree),
                           In P_path (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
                               OC_elt (ptree_constraint P_path) kappa) *
-                      (ptree_sigma P_Leaf kappa = kappa) *
                       { P_reset : ptree & In P_reset (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) /\ resets_var P_reset kappa}}})%type})}.
 
 Definition P_proves (P : ptree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
@@ -804,22 +799,104 @@ all : try apply PG_app;
 Qed.
 *)
 
-Lemma ptree_con_l :
-    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (v1 v2 : ivar) (alpha : ordinal),
-        provable OC (equ v1 v2 :: phi :: (substitution phi v1 v2) :: gamma) delta alpha ->
-            provable OC (equ v1 v2 :: phi :: gamma) delta alpha.
+Lemma struct_not_weak :
+    forall (P : ptree),
+        struct_valid P ->
+            forall (phi : formula),
+                In phi (ptree_left P) \/ In phi (ptree_right P) ->
+                    weak_formula phi = false.
 Proof.
-intros OC gamma delta phi v1 v2 alpha [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
+induction P;
+intros PSV phi' IN.
+
+1-3 : destruct PSV.
+4 : destruct PSV as [[[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]] PWF].
+6-12 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+13-14 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg] PWF].
+15 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
+16-17 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+18 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
+19 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
+20 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+21 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+22 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+
+all : destruct IN as [INL | INR].
+
+all : unfold ptree_left in *;
+      unfold ptree_right in *;
+      try fold (ptree_left P) in *;
+      try fold (ptree_left P1) in *;
+      try fold (ptree_left P2) in *;
+      try fold (ptree_right P) in *;
+      try fold (ptree_right P1) in *;
+      try fold (ptree_right P2) in *;
+      try inversion INL as [INL' | INL'];
+      try inversion INL';
+      try inversion INR as [INR' | INR'];
+      try inversion INR';
+      subst;
+      try reflexivity;
+      try rewrite PG in IHP;
+      try rewrite PD in IHP;
+      try rewrite P1G in IHP1;
+      try rewrite P2D in IHP2;
+      try apply (IHP PSV _ (or_introl INL));
+      try apply (IHP PSV _ (or_intror INR));
+      try apply (IHP PSV _ (or_introl INL'));
+      try apply (IHP PSV _ (or_intror INR'));
+      try apply (IHP PSV _ (or_introl (or_intror INL)));
+      try apply (IHP PSV _ (or_intror (or_intror INR)));
+      try apply (IHP PSV _ (or_introl (or_introl eq_refl)));
+      try apply (IHP PSV _ (or_intror (or_introl eq_refl)));
+      try apply (IHP PSV _ (or_introl (or_intror INL')));
+      try apply (IHP PSV _ (or_intror (or_intror INR'))).
+
+1 : inversion INR.
+
+1 : apply (PWF _ (or_introl INL)).
+
+1 : apply (PWF _ (or_intror INR)).
+
+1 : apply (no_bind_sub0_not_weak _ v2 (sub0_not_weak_no_bind _ _ (IHP PSV _ (or_introl (or_intror (or_introl eq_refl)))))).
+
+1 : apply (IHP PSV _ (or_introl (or_intror (or_intror H)))).
+
+1 : apply (no_bind_sub0_not_weak _ v2 (sub0_not_weak_no_bind _ _ (IHP PSV _ (or_intror (or_introl eq_refl))))).
+
+1 : apply (IHP PSV _ (or_introl (proj2 (in_bury _) INL))).
+
+1 : apply (IHP PSV _ (or_intror (proj2 (in_bury _) INR))).
+
+1 : apply PWF.
+
+1 : apply PWF.
+
+1 : apply (proj2 (Bool.orb_false_iff _ _) (conj (IHP2 P2SV _ (or_intror (or_introl eq_refl))) (IHP1 P1SV _ (or_introl (or_introl eq_refl))))).
+
+1 : apply (IHP1 P1SV _ (or_introl (or_intror INL'))).
+
+1 : apply (IHP1 P1SV _ (or_intror INR)).
+
+1 : apply (proj2 (Bool.orb_false_iff _ _) (conj (IHP PSV _ (or_introl (or_introl eq_refl))) (IHP PSV _ (or_intror (or_introl eq_refl))))).
+
+1 : apply (IHP1 P1SV _ (or_introl INL)).
+
+1 : apply (IHP2 P2SV _ (or_intror INR)).
+Qed.
+
+Lemma ptree_con_l :
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha : ordinal),
+        provable OC (phi :: phi :: gamma) delta alpha ->
+            provable OC (phi :: gamma) delta alpha.
+Proof.
+intros OC gamma delta phi alpha [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
 subst.
-refine (existT _ (con_l phi v1 v2 P) _).
+refine (existT _ (con_l phi P) _).
 repeat split;
 try assumption.
-refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ (equ v1 v2 :: phi :: substitution phi v1 v2 :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror (or_intror (or_intror IN))))) PG_app).
-refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ (equ v1 v2 :: phi :: substitution phi v1 v2 :: gamma) (fun (A : formula) => _)) PG_app).
-intros [EQ1 | [EQ2 | IN]].
-apply (or_introl EQ1).
-apply (or_intror (or_introl EQ2)).
-apply (or_intror (or_intror (or_intror IN))).
+refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ (phi :: phi :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror (or_intror IN)))) PG_app).
+refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ (phi :: phi :: gamma) (fun (A : formula) (IN : In A (phi :: gamma)) => (or_intror IN))) PG_app).
 Qed.
 
 Lemma ptree_con_r :
@@ -877,10 +954,11 @@ Qed.
 Lemma ptree_wkn_l : 
     forall (gamma delta : list formula) (phi : formula) (OC : constraint) (alpha: ordinal),
         incl (vars_in phi) (OC_list OC) ->
-            provable OC gamma delta alpha ->
-                provable OC (phi :: gamma) delta alpha.
+            weak_formula phi = false ->
+                provable OC gamma delta alpha ->
+                    provable OC (phi :: gamma) delta alpha.
 Proof.
-intros gamma delta phi OC alpha SUB [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
+intros gamma delta phi OC alpha SUB WF [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
 subst.
 refine (existT _ (wkn_l phi P) _).
 repeat split;
@@ -892,10 +970,11 @@ Qed.
 Lemma ptree_wkn_r : 
     forall (gamma delta : list formula) (phi : formula) (OC : constraint) (alpha: ordinal),
         incl (vars_in phi) (OC_list OC) ->
-            provable OC gamma delta alpha ->
-                provable OC gamma (phi :: delta) alpha.
+            weak_formula phi = false ->
+                provable OC gamma delta alpha ->
+                    provable OC gamma (phi :: delta) alpha.
 Proof.
-intros gamma delta phi OC alpha SUB [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
+intros gamma delta phi OC alpha SUB WF [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
 subst.
 refine (existT _ (wkn_r phi P) _).
 repeat split;
@@ -908,43 +987,49 @@ Qed.
 Lemma ptree_weaken_left : 
     forall (gamma delta sigma : list formula) (OC : constraint) (alpha: ordinal),
         incl (flat_map vars_in sigma) (OC_list OC) ->
-            provable OC gamma delta alpha ->
-                provable OC (gamma ++ sigma) delta alpha.
+            (forall (phi : formula), In phi sigma -> weak_formula phi = false) ->
+                provable OC gamma delta alpha ->
+                    provable OC (gamma ++ sigma) delta alpha.
 Proof.
 intros gamma delta sigma.
 revert gamma delta.
-apply (rev_ind_type (fun sigma => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal), incl (flat_map vars_in sigma) (OC_list OC) -> provable OC gamma delta alpha -> provable OC (gamma ++ sigma) delta alpha)).
-- intros gamma delta OC alpha SUB PP.
+apply (rev_ind_type (fun sigma => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal), incl (flat_map vars_in sigma) (OC_list OC) -> (forall (phi : formula), In phi sigma -> weak_formula phi = false) -> provable OC gamma delta alpha -> provable OC (gamma ++ sigma) delta alpha)).
+- intros gamma delta OC alpha SUB WF_all PP.
   rewrite app_nil_r.
   apply PP.
-- intros phi sigma' IND gamma delta OC alpha SUB PP.
+- intros phi sigma' IND gamma delta OC alpha SUB WF_all PP.
   rewrite app_assoc.
   rewrite <- (app_nil_l ((gamma ++ sigma') ++ [phi])), <- (@bury_type _ phi [] (gamma ++ sigma')), app_nil_l.
   apply ptree_ex_l, ptree_wkn_l, IND, PP;
   rewrite flat_map_app in SUB.
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_intror (in_or_app _ _ _ (or_introl IN))))).
+  apply (WF_all _ (in_or_app _ [phi] phi (or_intror (or_introl eq_refl)))).
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_introl IN))).
+  apply (fun phi' IN' => WF_all phi' (in_or_app _ _ _ (or_introl IN'))).
 Qed.
 
 Lemma ptree_weaken_right : 
     forall (gamma delta pi : list formula) (OC : constraint) (alpha: ordinal),
         incl (flat_map vars_in pi) (OC_list OC) ->
-            provable OC gamma delta alpha ->
-                provable OC gamma (delta ++ pi) alpha.
+            (forall (phi : formula), In phi pi -> weak_formula phi = false) ->
+                provable OC gamma delta alpha ->
+                    provable OC gamma (delta ++ pi) alpha.
 Proof.
 intros gamma delta pi.
 revert gamma delta.
-apply (rev_ind_type (fun pi => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal), incl (flat_map vars_in pi) (OC_list OC) -> provable OC gamma delta alpha -> provable OC gamma (delta ++ pi) alpha)).
-- intros gamma delta OC alpha SUB PP.
+apply (rev_ind_type (fun pi => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal), incl (flat_map vars_in pi) (OC_list OC) -> (forall (phi : formula), In phi pi -> weak_formula phi = false) -> provable OC gamma delta alpha -> provable OC gamma (delta ++ pi) alpha)).
+- intros gamma delta OC alpha SUB WF_all PP.
   rewrite app_nil_r.
   apply PP.
-- intros phi pi' IND gamma delta OC alpha SUB PP.
+- intros phi pi' IND gamma delta OC alpha SUB WF_all PP.
   rewrite app_assoc.
   rewrite <- (app_nil_l ((delta ++ pi') ++ [phi])), <- (@bury_type _ phi [] (delta ++ pi')), app_nil_l.
   apply ptree_ex_r, ptree_wkn_r, IND, PP;
   rewrite flat_map_app in SUB.
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_intror (in_or_app _ _ _ (or_introl IN))))).
+  apply (WF_all _ (in_or_app _ [phi] phi (or_intror (or_introl eq_refl)))).
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_introl IN))).
+  apply (fun phi' IN' => WF_all phi' (in_or_app _ _ _ (or_introl IN'))).
 Qed.
 
 Lemma ptree_reset : 
@@ -1148,18 +1233,6 @@ pose proof (set_bury_eq_perm perm) as [LN EQ].
 apply (commutative_left_aux LN _ _ _ _ _ EQ).
 Defined.
 
-Lemma ptree_con_l_better :
-    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha : ordinal),
-        provable OC (phi :: phi :: gamma) delta alpha ->
-            provable OC (phi :: gamma) delta alpha.
-Proof.
-intros OC gamma delta phi alpha PP.
-apply (ptree_refl _ _ _ 0), ptree_con_l.
-rewrite subst_eq_refl, <- (app_nil_r (phi :: phi :: gamma)).
-apply (ptree_comm_left perm_head), ptree_weaken_left, PP.
-apply incl_nil_l.
-Qed.
-
 Lemma prove_dups_left_aux :
     forall (n : nat) (gamma delta : list formula) (OC : constraint) (alpha: ordinal),
         length gamma = n ->
@@ -1178,7 +1251,7 @@ intros gamma delta OC alpha EQ PP.
     subst.
     apply (ptree_comm_left (perm_sym (perm_nodup form_eq_dec double_perm_head))).
     rewrite nodup_double_cons.
-    apply IHn, ptree_con_l_better, (ptree_comm_left (double_perm_head)), PP.
+    apply IHn, ptree_con_l, (ptree_comm_left (double_perm_head)), PP.
     rewrite app_length in EQ.
     unfold length in *;
     fold (@length formula) in *.
@@ -1216,9 +1289,13 @@ intros gamma delta OC alpha EQ PP.
   + destruct (has_dups_split form_eq_dec DG) as [A [gamma1 [gamma2 [gamma3 EQL]]]].
     subst.
     destruct (@nodup_split_perm _ form_eq_dec (A :: A :: gamma1 ++ gamma2 ++ gamma3)) as [sigma [PERM SUB]].
-    apply (ptree_comm_left (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head))), ptree_weaken_left, (ptree_comm_left (perm_nodup form_eq_dec double_perm_head)), PP.
+    apply (ptree_comm_left (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head))), ptree_weaken_left, (ptree_comm_left (perm_nodup form_eq_dec double_perm_head)), PP;
     destruct PP as [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
     refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ _ (incl_tran SUB (incl_tran (fun B IN => perm_in form_eq_dec (perm_sym double_perm_head) _ IN) (fun B IN => proj2 (nodup_In _ _ _) IN)))) PG_app).
+    intros phi IN.
+    refine (struct_not_weak P PSV _ (or_introl _)).
+    rewrite PG.
+    apply nodup_In, (perm_in form_eq_dec (perm_sym (perm_trans _ _ _ double_perm_head PERM)) _ (in_or_app _ _ _ (or_intror IN))).
 Qed.
 
 Lemma ptree_redups_left :
@@ -1322,9 +1399,13 @@ intros gamma delta OC alpha EQ PP.
   + destruct (has_dups_split form_eq_dec DD) as [A [delta1 [delta2 [delta3 EQL]]]].
     subst.
     destruct (@nodup_split_perm _ form_eq_dec (A :: A :: delta1 ++ delta2 ++ delta3)) as [pi [PERM SUB]].
-    apply (ptree_comm_right (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head))), ptree_weaken_right, (ptree_comm_right (perm_nodup form_eq_dec double_perm_head)), PP.
+    apply (ptree_comm_right (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head))), ptree_weaken_right, (ptree_comm_right (perm_nodup form_eq_dec double_perm_head)), PP;
     destruct PP as [P [[[[[[PSV PTerm] PG] PD] POC] [PG_app PD_app]] PDeg]].
     refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ _ (incl_tran SUB (incl_tran (fun B IN => perm_in form_eq_dec (perm_sym double_perm_head) _ IN) (fun B IN => proj2 (nodup_In _ _ _) IN)))) PD_app).
+    intros phi IN.
+    refine (struct_not_weak P PSV _ (or_intror _)).
+    rewrite PD.
+    apply nodup_In, (perm_in form_eq_dec (perm_sym (perm_trans _ _ _ double_perm_head PERM)) _ (in_or_app _ _ _ (or_intror IN))).
 Qed.
 
 Lemma ptree_redups_right :
@@ -1350,14 +1431,14 @@ Qed.
 Master destruct tactic.
 
 1-3 : destruct PSV.
-4 : destruct PSV as [[[[PSV [PG_app PD_app]] PL_app] Psig] PLoop].
-5-11 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-12 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
-13-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-15 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
-16 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
-17 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
-18 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-19 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
-
+4 : destruct PSV as [[[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]] PWF].
+6-12 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+13-14 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg] PWF].
+15 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
+16-17 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+18 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
+19 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
+20 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+21 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+22 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
 *)

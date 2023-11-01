@@ -205,6 +205,25 @@ intros vec1 vec2 EQB.
   reflexivity.
 Qed.
 
+Lemma nvec_eqb_sym :
+    forall {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2),
+        nvec_eqb vec1 vec2 = nvec_eqb vec2 vec1.
+Proof.
+induction n1;
+destruct n2;
+intros vec1 vec2;
+try pose proof (nvec_0_null vec1);
+try pose proof (nvec_0_null vec2);
+try pose proof (nvec_Sn_new vec1) as [vec3 [m1 EQ1]];
+try pose proof (nvec_Sn_new vec2) as [vec4 [m2 EQ2]];
+subst;
+try reflexivity.
+unfold nvec_eqb;
+fold @nvec_eqb.
+rewrite nat_eqb_symm, IHn1.
+reflexivity.
+Qed.
+
 Lemma nvec_eqb_refl :
     forall {n : nat} (vec : nvec n),
         nvec_eqb vec vec = true.
@@ -249,6 +268,28 @@ induction pn.
 apply (BC _ pf eq_refl).
 apply (IND _ _ _ _ _ pf eq_refl).
 apply VARS.
+Qed.
+
+Lemma prd_eqb_sym :
+    forall {n1 n2 : nat} {vec1 : nvec n1} {vec2 : nvec n2} (pn1 : predicate vec1) (pn2 : predicate vec2),
+        prd_eqb pn1 pn2 = prd_eqb pn2 pn1. 
+Proof.
+intros n1 n2 vec1 vec2 pn1.
+revert n2 vec2.
+induction pn1;
+intros n2 vec2;
+destruct pn2;
+unfold prd_eqb;
+fold @prd_eqb;
+subst;
+try rewrite !nat_eqb_refl;
+try rewrite nvec_eqb_refl;
+try rewrite nat_eqb_symm;
+try rewrite nvec_eqb_sym;
+try rewrite (nat_eqb_symm v v0);
+try rewrite (nat_eqb_symm i i0);
+try rewrite IHpn1;
+reflexivity.
 Qed.
 
 Lemma prd_eqb_eq :
@@ -458,6 +499,7 @@ match n as n' return n' = n -> nvec n with
 end eq_refl.
 *)
 
+(*
 Fixpoint sig_subst (a : formula) (sig : ovar -> ovar) : formula :=
 match a with
 | fal => fal
@@ -617,4 +659,5 @@ try reflexivity.
   rewrite EQ, sig_subst_id.
   reflexivity.
 Admitted.
+*)
 *)

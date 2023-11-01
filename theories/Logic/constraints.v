@@ -122,6 +122,7 @@ refine (existT _ (filter (fun (eta : ovar) => if in_dec nat_eq_dec eta L then fa
     apply (TRANS _ _ _ LT1 LT2).
 Defined.
 
+(*
 Definition assignment (OC : constraint) := {val : (ovar -> ord) & forall (lambda kappa : ovar), OC_rel OC lambda kappa = true -> ord_lt (val lambda) (val kappa)}.
 
 Fixpoint valuate {OC : constraint} (ASN : assignment OC) (o : ordinal) : ord :=
@@ -131,6 +132,7 @@ match o with
 | oadd o1 o2 => ord_add (valuate ASN o1) (valuate ASN o2)
 | omax o1 o2 => ord_max (valuate ASN o1) (valuate ASN o2)
 end.
+*)
 
 Lemma null_strict : StrictOrder (fun (lambda kappa : ovar) => false = true).
 Proof.
@@ -168,6 +170,7 @@ intros SUB.
   apply (proj2 (filter_In _ _ _) (conj IN (TRANS _ _ _ REL2 REL1))).
 Qed.
 
+(*
 Lemma assignment_exists : forall (OC : constraint), assignment OC.
 Proof.
 intros OC.
@@ -188,6 +191,7 @@ apply NoDup_incl_length.
   apply progeny_irref.
 - apply (rel_progeny_hd _ _ _ REL _ (incl_refl _)).
 Defined.
+*)
 
 Lemma children_subset : forall (OC : constraint) (kappa : ovar), incl (children OC kappa) (OC_list OC). exact (fun OC kappa => incl_tran (incl_filter _ _) (incl_filter _ _)). Qed.
 
@@ -277,6 +281,7 @@ case (list_eq_dec nat_eq_dec (OC_list OC1) (OC_list OC2)) as [EQL | NEL].
   reflexivity.
 Qed.
 
+(*
 Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
 
 Lemma constraint_type_eq_dec (OC : constraint) :
@@ -668,4 +673,4 @@ case (sig_image_dec_alt sig (existT _ o IN)) as [[[o1 IN1] EQ] | NE].
   contradiction (NE _ EQ).
 - contradiction (FAL IN).
 Qed.
-
+*)
