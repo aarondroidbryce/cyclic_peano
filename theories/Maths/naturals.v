@@ -483,3 +483,6 @@ Qed.
 Lemma nat_lt_add_trans_l : forall {n m p q : nat}, n < m -> q = m + p -> n < q. lia. Qed.
 
 Lemma nat_lt_add_trans_r : forall {n m p q : nat}, n < m -> q = p + m -> n < q. lia. Qed.
+
+Lemma nat_eqb_add : forall {n m p : nat}, nat_eqb m p = nat_eqb (m + n) (p + n).
+Proof. induction n; intros m p. rewrite <- !plus_n_O. reflexivity. rewrite <- !plus_n_Sm, IHn. reflexivity. Qed.

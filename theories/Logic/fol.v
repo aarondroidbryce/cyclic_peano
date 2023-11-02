@@ -456,6 +456,25 @@ case (nvec_eqb a b) eqn:EQ.
   inversion EQ.
 Qed.
 
+Lemma nvec_eqb_type : 
+    forall {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2),
+        nvec_eqb vec1 vec2 = true -> nat_eqb n1 n2 = true .
+Proof.
+intros n1 n2 vec1.
+revert n2.
+induction vec1;
+intros n2 vec2 EQB;
+destruct vec2;
+unfold nvec_eqb in EQB.
+- reflexivity.
+- inversion EQB.
+- inversion EQB.
+- unfold nvec_eqb in EQB;
+  fold @nvec_eqb in EQB.
+  apply and_bool_prop in EQB as [EQB1 EQB2].
+  apply (IHvec1 _ _ EQB2).
+Qed.
+
 Lemma pred_case :
     forall (n : nat) (P : predicate n -> Type),
         (forall (i : nat) (pf : n = 0),
@@ -660,6 +679,60 @@ case (form_eqb a b) eqn:EQ.
   inversion EQ.
 Qed.
 
+Lemma shift_subst_neb_form_neb :
+    forall (phi1 phi2 : formula) (v1 v2 : ivar),
+        form_eqb (shift_substitution phi1 v1 v2) (shift_substitution phi2 v1 v2) = false ->
+            form_eqb phi1 phi2 = false.
+Proof.
+induction phi1;
+destruct phi2;
+intros v1 v2 EQ;
+unfold shift_substitution in *;
+fold shift_substitution in *;
+unfold form_eqb in *;
+fold form_eqb in *;
+try apply andb_false_elim in EQ as [EQ1 | EQ2];
+try rewrite (IHphi1 _ _ _ EQ);
+try rewrite (IHphi1 _ _ _ EQ2);
+try rewrite (IHphi1_1 _ _ _ EQ1);
+try rewrite (IHphi1_2 _ _ _ EQ2);
+try rewrite EQ1;
+try rewrite EQ2;
+try rewrite andb_false_r;
+try apply EQ;
+try reflexivity.
+- case (nat_eqb i v1) eqn:EQ1;
+  case (nat_eqb i0 v1) eqn:EQ2;
+  case (nat_eqb i1 v1) eqn:EQ3;
+  case (nat_eqb i2 v1) eqn:EQ4;
+  try apply nat_eqb_eq in EQ1;
+  try apply nat_eqb_eq in EQ2;
+  try apply nat_eqb_eq in EQ3;
+  try apply nat_eqb_eq in EQ4;
+  subst;
+  unfold form_eqb in EQ;
+  try rewrite nat_eqb_refl in *;
+  try rewrite andb_true_l in *;
+  try rewrite andb_true_r in *;
+  try rewrite EQ;
+  try rewrite EQ1;
+  try rewrite EQ2;
+  try rewrite nat_eqb_symm;
+  try rewrite EQ3;
+  try reflexivity.
+  apply EQ4.
+  rewrite (nat_eqb_symm i2 v1), EQ4.
+  all : apply andb_false_r.
+- case (nvec_eqb vec vec0) eqn:EQV.
+  pose proof (nvec_eqb_type _ _ EQV) as EQN.
+  apply nat_eqb_eq in EQN.
+  subst.
+  apply nvec_eqb_eq in EQV.
+  subst.
+  rewrite nvec_eqb_refl in EQ1.
+  inversion EQ1.
+  reflexivity.
+Qed.
 
 Fixpoint nvec_equiv {n1 n2 : nat} (vec1 : nvec n1) (vec2 : nvec n2) (diff : ivar) : bool :=
 match vec1, vec2 with

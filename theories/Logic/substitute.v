@@ -354,50 +354,49 @@ try apply and_bool_prop in EQ2' as [EQ5 EQ6].
 Qed.
 *)
 
-Definition formula_sub (phi A1 A2 : formula) (d : nat) (b : bool) : formula :=
-match form_equiv phi A1 d, b with
+Definition formula_sub (phi A1 A2 : formula) (b : bool) : formula :=
+match form_eqb phi A1, b with
 | true, true => A2
 | _, _ => phi
 end.
 
-Fixpoint batch_sub_fit (gamma : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind) : list formula :=
+Fixpoint batch_sub_fit (gamma : list formula) (A1 A2 : formula) (S : subst_ind) : list formula :=
 match gamma, S with
-| phi :: gamma', b :: S' => (formula_sub phi A1 A2 d b) :: batch_sub_fit gamma' A1 A2 d S'
+| phi :: gamma', b :: S' => (formula_sub phi A1 A2 b) :: batch_sub_fit gamma' A1 A2 S'
 | _ , _ => gamma
 end.
 
-Definition batch_sub (gamma : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind) : list formula :=
+Definition batch_sub (gamma : list formula) (A1 A2 : formula) (S : subst_ind) : list formula :=
 match nat_eqb (length gamma) (length S) with
 | false => gamma
-| true => batch_sub_fit gamma A1 A2 d S
+| true => batch_sub_fit gamma A1 A2 S
 end.
 
 Lemma formula_sub_false {phi A1 A2 : formula} :
-    forall (d : nat),
-        formula_sub phi A1 A2 d false = phi.
-Proof. intros d. unfold formula_sub. case (form_equiv phi A1); reflexivity. Qed.
+    formula_sub phi A1 A2 false = phi.
+Proof. unfold formula_sub. case (form_eqb phi A1); reflexivity. Qed.
 
 Lemma batch_sub_nil :
-    forall (gamma : list formula) (A1 A2 : formula) (d : nat),
-        batch_sub_fit gamma A1 A2 d [] = gamma.
+    forall (gamma : list formula) (A1 A2 : formula),
+        batch_sub_fit gamma A1 A2 [] = gamma.
 Proof. induction gamma; reflexivity. Qed.
 
 Lemma batch_sub_fit_true :
-    forall {gamma : list formula} {A1 A2 : formula} {d : nat} {S : subst_ind},
+    forall {gamma : list formula} {A1 A2 : formula} {S : subst_ind},
         nat_eqb (length gamma) (length S) = true ->
-            batch_sub_fit gamma A1 A2 d S = batch_sub gamma A1 A2 d S.
-Proof. intros gamma A1 A2 d S EQ. unfold batch_sub. rewrite EQ. reflexivity. Qed.
+            batch_sub_fit gamma A1 A2 S = batch_sub gamma A1 A2 S.
+Proof. intros gamma A1 A2 S EQ. unfold batch_sub. rewrite EQ. reflexivity. Qed.
 
 Lemma batch_sub_single :
-    forall (phi : formula) (A1 A2 : formula) (d : nat) (b : bool),
-            batch_sub [phi] A1 A2 d [b] = [formula_sub phi A1 A2 d b].
+    forall (phi : formula) (A1 A2 : formula) (b : bool),
+            batch_sub [phi] A1 A2 [b] = [formula_sub phi A1 A2 b].
 Proof. reflexivity. Qed.
 
 Lemma batch_sub_false_head :
-    forall (phi : formula) (gamma : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind),
-            batch_sub (phi :: gamma) A1 A2 d (false :: S) = phi :: batch_sub gamma A1 A2 d S.
+    forall (phi : formula) (gamma : list formula) (A1 A2 : formula) (S : subst_ind),
+            batch_sub (phi :: gamma) A1 A2 (false :: S) = phi :: batch_sub gamma A1 A2 S.
 Proof.
-intros phi gamma A1 A2 d S.
+intros phi gamma A1 A2 S.
 unfold batch_sub, length, nat_eqb.
 fold nat_eqb (@length formula) (@length bool).
 case (nat_eqb (length gamma) (length S));
@@ -407,13 +406,13 @@ reflexivity.
 Qed.
 
 Lemma batch_app_split :
-    forall (gamma1 gamma2 : list formula) (A1 A2 : formula) (d : nat) (S1 S2 : subst_ind),
+    forall (gamma1 gamma2 : list formula) (A1 A2 : formula) (S1 S2 : subst_ind),
         length gamma1 = length S1 ->
             length gamma2 = length S2 ->
-                batch_sub (gamma1 ++ gamma2) A1 A2 d (S1 ++ S2) = batch_sub gamma1 A1 A2 d S1 ++ batch_sub gamma2 A1 A2 d S2.
+                batch_sub (gamma1 ++ gamma2) A1 A2 (S1 ++ S2) = batch_sub gamma1 A1 A2 S1 ++ batch_sub gamma2 A1 A2 S2.
 Proof.
 induction gamma1;
-intros gamma2 A1 A2 d S1 S2 EQ1 EQ2;
+intros gamma2 A1 A2 S1 S2 EQ1 EQ2;
 destruct S1;
 inversion EQ1 as [EQ].
 reflexivity.
@@ -431,11 +430,11 @@ all : try rewrite EQ;
 Qed.
 
 Lemma batch_bury_comm_aux :
-    forall (n : nat) (LF : list formula) (d : nat) (S : subst_ind) (A1 A2 : formula),
-        bury (batch_sub LF A1 A2 d S) n = batch_sub (bury LF n) A1 A2 d (bury S n).
+    forall (n : nat) (LF : list formula) (S : subst_ind) (A1 A2 : formula),
+        bury (batch_sub LF A1 A2 S) n = batch_sub (bury LF n) A1 A2 (bury S n).
 Proof.
 induction n;
-intros LF d LS A v;
+intros LF LS A v;
 unfold batch_sub;
 rewrite !bury_length;
 case (nat_eqb (length LF) (length LS)) eqn:EQ;
@@ -467,21 +466,21 @@ apply EQ.
 Qed.
 
 Lemma batch_bury_comm :
-    forall (LF : list formula) (LS : subst_ind) (n d : nat) (A1 A2 : formula),
-        bury (batch_sub LF A1 A2 d (unbury LS n)) n = batch_sub (bury LF n) A1 A2 d LS.
+    forall (LF : list formula) (LS : subst_ind) (n : nat) (A1 A2 : formula),
+        bury (batch_sub LF A1 A2 (unbury LS n)) n = batch_sub (bury LF n) A1 A2 LS.
 Proof.
-intros LF LS n d A1 A2.
+intros LF LS n A1 A2.
 rewrite <- (@bury_unbury _ LS n) at 2.
 apply batch_bury_comm_aux.
 Qed.
 
 Lemma batch_sub_app {A1 A2 : formula} :
-    forall (L1 L2 : list formula) (d : nat) (S : subst_ind),
+    forall (L1 L2 : list formula) (S : subst_ind),
         length (L1 ++ L2) = length S ->
-            batch_sub (L1 ++ L2) A1 A2 d S = batch_sub L1 A1 A2 d (firstn (length L1) S) ++ batch_sub L2 A1 A2 d (skipn (length L1) S).
+            batch_sub (L1 ++ L2) A1 A2 S = batch_sub L1 A1 A2 (firstn (length L1) S) ++ batch_sub L2 A1 A2 (skipn (length L1) S).
 Proof.
 induction L1;
-intros L2 d S EQ.
+intros L2 S EQ.
 rewrite !app_nil_l in *.
 reflexivity.
 destruct S.
@@ -496,7 +495,7 @@ unfold firstn, skipn;
 fold (@firstn bool) (@skipn bool).
 unfold batch_sub_fit;
 fold batch_sub_fit.
-rewrite !batch_sub_fit_true, (IHL1 _ _ _ EQ).
+rewrite !batch_sub_fit_true, (IHL1 _ _ EQ).
 reflexivity.
 rewrite skipn_length, <- EQ, app_length, minus_n_plus_m.
 apply nat_eqb_refl.
@@ -509,12 +508,12 @@ apply PeanoNat.Nat.le_add_r.
 Qed.
 
 Lemma batch_sub_is_map_combine : 
-    forall (L : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind),
+    forall (L : list formula) (A1 A2 : formula) (S : subst_ind),
         length L = length S ->
-            batch_sub L A1 A2 d S = (map (fun PAIR => formula_sub (fst PAIR) A1 A2 d (snd (PAIR))) (combine L S)).
+            batch_sub L A1 A2 S = (map (fun PAIR => formula_sub (fst PAIR) A1 A2 (snd (PAIR))) (combine L S)).
 Proof.
 induction L;
-intros A1 A2 d S EQ;
+intros A1 A2 S EQ;
 unfold combine, batch_sub, batch_sub_fit, map;
 fold batch_sub_fit (@combine formula bool);
 rewrite EQ, nat_eqb_refl.
@@ -528,6 +527,33 @@ rewrite EQ, nat_eqb_refl.
   apply EQ'.
   rewrite EQ'.
   apply nat_eqb_refl.
+Qed.
+
+Lemma batch_sub_length : 
+    forall (L : list formula) (A1 A2 : formula) (S : subst_ind),
+        length L = length S ->
+            length L = length (batch_sub L A1 A2 S).
+Proof.
+intros L A1 A2 S EQ.
+rewrite (batch_sub_is_map_combine _ _ _ _ EQ), map_length, combine_length, EQ, min_l;
+reflexivity.
+Qed.
+
+Lemma batch_sub_false :
+    forall (gamma : list formula) (A1 A2 : formula) (n : nat),
+            batch_sub_fit gamma A1 A2 (repeat false n) = gamma.
+Proof.
+induction gamma;
+intros A1 A2 n.
+reflexivity.
+destruct n.
+reflexivity.
+unfold repeat;
+fold (@repeat bool).
+unfold batch_sub_fit;
+fold batch_sub_fit.
+rewrite IHgamma, formula_sub_false.
+reflexivity.
 Qed.
 
 (*
@@ -583,13 +609,13 @@ Qed.
 *)
 
 Lemma batch_sub_sublist :
-    forall (L1 L2 : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind),
+    forall (L1 L2 : list formula) (A1 A2 : formula) (S : subst_ind),
         sublist form_eq_dec L1 L2 = true ->
             length L2 = length S ->
-                sublist form_eq_dec (batch_sub L1 A1 A2 d (list_filter S ((sublist_filter form_eq_dec L1 L2)))) (batch_sub L2 A1 A2 d S) = true.
+                sublist form_eq_dec (batch_sub L1 A1 A2 (list_filter S ((sublist_filter form_eq_dec L1 L2)))) (batch_sub L2 A1 A2 S) = true.
 Proof.
 induction L1;
-intros L2 A1 A2 d S SL EQ.
+intros L2 A1 A2 S SL EQ.
 unfold batch_sub, batch_sub_fit.
 fold batch_sub_fit.
 rewrite EQ at 1.
@@ -603,7 +629,7 @@ assert (Nat.min (length L3) (length S) = length L3) as EQ'.
   apply min_l, PeanoNat.Nat.le_add_r. }
 
 rewrite (sublist_cons_split_filter form_eq_dec _ _ _ _ SL NIN).
-rewrite (batch_sub_app _ _ _ _ EQ).
+rewrite (batch_sub_app _ _ _ EQ).
 rewrite <- (firstn_skipn (length L3) S) at 1.
 rewrite list_filter_app.
 - rewrite firstn_length.
@@ -643,7 +669,7 @@ rewrite list_filter_app.
   fold @sublist.
   rewrite !batch_sub_fit_true.
   + case form_eq_dec as [_ | FAL].
-    apply (IHL1 _ _ _ _ _ SL' (eq_sym LEN')).
+    apply (IHL1 _ _ _ _ SL' (eq_sym LEN')).
     contradiction (FAL eq_refl).
   + rewrite LEN'.
     apply nat_eqb_refl.

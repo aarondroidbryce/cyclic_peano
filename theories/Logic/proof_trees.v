@@ -73,7 +73,7 @@ match P with
 
 | loop_head OC gamma delta alpha P_Target => gamma
 
-| @sub_l OC gamma delta phi v1 v2 alpha P' => equ v1 v2 :: (shift_substitution phi v1 v2) :: gamma
+| @sub_l OC gamma delta phi v1 v2 alpha P' => equ v1 v2 :: phi :: gamma
 
 | @sub_r OC gamma delta phi v1 v2 alpha P' => equ v1 v2 :: gamma
 
@@ -124,7 +124,7 @@ match P with
 
 | @sub_l OC gamma delta phi v1 v2 alpha P' => delta
 
-| @sub_r OC gamma delta phi v1 v2 alpha P' => (shift_substitution phi v1 v2) :: delta
+| @sub_r OC gamma delta phi v1 v2 alpha P' => phi :: delta
 
 | @con_l OC gamma delta phi alpha P' => delta
 
@@ -257,6 +257,56 @@ match P with
 
 
 | @cut OC gamma delta phi alpha1 alpha2 P1 P2 => omax (omax alpha1 alpha2) (oadd (num_conn phi) (cast (nat_ord 1)))
+end.
+
+
+Fixpoint ptree_height (P : ptree) : nat :=
+match P with
+| bot => 1
+
+| pred vec pn pure => 1
+
+| equal v1 v2 => 1
+
+| loop_head OC gamma delta alpha P_Target => S (ptree_height P_Target)
+
+| @sub_l OC gamma delta phi v1 v2 alpha P' => S (ptree_height P')
+
+| @sub_r OC gamma delta phi v1 v2 alpha P' => S (ptree_height P')
+
+| @con_l OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @con_r OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @refl OC gamma delta v alpha P' => S (ptree_height P')
+
+
+| @ex_l OC gamma delta n alpha P' => S (ptree_height P')
+
+| @ex_r OC gamma delta n alpha P' => S (ptree_height P')
+
+
+| @wkn_l OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @wkn_r OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @rst OC gamma delta kappa alpha P' => S (ptree_height P')
+
+| @ug_l OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @ug_r OC gamma delta phi alpha P' => S (ptree_height P')
+
+| @bnd_l OC gamma delta phi lambda kappa alpha P' => S (ptree_height P')
+
+| @bnd_r OC gamma delta phi lambda kappa alpha P' => S (ptree_height P')
+
+
+| @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => S (max (ptree_height P1) (ptree_height P2))
+
+| @imp_r OC gamma delta phi psi alpha P' => S (ptree_height P')
+
+
+| @cut OC gamma delta phi alpha1 alpha2 P1 P2 => S (max (ptree_height P1) (ptree_height P2))
 end.
 
 Lemma ptree_eq_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
@@ -554,9 +604,9 @@ match P with
 
 | loop_head OC gamma delta alpha P_Target => (struct_valid P_Target) * applicable OC gamma delta * ((P_Target = bot) + ((P_Target <> bot) * (ptree_left P_Target = gamma) * (ptree_right P_Target = delta) * (ptree_constraint P_Target = OC) * (ptree_deg P_Target = alpha)))
 
-| @sub_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @sub_l OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: (shift_substitution phi v1 v2) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
-| @sub_r OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: gamma) * (ptree_right P' = phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @sub_r OC gamma delta phi v1 v2 alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = (equ v1 v2) :: gamma) * (ptree_right P' = (shift_substitution phi v1 v2) :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
 | @con_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC gamma delta * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
