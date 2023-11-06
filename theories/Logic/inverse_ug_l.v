@@ -46,8 +46,10 @@ match P, S with
 
 | loop_head OC gamma delta alpha P_Target, _ => loop_head OC (ug_left_inv_batch gamma A S) delta alpha (REC P_Target S d)
 
-| @sub_l OC gamma delta phi v1 v2 alpha P', s1 :: s2 :: S' => @sub_l OC (ug_left_inv_batch gamma A S') delta (ug_left_inv_formula phi A s2) v1 v2 alpha (REC (ptree_ug_l_inv_fit P' (shift_substitution A (Datatypes.S v1) v2) (false :: s2 :: repeat false (length S')) d) (s1 :: false :: S') d)
-
+| @sub_l OC gamma delta phi v1 v2 alpha P', s1 :: s2 :: S' => match (form_eqb phi A) with
+    | true => P
+    | false => @sub_l OC (ug_left_inv_batch gamma A S') delta (ug_left_inv_formula phi A s2) v1 v2 alpha (REC (ptree_ug_l_inv_fit P' (shift_substitution A (Datatypes.S v1) v2) (false :: s2 :: repeat false (length S')) d) (s1 :: false :: S') d)
+    end
 | @sub_r OC gamma delta phi v1 v2 alpha P', s :: S' => @sub_r OC (ug_left_inv_batch gamma A S') delta phi v1 v2 alpha (REC P' (s :: S') d)
 
 | @con_l OC gamma delta phi alpha P', s :: S' => @con_l OC (ug_left_inv_batch gamma A S') delta (ug_left_inv_formula phi A s) alpha (REC P' (s :: s :: S') d)
@@ -68,7 +70,7 @@ match P, S with
 
 | @rst OC gamma delta kappa alpha P', _ => @rst OC (ptree_left (REC P' S d)) delta kappa alpha (REC P' S d)
 
-| @ug_l OC gamma delta phi alpha P', s :: S' => match form_eqb phi A, s with
+| @ug_l OC gamma delta phi alpha P', s :: S' => match s, form_eqb phi A with
     | true, true => REC P' (false :: S') d
     | _, _ => let SI := (false :: S') in @ug_l OC (ug_left_inv_batch gamma A S') delta phi alpha (REC P' SI d)
     end
@@ -168,11 +170,10 @@ all : try rewrite (batch_sub_fit_true EQ);
 all : destruct S as [ | b S];
       inversion EQ.
 
-4 : unfold formula_sub, form_eqb;
-    fold form_eqb;
-    try rewrite form_equiv_0_eq;
-    case (form_eqb phi A) eqn:EQF.
 4 : destruct b.
+4,5 : unfold formula_sub, form_eqb;
+      fold form_eqb;
+      case (form_eqb phi A) eqn:EQF.
 
 all : try unfold ptree_left at 1 2;
       try fold (ptree_left P);
@@ -236,8 +237,8 @@ all : subst;
 
 all : destruct S as [ | b S];
       inversion EQ;
+      destruct b;
       try case (form_eqb phi A) eqn:EQF;
-      case b;
       try reflexivity.
 
 1 : unfold ptree_right at 2.
@@ -287,8 +288,8 @@ all : subst;
   
 all : destruct S as [ | b S];
       inversion EQ;
+      destruct b;
       try case (form_eqb phi A) eqn:EQF;
-      case b;
       try reflexivity.
 
 1 : unfold ptree_constraint at 2.
@@ -338,8 +339,8 @@ all : subst;
   
 all : destruct S as [ | b S];
       inversion EQ;
+      destruct b;
       try case (form_eqb phi A) eqn:EQF;
-      case b;
       try reflexivity.
 
 1 : unfold ptree_deg at 2.
@@ -499,8 +500,8 @@ fold ptree_height.
 
 6 : destruct S as [ | b1 [ | B2 S]].
 
-16 : case (form_eqb phi A) eqn:EQF.
 16 : destruct b.
+16 : case (form_eqb phi A) eqn:EQF.
 
 all : unfold ptree_height in *;
       fold ptree_height in *;
@@ -557,8 +558,8 @@ fold ptree_ug_l_inv_fit.
 
 5 : destruct S as [ | b1 [ | b2 S]].
 
-15 : case (form_eqb phi A) eqn:EQF.
 15 : destruct b.
+15 : case (form_eqb phi A) eqn:EQF.
 
 21,31 : assert (ptree_height P1 <= d1 /\ ptree_height P2 <= d1 /\ (ptree_height P1) <= d2 /\ (ptree_height P2) <= d2) as [LT3 [LT4 [LT5 LT6]]]; repeat split; try lia.
 
@@ -631,8 +632,8 @@ fold ptree_ug_l_inv_fit.
 
 all : subst.
 
-13 :  case (form_eqb phi A) eqn:EQF.
-13 :  destruct b.
+13 : destruct b.
+13 : case (form_eqb phi A) eqn:EQF.
 
 2 : { rewrite ptree_ug_l_inv_fit_true.
       2 : apply EQ.
@@ -721,7 +722,7 @@ all : subst.
       case (form_eqb (shift_substitution phi v1 v2) (univ (shift_substitution A (Datatypes.S v1) v2))) eqn:EQF.
       destruct b2.
       - assert (form_eqb (shift_substitution phi v1 v2) (shift_substitution (univ A) v1 v2) = true) as EQF'. apply EQF.
-        case form_eqb;
+        case form_eqb.
         unfold ug_left_inv_formula, formula_sub.
         admit.
         admit.

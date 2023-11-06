@@ -870,7 +870,6 @@ try rewrite (IHA1_2 _ _ EQ0);
 try reflexivity.
 Qed.
 
-
 Lemma form_equiv_0_eq : 
     forall (phi1 phi2 : formula),
         form_equiv phi1 phi2 0 = form_eqb phi1 phi2.
@@ -959,7 +958,6 @@ try reflexivity.
   + rewrite EQ.
     reflexivity.
 Qed.
-
 
 Lemma form_equiv_refl :
     forall (phi : formula) (d : nat),
