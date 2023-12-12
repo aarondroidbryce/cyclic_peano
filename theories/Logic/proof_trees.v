@@ -345,8 +345,7 @@ match P1, P2 with
 | pred pn1 pure1, pred pn2 pure2 => prd_eqb pn1 pn2 = true
 
 | loop_head OC1 gamma1 delta1 alpha1 P_Target1, loop_head OC2 gamma2 delta2 alpha2 P_Target2 =>
-    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\
-    (P_Target1 = bot \/ P_Target2 = bot \/ (P_Target1 = P_Target2)) /\ alpha1 = alpha2
+    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ P_Target2 = bot /\ alpha1 = alpha2
 
 | con_l phi1 P1, con_l phi2 P2 => phi1 = phi2 /\ ptree_equiv P1 P2
 
@@ -485,11 +484,11 @@ match P with
 
 | @wkn_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
 
-| @rst OC gamma delta kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_in gamma)) * (~ In kappa (flat_map vars_in delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha)
+| @rst OC gamma delta kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha)
 
 | @bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha)
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_in gamma) /\ ~ In lambda (flat_map vars_in (phi :: delta))) * (ptree_deg P' = alpha)
+| @bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha)
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => struct_valid P1 * struct_valid P2 * applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2)
@@ -781,8 +780,8 @@ Qed.
 
 Lemma ptree_reset : 
     forall (gamma delta : list formula) (OC : constraint) (kappa : ovar) (alpha: ordinal),
-        ~ In kappa (flat_map vars_in gamma) ->
-            ~ In kappa (flat_map vars_in delta) ->
+        ~ In kappa (flat_map vars_used gamma) ->
+            ~ In kappa (flat_map vars_used delta) ->
                 OC_elt OC kappa ->
                     provable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha ->
                         provable OC gamma delta alpha.
@@ -825,8 +824,8 @@ Qed.
 
 Lemma ptree_bnd_r : 
     forall (OC : constraint) (gamma delta : list formula) (phi : formula) (lambda kappa : ovar) (alpha : ordinal) (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa),
-        ~ In lambda (flat_map vars_in gamma) ->
-            ~ In lambda (flat_map vars_in (phi :: delta)) ->
+        ~ In lambda (flat_map vars_used gamma) ->
+            ~ In lambda (flat_map vars_used (phi :: delta)) ->
                 provable (add_fresh_child OC lambda kappa NEW KIN) gamma (phi :: delta) alpha ->
                     provable OC gamma ((bnd lambda kappa phi) :: delta) alpha.
 Proof.
@@ -842,7 +841,7 @@ try assumption.
     unfold OC_list, add_fresh_child, projT1 in PG_app.
     destruct PG_app as [EQ | PG_app].
     subst.
-    contradiction (NING IN).
+    contradiction (NING (vars_in_list_is_used _ _ IN)).
     apply PG_app.    
 1 : intros o [EQ | IN].
     - subst.
@@ -856,9 +855,9 @@ try assumption.
             unfold OC_list, add_fresh_child, projT1 in PD_app;
             destruct PD_app as [EQ | PD_app];
             subst.
-        * contradiction (NIND (in_or_app _ _ _ (or_introl IN1))).
+        * contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
         * apply PD_app.
-        * contradiction (NIND (in_or_app _ _ _ (or_intror IN2))).
+        * contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
         * apply PD_app.
 Qed.
 

@@ -58,6 +58,14 @@ match a with
 | prd pn pure => []
 end.
 
+Fixpoint vars_used (a : formula) : list ovar :=
+match a with
+| fal => []
+| imp B C => (vars_used B) ++ (vars_used C)
+| bnd o1 o2 B => o2 :: vars_used B
+| prd pn pure => []
+end.
+
 Definition prd_eqb (pn1 pn2 : predicate) : bool :=
 match pn1, pn2 with
 | Nullary i1, Nullary i2 => nat_eqb i1 i2
@@ -81,6 +89,47 @@ match phi with
 | bnd o1 o2 B => form_depth B
 | prd pn pure => 0
 end.
+
+Lemma vars_in_is_used : 
+    forall (phi : formula),
+        incl (vars_in phi) (vars_used phi).
+Proof.
+induction phi;
+unfold vars_in, vars_used;
+fold vars_in vars_used.
+1,4 : intros o IN; apply IN.
+apply (incl_app_app IHphi1 IHphi2).
+apply incl_head, (incl_tran (incl_remove _ _) IHphi).
+Qed.
+
+Lemma vars_not_used_not_in : 
+    forall (phi : formula) (o : ovar),
+        ~ In o (vars_used phi) ->
+            ~ In o (vars_in phi).
+Proof.
+intros phi o NIN FAL.
+apply NIN.
+apply vars_in_is_used, FAL.
+Qed.
+
+Lemma vars_in_list_is_used : 
+    forall (gamma : list formula),
+        incl (flat_map vars_in gamma) (flat_map vars_used gamma).
+Proof.
+induction gamma.
+intros o IN; apply IN.
+apply (incl_app_app (vars_in_is_used _) IHgamma).
+Qed.
+
+Lemma vars_not_used_list_not_in : 
+    forall (gamma : list formula) (o : ovar),
+        ~ In o (flat_map vars_used gamma) ->
+            ~ In o (flat_map vars_in gamma).
+Proof.
+intros gamma o NIN FAL.
+apply NIN.
+apply vars_in_list_is_used, FAL.
+Qed.  
 
 Lemma prd_eqb_sym :
     forall (pn1 pn2 : predicate),

@@ -17,6 +17,248 @@ Definition bnd_left_inv_formula (phi A : formula) (lambda kappa : ovar) (b : boo
 
 Definition bnd_left_inv_batch (gamma : list formula) (A : formula) (lambda kappa : ovar) (S : subst_ind) : list formula := batch_sub gamma (bnd lambda kappa A) A S.
 
+
+Lemma bnd_l_formula_inv_vars_sub :
+    forall (phi : formula) (A : formula) (lambda kappa : ovar) (b : bool),
+        incl (vars_in (bnd_left_inv_formula phi A lambda kappa b)) (lambda :: (vars_in phi)).
+Proof.
+intros phi A lambda kappa b o IN.
+unfold bnd_left_inv_formula, formula_sub in IN.
+case form_eqb eqn:EQF.
+destruct b.
+apply form_eqb_eq in EQF.
+subst.
+case (nat_eq_dec o lambda) as [EQ | NE].
+subst.
+apply (or_introl eq_refl).
+apply (or_intror (or_intror (in_in_remove _ _ NE IN))).
+all : apply (or_intror IN).
+Qed.
+
+Lemma bnd_l_formula_inv_vars_used_sub :
+    forall (phi : formula) (A : formula) (lambda kappa : ovar) (b : bool),
+        incl (vars_used (bnd_left_inv_formula phi A lambda kappa b)) (vars_used phi).
+Proof.
+intros phi A lambda kappa b o IN.
+unfold bnd_left_inv_formula, formula_sub in IN.
+case form_eqb eqn:EQF.
+destruct b.
+apply form_eqb_eq in EQF.
+subst.
+apply or_intror.
+all : apply IN.
+Qed.
+
+Lemma ptree_bnd_l_inv_vars_used_sub :
+    forall (gamma : list formula) (A : formula) (lambda kappa : ovar) (S : subst_ind),
+        incl (flat_map vars_used (bnd_left_inv_batch gamma A lambda kappa S)) (flat_map vars_used gamma).
+Proof.
+induction gamma;
+intros A lambda kappa S;
+unfold bnd_left_inv_batch, batch_sub, batch_sub_fit;
+fold batch_sub_fit;
+destruct S;
+unfold length, nat_eqb;
+fold (@length formula) (@length bool) nat_eqb.
+4 : case nat_eqb eqn:EQN.
+1,2,3,5 : intros o IN;
+          apply IN.
+unfold flat_map;
+fold (flat_map vars_used).
+rewrite (batch_sub_fit_true EQN).
+fold (bnd_left_inv_batch gamma A lambda kappa S).
+apply (incl_tran (incl_app_app (bnd_l_formula_inv_vars_used_sub _ _ _ _ _) (IHgamma _ _ _ _)) (fun o IN => IN)). 
+Qed.
+
+Lemma ptree_bnd_left_inv_valid :
+    forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal),
+        provable OC gamma delta alpha ->
+            forall (A : formula) (eta iota : ovar) (S : subst_ind),
+                OC_rel OC eta iota = true ->
+                    length gamma = length S ->
+                        provable OC (bnd_left_inv_batch (gamma) A eta iota S) delta alpha.
+Proof.
+intros gamma delta PC alpha [P [[[[[PSV PATH] PG] PD] POC] PDeg]].
+subst.
+induction P;
+intros A eta iota S REL EQ;
+unfold ptree_constraint, ptree_left, ptree_right, ptree_deg, bnd_left_inv_batch, batch_sub, batch_sub_fit;
+unfold ptree_left in EQ;
+fold batch_sub_fit;
+rewrite EQ, nat_eqb_refl.
+
+1-2 : destruct PSV.
+3 : destruct PSV as [[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]].
+5-10 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+11 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
+12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
+13 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
+14 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+15 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+16 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+
+1,2,5,9,12,14 : destruct S;
+                inversion EQ as [EQ'].
+
+1 : refine (existT _ bot _);
+    repeat split.
+    apply PATH.
+
+1 : refine (existT _ (pred pn e) _);
+    repeat split.
+    apply PATH.
+
+all : rewrite batch_sub_fit_true;
+      try rewrite EQ';
+      try rewrite EQ;
+      try apply nat_eqb_refl;
+      subst.
+
+1 : { apply ptree_con_l.
+      pose proof (IHP PSV (fun PL PT IN => PATH PL PT IN) A eta iota (b :: b :: S) REL) as GOAL.
+      rewrite PG in GOAL.
+      specialize (GOAL (eq_S _ _ EQ)).
+      unfold bnd_left_inv_batch, batch_sub, batch_sub_fit, length in GOAL;
+      fold (@length formula) batch_sub_fit in GOAL.
+      rewrite EQ', nat_eqb_refl, batch_sub_fit_true in GOAL.
+      apply GOAL.
+      rewrite EQ'.
+      apply nat_eqb_refl. }
+
+1 : { apply ptree_wkn_l.
+      - intros o IN.
+        pose proof (bnd_l_formula_inv_vars_sub _ _ _ _ _ _ IN) as [EQ'' | IN'].
+        subst.
+        apply (proj1 (OC_null _ _ _ REL)).
+        apply PG_app, in_or_app, or_introl, IN'.
+      - pose proof (IHP PSV (fun PL PT IN => PATH PL PT IN) A eta iota (S) REL EQ') as GOAL.
+        unfold bnd_left_inv_batch, batch_sub, batch_sub_fit, length in GOAL;
+        fold (@length formula) batch_sub_fit in GOAL.
+        rewrite EQ', nat_eqb_refl, batch_sub_fit_true in GOAL.
+        apply GOAL.
+        rewrite EQ'.
+        apply nat_eqb_refl. }
+
+1 : { unfold formula_sub, form_eqb.
+      fold form_eqb.
+      case (nat_eqb lambda eta) eqn:EQ1.
+      case (nat_eqb kappa iota) eqn:EQ2.
+      case (form_eqb phi A) eqn:EQ3.
+      all : unfold "&&".
+      destruct b.
+      2-5 : apply ptree_bnd_l;
+            try apply POC_rel;
+            rewrite <- batch_sub_false_head, <- PG;
+            apply (IHP PSV PATH _ _ _ _ REL);
+            rewrite PG;
+            apply EQ.
+      apply form_eqb_eq in EQ3.
+      subst.
+      rewrite <- batch_sub_false_head, <- PG.
+      apply (IHP PSV PATH _ _ _ _ REL).
+      rewrite PG.
+      apply EQ. }
+
+1 : { apply ptree_imp_l.
+      - rewrite <- batch_sub_false_head, <- P1G.
+        apply (IHP1 P1SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_introl IN))) A eta iota (false :: S) REL).
+        rewrite P1G.
+        apply EQ.
+      - rewrite <- P2D, <- P2OC.
+        rewrite <- P2OC in REL.
+        apply (IHP2 P2SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_intror IN))) A eta iota S REL EQ'). }
+
+1 : { unfold leaves in *.
+      specialize (PATH _ _ (or_introl eq_refl)).
+      destruct PATH as [PBase [EQUIV [FAL PATH]]].
+      assert (PBase = bot) as EQ'.
+      { destruct PBase.
+        reflexivity.
+        all : contradict EQUIV. }
+      subst.
+      exfalso.
+      inversion FAL. }
+
+1 : { unfold ptree_left at 1 in PG_app.
+      unfold ptree_right at 1 in PD_app.
+      unfold ptree_constraint at 1 in REL.
+      destruct (PATH _ _ (or_introl eq_refl)) as [P_Base [EQUIV [DESC [kappa PATH']]]].
+      refine (IHP PSV _ _ _ _ _ REL EQ).
+      intros P_leaf P_Target IN.
+      admit. }
+
+1 : { apply ptree_con_r.
+      rewrite <- PD.
+      apply (IHP PSV PATH A eta iota S REL EQ). }
+
+1 : { rewrite <- batch_bury_comm.
+      apply ptree_ex_l.
+      apply (IHP PSV PATH A eta iota _ REL).
+      rewrite bury_length in EQ.
+      rewrite EQ.
+      rewrite <- (@bury_unbury _ _ n) at 1.
+      rewrite bury_length.
+      reflexivity. }
+
+1 : { apply ptree_ex_r.
+      apply (IHP PSV PATH A eta iota S REL EQ). }
+
+1 : { apply ptree_wkn_r.
+      - intros o IN.
+        apply PD_app, in_or_app, or_introl, IN.
+      - apply (IHP PSV PATH A eta iota S REL EQ). }
+
+1 : { case (in_dec nat_eq_dec eta (children OC kappa)) as [INE | NINE].
+      2 : case (in_dec nat_eq_dec iota (children OC kappa)) as [INI | NINI].
+      - unfold ptree_constraint in REL.
+        destruct (struct_OC_app _ PSV) as [PG_app' PD_app'].
+        rewrite POC in *.
+        pose proof (restriction_exlusion _ _ _ (children_subset _ _) _ INE PG_app') as NIN.
+        admit.
+        (* refine (ptree_reset _ _ _ kappa _ KNING KNIND KIN _). *)
+        
+      - admit.
+      - refine (ptree_reset _ _ _ kappa _ (fun FAL => KNING (ptree_bnd_l_inv_vars_used_sub _ _ _ _ _ _ FAL)) KNIND KIN _).
+        rewrite <- POC.
+        refine (IHP PSV PATH A eta iota S _ EQ).
+        rewrite POC.
+        unfold ptree_constraint in REL.
+        unfold OC_rel, projT1, projT2, restriction.
+        rewrite REL, andb_true_l.
+        case (in_dec nat_eq_dec eta (children OC kappa)) as [FAL | _].
+        contradiction (NINE FAL).
+        case (in_dec nat_eq_dec iota (children OC kappa)) as [FAL | _].
+        contradiction (NINI FAL).
+        reflexivity. }
+
+1 : { refine (ptree_bnd_r _ _ _ _ _ _ _ _ _ _ NIND _).
+      - intros FAL.
+        apply NING, (ptree_bnd_l_inv_vars_used_sub _ _ _ _ _ _ FAL).
+      - rewrite <- POC, <- PD.
+        refine (IHP PSV PATH A eta iota S _ EQ).
+        unfold ptree_constraint in REL.
+        rewrite POC.
+        unfold OC_rel, projT1, projT2, add_fresh_child.
+        rewrite REL.
+        apply orb_true_l. }
+
+1 : { apply ptree_imp_r.
+      rewrite <- PD, <- batch_sub_false_head, <- PG.
+      apply (IHP PSV PATH A eta iota (false :: S) REL).
+      rewrite PG.
+      apply eq_S, EQ. }
+
+1 : { apply ptree_cut.
+      - rewrite <- P1D.
+        apply (IHP1 P1SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_introl IN))) A eta iota S REL EQ).
+      - rewrite <- batch_sub_false_head, <- P2G, <- P2OC.
+        apply (IHP2 P2SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_intror IN))) A eta iota (false :: S)).
+        rewrite P2OC.
+        apply REL.
+        rewrite P2G.
+        apply eq_S, EQ. }
+Qed.
+
 Fixpoint ptree_bnd_l_inv_fit
   (P : ptree) (A : formula) (lambda kappa : ovar) (S : subst_ind) : ptree :=
 let REC := (fun PT SI => (ptree_bnd_l_inv_fit PT A lambda kappa SI)) in
@@ -40,7 +282,10 @@ match P, S with
 
 | @wkn_r OC gamma delta phi alpha P', _ => @wkn_r OC (ptree_left (REC P' S)) delta phi alpha (REC P' S)
 
-| @rst OC gamma delta kappa alpha P', _ => @rst OC (ptree_left (REC P' S)) delta kappa alpha (REC P' S)
+| @rst OC gamma delta eta alpha P', _ => match nat_eqb eta kappa, in_dec nat_eq_dec lambda (children OC eta), in_dec nat_eq_dec kappa (children OC eta) with
+    | false, right _, right _ => @rst OC (ptree_left (REC P' S)) delta eta alpha (REC P' S)
+    | _, _, _ => P
+    end
 
 | @bnd_l OC gamma delta phi eta iota alpha P', s :: S' => match nat_eqb eta lambda, nat_eqb iota kappa, form_eqb phi A, s with
     | true, true, true, true => REC P' (false :: S')
@@ -121,6 +366,23 @@ all : try rewrite (batch_sub_fit_true EQ);
       reflexivity.
       rewrite bury_length, <- (@bury_unbury _ S n), bury_length in EQ.
       apply EQ. }
+
+3 : { pose proof (struct_OC_app _ PSV) as [PG_app' PD_app'].
+      rewrite POC in PG_app', PD_app'.
+      case (nat_eqb kappa0 kappa) eqn:EQN.
+      2 : case (in_dec nat_eq_dec lambda) as [INL | NINL].
+      3 : case (in_dec nat_eq_dec kappa) as [INK | NINK].
+      1,2,3 : fold (ptree_left P).
+      apply nat_eqb_eq in EQN.
+      subst.
+      apply eq_sym, (var_ne_batch_sub_triv _ (bnd _ kappa _) _ _ _ (or_introl eq_refl) (vars_not_used_list_not_in _ _ KNING)).
+      apply eq_sym.
+      pose proof (restriction_exlusion _ _ _ _ _ INL PG_app') as NIN.
+      refine (var_ne_batch_sub_triv (ptree_left P) (bnd lambda kappa A) A lambda S _ NIN).
+      admit.
+      pose proof (restriction_exlusion _ _ _ _ _ INK PG_app') as NIN.
+      apply eq_sym, (var_ne_batch_sub_triv _ (bnd _ _ _) _ _ _ (or_introl eq_refl) NIN).
+      apply (IHP PSV). }
 
 all : destruct S as [ | b S];
       inversion EQ as [EQ'];
@@ -211,6 +473,10 @@ all : subst;
       unfold ptree_left in EQ;
       fold ptree_left in EQ.
 
+3 : { case (nat_eqb kappa kappa0) eqn:EQ'.
+      2 : case (in_dec) as [IN | NIN].
+      all : reflexivity. }
+
 all : destruct S as [ | b S];
       inversion EQ;
       try case (nat_eqb lambda0 lambda) eqn:EQL;
@@ -256,6 +522,10 @@ all : subst;
       unfold ptree_left in EQ;
       fold ptree_left in EQ.
 
+3 : { case (nat_eqb kappa kappa0) eqn:EQ'.
+      2 : case (in_dec) as [IN | NIN].
+      all : reflexivity. }
+
 all : destruct S as [ | b S];
       inversion EQ;
       try case (nat_eqb lambda0 lambda) eqn:EQL;
@@ -300,6 +570,11 @@ all : subst;
       fold ptree_bnd_l_inv_fit;
       unfold ptree_left in EQ;
       fold ptree_left in EQ.
+
+3 : { case (nat_eqb kappa kappa0) eqn:EQ'.
+      2 : case (in_dec) as [IN | NIN].
+      all : reflexivity. }
+
 
 all : destruct S as [ | b S];
       inversion EQ;
@@ -399,6 +674,41 @@ destruct IN as [EQ | IN].
 subst.
 apply (or_introl eq_refl).
 apply IN.
+Qed.
+
+Lemma bnd_l_formula_inv_vars_used_sub :
+    forall (phi : formula) (A : formula) (lambda kappa : ovar) (b : bool),
+        incl (vars_used (bnd_left_inv_formula phi A lambda kappa b)) (vars_used phi).
+Proof.
+intros phi A lambda kappa b o IN.
+unfold bnd_left_inv_formula, formula_sub in IN.
+case form_eqb eqn:EQF.
+destruct b.
+apply form_eqb_eq in EQF.
+subst.
+apply or_intror.
+all : apply IN.
+Qed.
+
+Lemma ptree_bnd_l_inv_vars_used_sub :
+    forall (gamma : list formula) (A : formula) (lambda kappa : ovar) (S : subst_ind),
+        incl (flat_map vars_used (bnd_left_inv_batch gamma A lambda kappa S)) (flat_map vars_used gamma).
+Proof.
+induction gamma;
+intros A lambda kappa S;
+unfold bnd_left_inv_batch, batch_sub, batch_sub_fit;
+fold batch_sub_fit;
+destruct S;
+unfold length, nat_eqb;
+fold (@length formula) (@length bool) nat_eqb.
+4 : case nat_eqb eqn:EQN.
+1,2,3,5 : intros o IN;
+          apply IN.
+unfold flat_map;
+fold (flat_map vars_used).
+rewrite (batch_sub_fit_true EQN).
+fold (bnd_left_inv_batch gamma A lambda kappa S).
+apply (incl_tran (incl_app_app (bnd_l_formula_inv_vars_used_sub _ _ _ _ _) (IHgamma _ _ _ _)) (fun o IN => IN)). 
 Qed.
 
 Lemma ptree_bnd_l_inv_bot :
@@ -529,64 +839,18 @@ all : unfold ptree_height in *;
   pose proof (IHn _ A lambda kappa LT2 S) as LT4.
   lia.
 
+- case (nat_eqb kappa kappa0) eqn:EQ'.
+  2 : case (in_dec) as [IN | NIN].
+  3 : specialize (IHn _ A lambda kappa LT S).
+  all : unfold ptree_height;
+        fold ptree_height;
+        try lia.
+
 - assert ((ptree_height P1) <= n /\ (ptree_height P2) <= n) as [LT1 LT2]. split; lia.
   pose proof (IHn _ A lambda kappa LT1 S) as LT3.
   pose proof (IHn _ A lambda kappa LT2 (false :: S)) as LT4.
   lia.
 Qed.
-
-(*
-Lemma ptree_bnd_l_inv_height :
-    forall (P : ptree) (A : formula) (S : subst_ind),
-        ptree_height (ptree_bnd_l_inv_fit P A S (ptree_height P)) <= (ptree_height P).
-Proof. intros P A S. apply (ptree_bnd_l_inv_height_aux _ _ _ (le_n _)). Qed.
-*)
-
-(*
-Lemma ptree_bnd_l_inv_fit_extra :
-    forall (d1 d2 : nat) (P : ptree) (A : formula) (S : subst_ind),
-        (ptree_height P) <= d1 ->
-            (ptree_height P) <= d2 ->
-                ptree_bnd_l_inv_fit P A S d1 = ptree_bnd_l_inv_fit P A S d2.
-Proof.
-induction d1;
-intros d2 P A S LT1 LT2.
-destruct P;
-inversion LT1.
-destruct d2.
-destruct P;
-inversion LT2.
-destruct P;
-apply le_S_n in LT1;
-apply le_S_n in LT2;
-unfold ptree_height in *;
-fold ptree_height in *;
-unfold ptree_bnd_l_inv_fit;
-fold ptree_bnd_l_inv_fit.
-
-6,7,12,15,17,19 : destruct S as [ | b S].
-
-5 : destruct S as [ | b1 [ | b2 S]].
-
-15 : destruct b.
-15 : case (form_eqb phi A) eqn:EQF.
-
-21,31 : assert (ptree_height P1 <= d1 /\ ptree_height P2 <= d1 /\ (ptree_height P1) <= d2 /\ (ptree_height P2) <= d2) as [LT3 [LT4 [LT5 LT6]]]; repeat split; try lia.
-
-all : try rewrite (IHd1 _ _ _ _ LT1 LT2);
-      try rewrite (IHd1 _ _ _ _ LT3 LT5);
-      try rewrite (IHd1 _ _ _ _ LT4 LT6);
-      try rewrite (IHd1 _ _ _ _ LT3);
-      try rewrite (IHd1 _ _ _ _ LT4);
-      try reflexivity.
-
-1 : pose proof (ptree_bnd_l_inv_height P (shift_substitution A (Datatypes.S v1) v2) (false :: b2 :: (repeat false (@length bool S)))) as LT3.
-    rewrite <- (IHd1 _ _ _ _ LT1 (le_n _)) in LT3.
-    rewrite (IHd1 _ _ _ _ LT1 LT2) in LT3.
-    rewrite (IHd1 _ _ _ _ (PeanoNat.Nat.le_trans _ _ _ LT3 LT1) (PeanoNat.Nat.le_trans _ _ _ LT3 LT2)).
-    reflexivity.
-Qed.
-*)
 
 Lemma ptree_bnd_l_inv_struct_aux :
     forall (P : ptree) (A : formula) (lambda kappa : ovar),
@@ -668,123 +932,50 @@ all : subst.
       - apply PD_app.
       - apply (inl eq_refl). }
 
-(*
-19 : rewrite (ptree_bnd_l_inv_fit_extra _ _ _ _ _ (PeanoNat.Nat.le_max_l _ _) (le_n _)), (ptree_bnd_l_inv_fit_extra _ _ _ _ _ (PeanoNat.Nat.le_max_r _ _) (le_n _)).
-
-17 : rewrite (ptree_bnd_l_inv_fit_extra _ _ _ _ _ (PeanoNat.Nat.le_max_l _ _) (le_n _)), (ptree_bnd_l_inv_fit_extra _ _ _ _ _ (PeanoNat.Nat.le_max_r _ _) (le_n _)).
-*)
-
-(*
-1 : { rewrite (ptree_bnd_l_inv_fit_extra _ _ _ _ _ (ptree_bnd_l_inv_height _ _ _) (le_n _)).
-      rewrite !ptree_bnd_l_inv_fit_true.
-      3 : rewrite !ptree_bnd_l_inv_fit_true;
-          try rewrite (ptree_bnd_l_inv_left _ _ PSV);
-          unfold bnd_left_inv_batch;
-          try rewrite <- batch_sub_length;
-          try apply nat_eqb_eq.
-      all : try rewrite PG;
-            unfold length;
-            fold (@length formula) (@length bool);
-            try rewrite repeat_length;
-            try apply EQ.
-      repeat split.
-      1 : { refine (IHd _ _ (PeanoNat.Nat.le_trans _ _ _ _ LT) (IHd _ _ LT PSV _) _).
-            pose proof (ptree_bnd_l_inv_height P (shift_substitution A (Datatypes.S v1) v2) (false :: b2 :: (repeat false (length S)))) as LT'.
-            rewrite !ptree_bnd_l_inv_fit_true in LT'.
-            apply LT'.
-            rewrite PG.
-            unfold length in *;
-            fold (@length formula) (@length bool) in *.
-            rewrite repeat_length.
-            apply EQ. }
-      1 : rewrite ptree_bnd_l_inv_vars;
-          unfold bnd_left_inv_batch;
-          apply PG_app.
-      1 : apply PD_app.
-      all : try rewrite !ptree_bnd_l_inv_left;
-            try rewrite !ptree_bnd_l_inv_right;
-            try rewrite !ptree_bnd_l_inv_constraint;
-            try rewrite !ptree_bnd_l_inv_deg;
-            try reflexivity;
-            try apply PSV;
-            try apply (IHd _ _ LT PSV).
-      unfold bnd_left_inv_batch.
-      unfold batch_sub at 1.
-      unfold ptree_left in EQ.
-      rewrite PG, <- batch_sub_length.
-      unfold batch_sub.
-      all : unfold length in *;
-            fold (@length bool) (@length formula) in *;
-            try rewrite repeat_length.
-      2 : apply (nat_eqb_eq _ _ EQ).
-      rewrite EQ.
-      unfold nat_eqb in EQ;
-      fold nat_eqb in EQ.
-      rewrite EQ.
-      unfold batch_sub_fit;
-      fold batch_sub_fit.
-      rewrite batch_sub_false.
-      unfold formula_sub, form_eqb;
-      fold form_eqb.
-      case (form_eqb (shift_substitution phi v1 v2) (univ (shift_substitution A (Datatypes.S v1) v2))) eqn:EQF.
-      destruct b2.
-      - assert (form_eqb (shift_substitution phi v1 v2) (shift_substitution (univ A) v1 v2) = true) as EQF'. apply EQF.
-        case form_eqb.
-        unfold bnd_left_inv_formula, formula_sub.
-        admit.
-        admit.
-      - case form_eqb;
-        unfold bnd_left_inv_formula;
-        rewrite formula_sub_false;
-        reflexivity.
-      - assert (form_eqb (shift_substitution phi v1 v2) (shift_substitution (univ A) v1 v2) = false) as EQF'. apply EQF.
-        case form_eqb;
-        unfold bnd_left_inv_formula, formula_sub;
-        rewrite (shift_subst_neb_form_neb _ _ _ _ EQF');
-        reflexivity. }
-
-18 : assert ((ptree_height P1) <= d /\ (ptree_height P2) <= d) as [LT1 LT2].
-18 : split; lia.
-
-16 : assert ((ptree_height P1) <= d /\ (ptree_height P2) <= d) as [LT1 LT2].
-16 : split; lia.
-*)
-
-7 : { rewrite ptree_bnd_l_inv_fit_true;
-      try rewrite PG;
-      try rewrite P1G;
-      try rewrite P2G;
-      try apply EQ;
-      unfold ptree_left at 1 in EQ;
-      try rewrite bury_length, <- (@bury_unbury _ S n), bury_length in EQ;
-      try apply EQ;
-      repeat split;
-      try rewrite ptree_bnd_l_inv_constraint;
-      try apply ptree_bnd_l_inv_deg;
-      try rewrite ptree_bnd_l_inv_left;
-      try rewrite PG;
-      try rewrite P1G;
-      try rewrite P2G;
-      unfold flat_map;
-      fold (flat_map vars_in);
-      unfold bnd_left_inv_batch;
-      try rewrite batch_sub_false_head;
-      try rewrite ptree_bnd_l_inv_right;
-      try assumption;
-      try apply (IHP PSV REL);
-      try apply (IHP1 P1SV REL);
-      try rewrite <- P2OC in REL;
-      try apply (IHP2 P2SV REL);
-      try reflexivity.
+7 : { case (nat_eqb kappa kappa0) eqn:EQ'.
+      2 : case (in_dec) as [IN | NIN].
+      3 : rewrite ptree_bnd_l_inv_fit_true.
+      all : repeat split;
+            try apply EQ;
+            unfold ptree_left at 1 in EQ;
+            try rewrite bury_length, <- (@bury_unbury _ S n), bury_length in EQ;
+            try apply EQ;
+            repeat split;
+            try rewrite ptree_bnd_l_inv_constraint;
+            try apply ptree_bnd_l_inv_deg;
+            try rewrite ptree_bnd_l_inv_left;
+            try rewrite PG;
+            try rewrite P1G;
+            try rewrite P2G;
+            unfold flat_map;
+            fold (flat_map vars_in);
+            unfold bnd_left_inv_batch;
+            try rewrite batch_sub_false_head;
+            try rewrite ptree_bnd_l_inv_right;
+            try assumption;
+            try apply (IHP PSV REL);
+            try apply (IHP1 P1SV REL);
+            try rewrite <- P2OC in REL;
+            try apply (IHP2 P2SV REL);
+            try reflexivity.
       2 : unfold ptree_left at 1;
           apply (ptree_bnd_l_inv_vars _ _ _ _ _ _ REL PG_app).
-      apply IHP.
-      apply PSV.
-      rewrite POC.
-      unfold restriction, OC_rel at 1, projT2, projT1.
-      unfold ptree_constraint in REL.
-      rewrite REL, andb_true_l.
-       }
+      - apply (IHP PSV).
+        rewrite POC.
+        unfold restriction, OC_rel at 1, projT2, projT1.
+        unfold ptree_constraint in REL.
+        rewrite REL, andb_true_l.
+        pose proof (struct_OC_app _ PSV) as [PG_app' PD_app'].
+        rewrite POC in PG_app', PD_app'.
+        case (in_dec nat_eq_dec kappa) as [INK | NINK].
+        contradiction (NIN INK).
+        case (in_dec nat_eq_dec lambda) as [INL | NINL].
+        + 
+        + reflexivity.
+      - fold (flat_map vars_used).
+        intros FAL.
+        apply KNING.
+        apply (ptree_bnd_l_inv_vars_used_sub _ _ _ _ _ _ FAL). }
 
 all : repeat rewrite ptree_bnd_l_inv_fit_true;
       try rewrite PG;
@@ -831,32 +1022,6 @@ all : repeat rewrite ptree_bnd_l_inv_fit_true;
         rewrite REL.
         reflexivity. }
 
-(*
-10 :  { intros FAL.
-        apply KNING.
-        unfold ptree_constraint at 1 in REL.
-        unfold ptree_left at 1 in PG_app.
-        pose proof (struct_OC_app _ PSV) as [P'G_app P'D_app].
-        rewrite POC in *.
-        pose proof (ptree_bnd_l_inv_vars_sub _ _ _ _ _ _ FAL) as [FAL1 | FAL2].
-        subst.
-
-        admit.
-        apply FAL2. }
-
-8 : { apply (IHP PSV).
-      rewrite POC.
-      unfold OC_rel, restriction, projT2, projT1.
-      unfold ptree_constraint at 1 in REL.
-      rewrite REL.
-      case (in_dec nat_eq_dec lambda (children OC kappa0)) as [FAL | _].
-      unfold children in FAL.
-      apply filter_In in FAL as [FAL1 FAL2].
-      admit.
-      case (in_dec nat_eq_dec kappa (children OC kappa0)) as [FAL | _].
-      admit.
-      reflexivity. }*)
-
 2 : try rewrite <- batch_sub_fit_true;
     unfold batch_sub_fit;
     fold batch_sub_fit;
@@ -885,7 +1050,6 @@ all : unfold ptree_left at 1;
     pose proof (ptree_bnd_l_inv_vars _ A _ _ S _ REL PG_app) as SUB;
     unfold ptree_constraint at 1 in SUB;
     rewrite P2OC in SUB.
-
 
 1-6 : unfold ptree_left, bnd_left_inv_batch, batch_sub, batch_sub_fit, length, nat_eqb in SUB;
       fold (ptree_left P) batch_sub_fit (@length bool) (@length formula) nat_eqb in SUB;

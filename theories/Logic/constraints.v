@@ -281,6 +281,28 @@ case (list_eq_dec nat_eq_dec (OC_list OC1) (OC_list OC2)) as [EQL | NEL].
   reflexivity.
 Qed.
 
+Lemma restriction_exlusion :
+    forall (OC : constraint) (L1 L2 : list ovar) (SUB : incl L2 (OC_list OC)) (o : ovar),
+        In o L2 ->
+            incl L1 (OC_list (restriction OC L2 SUB)) ->
+                ~ In o L1.
+Proof.
+intros OC L1.
+revert OC.
+induction L1;
+intros OC L2 SUB1 o IN SUB2 FAL.
+apply FAL.
+destruct FAL as [FAL1 | FAL2].
+1 : subst;
+    specialize (SUB2 o (or_introl eq_refl)).
+2 : specialize (SUB2 o (or_intror FAL2)).
+all : unfold restriction, OC_list, projT1 in SUB2;
+  apply filter_In in SUB2 as [_ SUB2];
+  case (in_dec nat_eq_dec o L2) as [_ | FAL];
+  try contradiction (FAL IN);
+  inversion SUB2.
+Qed.
+
 (*
 Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
 

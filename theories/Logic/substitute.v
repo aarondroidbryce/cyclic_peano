@@ -556,6 +556,241 @@ rewrite IHgamma, formula_sub_false.
 reflexivity.
 Qed.
 
+(*vars_in form*)
+Lemma var_ne_neb :
+    forall (phi A : formula) (o : ovar),
+        In o (vars_in A) ->
+            ~ In o (vars_in phi) ->
+                form_eqb phi A = false.
+Proof.
+induction phi;
+intros A ov IN NIN;
+destruct A;
+unfold formula_sub, form_eqb;
+fold formula_sub form_eqb;
+try reflexivity.
+- inversion IN.
+- apply (nin_split nat_eq_dec) in NIN as [NIN1 NIN2].
+  apply in_app_or in IN as [IN1 | IN2].
+  + rewrite (IHphi1 _ _ IN1 NIN1).
+    apply andb_false_l.
+  + rewrite (IHphi2 _ _ IN2 NIN2).
+    apply andb_false_r.
+- assert (ov <> o0) as NE1.
+  { intros FAL.
+    subst.
+    apply NIN, or_introl, eq_refl. }
+  apply (nin_head nat_eq_dec) in NIN.
+  fold vars_in in NIN.
+  case (nat_eqb ov o) eqn:EQ.
+  + apply nat_eqb_eq in EQ.
+    subst.
+    destruct IN as [EQ | IN].
+    * subst.
+      case (nat_eqb o0 o) eqn:EQ'.
+      apply nat_eqb_eq in EQ'.
+      contradiction (NE1 (eq_sym EQ')).
+      rewrite andb_false_r.
+      apply andb_false_l.
+    * apply in_remove in IN as [_ NE].
+      case (nat_eqb o o1) eqn:EQ.
+      apply nat_eqb_eq in EQ.
+      contradiction (NE EQ).
+      apply andb_false_l.
+  + assert (ov <> o) as NE.
+    { intros FAL.
+      subst.
+      rewrite nat_eqb_refl in EQ.
+      inversion EQ. }
+    apply (nin_ne_weaken _ _ _ _ NE) in NIN.
+    destruct IN as [EQ' | IN].
+    * subst.
+      case (nat_eqb o0 ov) eqn:EQ'.
+      apply nat_eqb_eq in EQ'.
+      contradiction (NE1 (eq_sym EQ')).
+      rewrite andb_false_r.
+      apply andb_false_l.
+    * apply in_remove in IN as [IN _].
+      rewrite (IHphi _ _ IN NIN).
+      apply andb_false_r.
+- contradiction (NIN IN).
+Qed.
+
+Lemma var_ne_sub_triv :
+    forall (phi A1 A2 : formula) (o : ovar) (b : bool),
+        In o (vars_in A1) ->
+            ~ In o (vars_in phi) ->
+                formula_sub phi A1 A2 b = phi.
+Proof.
+induction phi;
+intros A1 A2 ov b IN NIN;
+destruct A1;
+unfold formula_sub, form_eqb;
+fold formula_sub form_eqb;
+try reflexivity.
+- inversion IN.
+- apply (nin_split nat_eq_dec) in NIN as [NIN1 NIN2].
+  apply in_app_or in IN as [IN1 | IN2].
+  + rewrite (var_ne_neb _ _ _ IN1 NIN1), andb_false_l.
+    reflexivity.
+  + rewrite (var_ne_neb _ _ _ IN2 NIN2), andb_false_r.
+    reflexivity.
+- assert (ov <> o0) as NE1.
+  { intros FAL.
+    subst.
+    apply NIN, or_introl, eq_refl. }
+  apply (nin_head nat_eq_dec) in NIN.
+  fold vars_in in NIN.
+  case (nat_eqb ov o) eqn:EQ.
+  + apply nat_eqb_eq in EQ.
+    subst.
+    destruct IN as [EQ | IN].
+    * subst.
+      case (nat_eqb o0 o) eqn:EQ'.
+      apply nat_eqb_eq in EQ'.
+      contradiction (NE1 (eq_sym EQ')).
+      rewrite andb_false_r, andb_false_l.
+      reflexivity.
+    * apply in_remove in IN as [_ NE].
+      case (nat_eqb o o1) eqn:EQ.
+      apply nat_eqb_eq in EQ.
+      contradiction (NE EQ).
+      rewrite andb_false_l.
+      reflexivity.
+  + assert (ov <> o) as NE.
+    { intros FAL.
+      subst.
+      rewrite nat_eqb_refl in EQ.
+      inversion EQ. }
+    apply (nin_ne_weaken _ _ _ _ NE) in NIN.
+    destruct IN as [EQ' | IN].
+    * subst.
+      case (nat_eqb o0 ov) eqn:EQ'.
+      apply nat_eqb_eq in EQ'.
+      contradiction (NE1 (eq_sym EQ')).
+      rewrite andb_false_r, andb_false_l.
+      reflexivity.
+    * apply in_remove in IN as [IN _].
+      rewrite (var_ne_neb _ _ _ IN NIN), andb_false_r.
+      reflexivity.
+- contradiction (NIN IN).
+Qed.
+
+Lemma var_ne_batch_sub_triv :
+    forall (gamma : list formula) (A1 A2 : formula) (o : ovar) (S : subst_ind),
+        In o (vars_in A1) ->
+            ~ In o (flat_map vars_in gamma) ->
+                batch_sub gamma A1 A2 S = gamma.
+Proof.
+induction gamma;
+intros A1 A2 o S IN NIN;
+unfold batch_sub, batch_sub_fit;
+fold batch_sub_fit;
+case nat_eqb eqn:EQ;
+destruct S;
+try reflexivity.
+rewrite batch_sub_fit_true.
+rewrite (var_ne_sub_triv _ _ _ _ _ IN (proj1 (nin_split nat_eq_dec _ _ _ NIN))), (IHgamma _ _ _ _ IN (proj2 (nin_split nat_eq_dec _ _ _ NIN))).
+reflexivity.
+apply EQ.
+Qed.
+
+(*vars_used form*)
+(*
+Lemma var_ne_neb :
+    forall (phi A : formula) (o : ovar),
+        In o (vars_used A) ->
+            ~ In o (vars_used phi) ->
+                form_eqb phi A = false.
+Proof.
+induction phi;
+intros A ov IN NIN;
+destruct A;
+unfold formula_sub, form_eqb;
+fold formula_sub form_eqb;
+try reflexivity.
+- inversion IN.
+- apply (nin_split nat_eq_dec) in NIN as [NIN1 NIN2].
+  apply in_app_or in IN as [IN1 | IN2].
+  + rewrite (IHphi1 _ _ IN1 NIN1).
+    apply andb_false_l.
+  + rewrite (IHphi2 _ _ IN2 NIN2).
+    apply andb_false_r.
+- assert (ov <> o0) as NE1.
+  { intros FAL.
+    subst.
+    apply NIN, or_introl, eq_refl. }
+  apply (nin_head nat_eq_dec) in NIN.
+  fold vars_used in NIN.
+  destruct IN as [EQ | IN].
+  + subst.
+    case (nat_eqb o0 ov) eqn:EQ'.
+    apply nat_eqb_eq in EQ'.
+    contradiction (NE1 (eq_sym EQ')).
+    rewrite andb_false_r.
+    apply andb_false_l.
+  + rewrite (IHphi _ _ IN NIN).
+    apply andb_false_r.
+- contradiction (NIN IN).
+Qed.
+
+Lemma var_ne_sub_triv :
+    forall (phi A1 A2 : formula) (o : ovar) (b : bool),
+        In o (vars_used A1) ->
+            ~ In o (vars_used phi) ->
+                formula_sub phi A1 A2 b = phi.
+Proof.
+induction phi;
+intros A1 A2 ov b IN NIN;
+destruct A1;
+unfold formula_sub, form_eqb;
+fold formula_sub form_eqb;
+try reflexivity.
+- inversion IN.
+- apply (nin_split nat_eq_dec) in NIN as [NIN1 NIN2].
+  apply in_app_or in IN as [IN1 | IN2].
+  + rewrite (var_ne_neb _ _ _ IN1 NIN1), andb_false_l.
+    reflexivity.
+  + rewrite (var_ne_neb _ _ _ IN2 NIN2), andb_false_r.
+    reflexivity.
+- assert (ov <> o0) as NE1.
+  { intros FAL.
+    subst.
+    apply NIN, or_introl, eq_refl. }
+  apply (nin_head nat_eq_dec) in NIN.
+  fold vars_used in NIN.
+  destruct IN as [EQ | IN].
+  + subst.
+    case (nat_eqb o0 ov) eqn:EQ'.
+    apply nat_eqb_eq in EQ'.
+    contradiction (NE1 (eq_sym EQ')).
+    rewrite andb_false_r, andb_false_l.
+    reflexivity.
+  + rewrite (var_ne_neb _ _ _ IN NIN), andb_false_r.
+    reflexivity.
+- contradiction (NIN IN).
+Qed.
+
+Lemma var_ne_batch_sub_triv :
+    forall (gamma : list formula) (A1 A2 : formula) (o : ovar) (S : subst_ind),
+        In o (vars_used A1) ->
+            ~ In o (flat_map vars_used gamma) ->
+                batch_sub gamma A1 A2 S = gamma.
+Proof.
+induction gamma;
+intros A1 A2 o S IN NIN;
+unfold batch_sub, batch_sub_fit;
+fold batch_sub_fit;
+case nat_eqb eqn:EQ;
+destruct S;
+try reflexivity.
+rewrite batch_sub_fit_true.
+rewrite (var_ne_sub_triv _ _ _ _ _ IN (proj1 (nin_split nat_eq_dec _ _ _ NIN))), (IHgamma _ _ _ _ IN (proj2 (nin_split nat_eq_dec _ _ _ NIN))).
+reflexivity.
+apply EQ.
+Qed.
+*)
+
 (*
 Lemma map_batch_sub : 
     forall (gamma : list formula) (A1 A2 : formula) (d : nat) (S : subst_ind) (F : formula -> formula),
