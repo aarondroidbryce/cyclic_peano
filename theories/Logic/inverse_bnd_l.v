@@ -70,6 +70,88 @@ fold (bnd_left_inv_batch gamma A lambda kappa S).
 apply (incl_tran (incl_app_app (bnd_l_formula_inv_vars_used_sub _ _ _ _ _) (IHgamma _ _ _ _)) (fun o IN => IN)). 
 Qed.
 
+Lemma ptree_bnd_left_inv_valid_in_place :
+    forall (P : ptree) (gamma1 gamma2 delta : list formula) (OC : constraint) (alpha : ordinal) (phi : formula) (eta iota : ovar),
+        P_proves P OC (gamma1 ++ (bnd eta iota phi) :: gamma2) delta alpha ->
+            provable OC (gamma1 ++ phi :: gamma2) delta alpha.
+Proof.
+induction P;
+intros gamma1 gamma2 delta' OC' alpha' phi' eta iota [[[[[PSV PATH] PG'] PD'] POC'] PDeg'];
+subst.
+
+1-2 : destruct PSV.
+3 : destruct PSV as [[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]].
+5-10 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+11 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
+12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
+13 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
+14 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+15 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+16 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+
+all : subst;
+      try unfold ptree_left at 1;
+      try unfold ptree_right at 1;
+      try unfold ptree_constraint at 1;
+      try unfold ptree_deg at 1;
+      fold ptree_left ptree_right ptree_constraint ptree_deg.
+
+1,2 : destruct gamma1; try destruct gamma1; inversion PG'.
+1 : admit.
+1 : admit.
+1 : { unfold ptree_left at 1 in PG'.
+      destruct gamma1 as [ | psi gamma1].
+      - rewrite app_nil_l in *.
+        inversion PG' as [[EQ1 EQ2]].
+        subst.
+        apply ptree_con_l.
+        pose proof (IHP [bnd eta iota phi'] _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG) eq_refl) eq_refl) eq_refl)) as [P' P'Pr].
+        refine (IHP _ _ _ _ _ _ eta iota P'Pr).  
+
+1 : { apply ptree_con_r.
+      rewrite <- PD.
+      refine (IHP _ _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG') eq_refl) eq_refl) eq_refl)). }
+1 : admit.
+1 : { apply ptree_ex_r.
+      refine (IHP _ _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG') eq_refl) eq_refl) eq_refl)). }
+1 : admit.
+1 : { apply ptree_wkn_r.
+      - intros o IN.
+        apply PD_app, in_or_app, or_introl, IN.
+      - refine (IHP _ _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG') eq_refl) eq_refl) eq_refl)). }
+1 : admit.
+1 : admit.
+1 : { refine (ptree_bnd_r _ _ _ _ _ _ _ _ _ _ NIND _).
+      - intros FAL.
+        apply NING.
+        unfold ptree_left at 1 in PG'.
+        rewrite PG'.
+        rewrite flat_map_app in FAL.
+        rewrite flat_map_app.
+        apply in_or_app.
+        repeat apply in_app_or in FAL as [?FAL | ?FAL].
+        apply or_introl, FAL.
+        apply or_intror, in_or_app, or_introl, or_intror, FAL.
+        apply or_intror, in_or_app, or_intror, FAL.
+      - rewrite <- PD, <- POC.
+        refine (IHP _ _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG') eq_refl) eq_refl) eq_refl)). }
+1 : admit.
+1 : { apply ptree_imp_r.
+      unfold ptree_left at 1 in PG'.
+      rewrite PG' in PG.
+      rewrite <- PD.
+      refine (IHP (phi :: gamma1) _ _ _ _ _ eta iota (pair (pair (pair (pair (pair PSV PATH) PG) eq_refl) eq_refl) eq_refl)). }
+1 : { unfold ptree_right at 1, ptree_deg at 1.
+      apply ptree_cut.
+      - rewrite <- P1D.
+        refine (IHP1 _ _ _ _ _ _ eta iota (pair (pair (pair (pair (pair P1SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_introl IN)))) PG') eq_refl) eq_refl) eq_refl)).
+      - unfold ptree_left at 1 in PG'.
+        rewrite PG' in P2G.
+        rewrite <- P2OC.
+        refine (IHP2 (phi :: gamma1) _ _ _ _ _ eta iota (pair (pair (pair (pair (pair P2SV (fun PL PT IN => PATH PL PT (in_or_app _ _ _ (or_intror IN)))) P2G) eq_refl) eq_refl) eq_refl)). }
+Admitted.
+
+
 Lemma ptree_bnd_left_inv_valid :
     forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal),
         provable OC gamma delta alpha ->
@@ -182,10 +264,41 @@ all : rewrite batch_sub_fit_true;
 1 : { unfold ptree_left at 1 in PG_app.
       unfold ptree_right at 1 in PD_app.
       unfold ptree_constraint at 1 in REL.
-      destruct (PATH _ _ (or_introl eq_refl)) as [P_Base [EQUIV [DESC [kappa PATH']]]].
-      refine (IHP PSV _ _ _ _ _ REL EQ).
-      intros P_leaf P_Target IN.
-      admit. }
+      assert (forall P_Leaf P_Target : ptree,
+      In (P_Leaf, P_Target) (leaves P) ->
+      {P_Base : ptree &
+      (ptree_equiv P_Base P_Target *
+       {DESC : ptree_descends_from P_Base P_Leaf = true &
+       {kappa : ovar &
+       (forall P_path : ptree,
+        In P_path
+          (path_fit P_Base
+             (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
+        OC_elt (ptree_constraint P_path) kappa) *
+       {P_reset : ptree &
+       In P_reset
+         (path_fit P_Base
+            (projT1 (descends_is_path P_Base P_Leaf DESC))) /\
+       resets_var P_reset kappa}}})%type}) as PATH'.
+      { admit. }
+      (* destruct (PATH _ _ (or_introl eq_refl)) as [P_Base [EQUIV [DESC [kappa PATH']]]].*)
+      pose proof (IHP PSV PATH' A _ _ _ REL EQ) as [P' [[[[[PSV' PATH''] PG'] PD'] POC'] PDeg']].
+      refine (existT _ (loop_head _ _ _ _ P') _).
+      repeat split;
+      try assumption.
+      - unfold ptree_left at 1.
+        admit.
+      - rewrite PG', PD', POC', PDeg'.
+        destruct P'.
+        1 : left; reflexivity.
+        all : right; repeat split; discriminate.
+      - intros PL PT IN.
+        apply in_single in IN.
+        inversion IN as [[EQ1 EQ2]].
+        subst.
+        admit.
+
+      }
 
 1 : { apply ptree_con_r.
       rewrite <- PD.

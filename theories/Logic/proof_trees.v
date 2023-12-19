@@ -345,7 +345,7 @@ match P1, P2 with
 | pred pn1 pure1, pred pn2 pure2 => prd_eqb pn1 pn2 = true
 
 | loop_head OC1 gamma1 delta1 alpha1 P_Target1, loop_head OC2 gamma2 delta2 alpha2 P_Target2 =>
-    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ P_Target2 = bot /\ alpha1 = alpha2
+    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ (P_Target1 = P_Target2 \/ P_Target2 = bot) /\ alpha1 = alpha2
 
 | con_l phi1 P1, con_l phi2 P2 => phi1 = phi2 /\ ptree_equiv P1 P2
 
@@ -423,7 +423,7 @@ match P, M with
 
 | pred pn pure, [true] => [P]
 
-| loop_head OC gamma delta alpha P_Target, true :: M' => P :: path_fit P_Target M'
+| loop_head OC gamma delta alpha P_Target, [true] => [P]
 
 | con_l phi P', true :: M' => P :: path_fit P' M'
 
@@ -583,7 +583,7 @@ all : destruct (IHP_Target _ DESC) as [M [L EQ]];
       fold path_fit;
       rewrite EQ;
       reflexivity.
-Qed.
+Defined.  
 
 Definition resets_var (P : ptree) (lambda : ovar) : Prop :=
 match P with
@@ -592,16 +592,16 @@ match P with
 end.
 
 Definition valid (P : ptree) : Type :=
-  {PSV : (struct_valid P) &
-      (forall (P_Leaf P_Target : ptree) (IN : In (pair P_Leaf P_Target) (leaves P)),
-          {P_Base : ptree &
-              ((ptree_equiv P_Base P_Target) *
-              {DESC : (ptree_descends_from P_Base P_Leaf = true) &
-                  {kappa : ovar & 
-                      (forall (P_path : ptree),
-                          In P_path (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
-                              OC_elt (ptree_constraint P_path) kappa) *
-                      { P_reset : ptree & In P_reset (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) /\ resets_var P_reset kappa}}})%type})}.
+  (struct_valid P) *
+    (forall (P_Leaf P_Target : ptree) (IN : In (pair P_Leaf P_Target) (leaves P)),
+        {P_Base : ptree &
+            ((ptree_equiv P_Base P_Target) *
+            {DESC : (ptree_descends_from P_Base P_Leaf = true) &
+                {kappa : ovar & 
+                    (forall (P_path : ptree),
+                        In P_path (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
+                            OC_elt (ptree_constraint P_path) kappa) *
+                    { P_reset : ptree & In P_reset (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) /\ resets_var P_reset kappa}}})%type}).
 
 Definition P_proves (P : ptree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
   (valid P) * (ptree_left P = gamma) * (ptree_right P = delta) * (ptree_constraint P = OC) * (ptree_deg P = alpha).
