@@ -999,6 +999,26 @@ rewrite <- IHLP at 3.
 reflexivity.
 Qed.
 
+Lemma option_fill_app {A B : Type} :
+    forall (LOB1 LOB2 : list (option B)) (LLA1 LLA2 : list (list A)) (a : A),
+        length LOB1 = length LLA1 ->
+            length LOB2 = length LLA2 ->
+                option_fill a (LOB1 ++ LOB2) (LLA1 ++ LLA2) = option_fill a LOB1 LLA1 ++ option_fill a LOB2 LLA2.
+Proof.
+induction LOB1 as [ | [ b | ] LOB1];
+intros LOB2 LLA1 LLA2 a EQ1 EQ2.
+1 : destruct LLA1 as [ | LA LLA1 ].
+    reflexivity.
+    inversion EQ1.
+all : destruct LLA1 as [ | LA LLA1 ];
+      inversion EQ1 as [EQ1'];
+      rewrite <- !app_comm_cons;
+      unfold option_fill;
+      fold @option_fill;
+      rewrite (IHLOB1 _ _ _ _ EQ1' EQ2);
+      reflexivity.
+Qed.
+
 (*
 Lemma valid_option_null :
     forall (P : ptree),
@@ -1058,15 +1078,26 @@ Lemma ptree_con_r :
         provable OC gamma (phi :: phi :: delta) alpha ->
             provable OC gamma (phi :: delta) alpha.
 Proof.
-intros OC gamma delta phi alpha [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (con_r phi P) _).
 repeat split;
 try assumption.
-apply (fst (struct_OC_app _ PSV)).
-refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: phi :: delta) (fun (A : formula) (IN : In A (phi :: delta)) => (or_intror IN))) _).
-rewrite <- PD.
-apply (snd (struct_OC_app _ PSV)).
+1 : apply (fst (struct_OC_app _ PSV)).
+1 : refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: phi :: delta) (fun (A : formula) (IN : In A (phi :: delta)) => (or_intror IN))) _).
+    rewrite <- PD.
+    apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_ex_l : 
@@ -1074,13 +1105,24 @@ Lemma ptree_ex_l :
         provable OC gamma delta alpha ->
             provable OC (bury gamma n) delta alpha.
 Proof.
-intros OC gamma delta n alpha [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta n alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (ex_l n P) _).
 repeat split;
 try assumption.
-refine (incl_tran (fun A => proj1 (flat_map_bury_incl A)) (fst (struct_OC_app _ PSV))).
-apply (snd (struct_OC_app _ PSV)).
+1 : refine (incl_tran (fun A => proj1 (flat_map_bury_incl A)) (fst (struct_OC_app _ PSV))).
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_ex_r : 
@@ -1088,43 +1130,76 @@ Lemma ptree_ex_r :
         provable OC gamma delta alpha ->
             provable OC gamma (bury delta n) alpha.
 Proof.
-intros OC gamma delta n alpha [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta n alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (ex_r n P) _).
 repeat split;
 try assumption.
-apply (fst (struct_OC_app _ PSV)).
-refine (incl_tran (fun A => proj1 (flat_map_bury_incl A)) (snd (struct_OC_app _ PSV))).
+1 : apply (fst (struct_OC_app _ PSV)).
+1 : refine (incl_tran (fun A => proj1 (flat_map_bury_incl A)) (snd (struct_OC_app _ PSV))).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_wkn_l : 
-    forall (gamma delta : list formula) (phi : formula) (OC : constraint) (alpha: ordinal),
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha: ordinal),
         incl (vars_in phi) (OC_list OC) ->
             provable OC gamma delta alpha ->
                 provable OC (phi :: gamma) delta alpha.
 Proof.
-intros gamma delta phi OC alpha SUB [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi alpha SUB [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (wkn_l phi P) _).
 repeat split;
 try assumption.
-apply (incl_app SUB (fst (struct_OC_app _ PSV))).
-apply (snd (struct_OC_app _ PSV)).
+1 : apply (incl_app SUB (fst (struct_OC_app _ PSV))).
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_wkn_r : 
-    forall (gamma delta : list formula) (phi : formula) (OC : constraint) (alpha: ordinal),
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha: ordinal),
         incl (vars_in phi) (OC_list OC) ->
             provable OC gamma delta alpha ->
                 provable OC gamma (phi :: delta) alpha.
 Proof.
-intros gamma delta phi OC alpha SUB [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi alpha SUB [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (wkn_r phi P) _).
 repeat split;
 try assumption.
-apply (fst (struct_OC_app _ PSV)).
-apply (incl_app SUB (snd (struct_OC_app _ PSV))).
+1 : apply (fst (struct_OC_app _ PSV)).
+1 : apply (incl_app SUB (snd (struct_OC_app _ PSV))).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 
@@ -1178,15 +1253,26 @@ Lemma ptree_reset :
                     provable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha ->
                         provable OC gamma delta alpha.
 Proof.
-intros gamma delta OC kappa alpha NING NIND ELT [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros gamma delta OC kappa alpha NING NIND ELT [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (rst kappa P) _).
 repeat split;
 try assumption.
 1 : apply (incl_tran (fst (struct_OC_app _ PSV))).
 2 : apply (incl_tran (snd (struct_OC_app _ PSV))).
-all : rewrite POC;
+1,2 : rewrite POC;
       apply incl_filter.
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_bnd_l : 
@@ -1195,23 +1281,34 @@ Lemma ptree_bnd_l :
             provable OC (phi :: gamma) delta alpha ->
                 provable OC ((bnd lambda kappa phi) :: gamma) delta alpha.
 Proof.
-intros OC gamma delta phi lambda kappa alpha rel [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi lambda kappa alpha rel [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (bnd_l phi lambda kappa P) _).
 repeat split;
 try assumption.
-- intros o IN.
-  apply in_app_or in IN as [[IN1 | IN2] | IN3].
-  + subst.
-    apply (OC_null _ _ _ rel).
-  + apply in_remove in IN2 as [IN2 _].
-    apply (fst (struct_OC_app _ PSV)).
-    rewrite PG.
-    apply in_or_app, or_introl, IN2.
-  + apply (fst (struct_OC_app _ PSV)).
-    rewrite PG.
-    apply in_or_app, or_intror, IN3.
-- apply (snd (struct_OC_app _ PSV)).
+1 : { intros o IN.
+      apply in_app_or in IN as [[IN1 | IN2] | IN3].
+      - subst.
+        apply (OC_null _ _ _ rel).
+      - apply in_remove in IN2 as [IN2 _].
+        apply (fst (struct_OC_app _ PSV)).
+        rewrite PG.
+        apply in_or_app, or_introl, IN2.
+      - apply (fst (struct_OC_app _ PSV)).
+        rewrite PG.
+        apply in_or_app, or_intror, IN3. }
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_bnd_r : 
@@ -1221,7 +1318,7 @@ Lemma ptree_bnd_r :
                 provable (add_fresh_child OC lambda kappa NEW KIN) gamma (phi :: delta) alpha ->
                     provable OC gamma ((bnd lambda kappa phi) :: delta) alpha.
 Proof.
-intros OC gamma delta phi lambda kappa alpha NEW KIN NING NIND [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi lambda kappa alpha NEW KIN NING NIND [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (bnd_r phi lambda kappa P) _).
 repeat split;
@@ -1235,11 +1332,11 @@ try assumption.
     subst.
     contradiction (NING (vars_in_list_is_used _ _ IN)).
     apply PG_app.    
-1 : intros o [EQ | IN].
-    - subst.
-      apply KIN.
-    - apply in_app_or in IN as [IN1 | IN2].
-      1 : apply  in_remove in IN1 as [IN1 _].
+1 : { intros o [EQ | IN].
+      1 : subst.
+          apply KIN.
+      1 : apply in_app_or in IN as [IN1 | IN2].
+          apply  in_remove in IN1 as [IN1 _].
       all : pose proof ((snd (struct_OC_app _ PSV)) o) as PD_app;
             rewrite PD, POC in PD_app;
             try specialize (PD_app (in_or_app _ _ _ (or_introl IN1)));
@@ -1247,10 +1344,21 @@ try assumption.
             unfold OC_list, add_fresh_child, projT1 in PD_app;
             destruct PD_app as [EQ | PD_app];
             subst.
-        * contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
-        * apply PD_app.
-        * contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
-        * apply PD_app.
+      1 : contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
+      1 : apply PD_app.
+      1 : contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
+      1 : apply PD_app. }
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_imp_l : 
@@ -1259,29 +1367,38 @@ Lemma ptree_imp_l :
             provable OC gamma (phi :: delta) alpha2 ->
                 provable OC ((imp phi psi) :: gamma) delta (omax alpha1 alpha2).
 Proof.
-intros OC gamma delta phi psi alpha1 alpha2 [P1 [[[[[P1SV P1Term] P1G] P1D] P1OC] P1Deg]] [P2 [[[[[P2SV P2Term] P2G] P2D] P2OC] P2Deg]].
+intros OC gamma delta phi psi alpha1 alpha2 [P1 [[[[[P1SV [P1End P1Loops]] P1G] P1D] P1OC] P1Deg]] [P2 [[[[[P2SV [P2End P2Loops]] P2G] P2D] P2OC] P2Deg]].
 subst.
 refine (existT _ (imp_l phi psi P1 P2) _).
 repeat split;
 try assumption.
-- intros o IN.
-  repeat apply in_app_or in IN as [IN | IN].
-  + rewrite <- P2OC.
+1 : intros o IN.
+    repeat apply in_app_or in IN as [IN | IN].
+1 : rewrite <- P2OC.
     apply (snd (struct_OC_app _ P2SV)).
     rewrite P2D.
     apply (in_or_app _ _ _ (or_introl IN)).
-  + apply (fst (struct_OC_app _ P1SV)).
+1 : apply (fst (struct_OC_app _ P1SV)).
     rewrite P1G.
     apply (in_or_app _ _ _ (or_introl IN)).
-  + rewrite <- P2OC.
+1 : rewrite <- P2OC.
     apply (fst (struct_OC_app _ P2SV)), IN.
-- apply (snd (struct_OC_app _ P1SV)).
-- intros PL PT IN.
-  unfold leaves in IN;
-  fold leaves in IN.
-  destruct (@in_app_bor _ ptree_pair_eq_dec _ _ _  IN) as [IN1 | IN2].
-  apply P1Term, IN1.
-  apply P2Term, IN2.
+1 : apply (snd (struct_OC_app _ P1SV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat P1End as EQ1.
+    pose proof Forall_eq_repeat P2End as EQ2.
+    rewrite map_app, EQ1, EQ2, <- repeat_app, decr_none_is_none, repeat_app, <- EQ1, <- EQ2, Forall_app.
+    apply (conj P1End P2End).
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat P1End as EQ1;
+      pose proof Forall_eq_repeat P2End as EQ2;
+      rewrite map_app, EQ1, EQ2, <- repeat_app, !map_length, (loop_traces_loop_length _ P1SV), (loop_traces_loop_length _ P2SV), repeat_app, (option_fill_app _ _ _ _ _ (repeat_length _ _) (repeat_length _ _)), !fill_none_is_triv in IN;
+      apply (in_app_bor (list_eq_dec ptree_eq_dec)) in IN as [IN1 | IN2];
+      try destruct (P1Loops _ IN1) as [SPLIT RST];
+      try destruct (P2Loops _ IN2) as [SPLIT RST].
+1,2 : apply SPLIT.
+1,2 : apply RST.
 Qed.
 
 Lemma ptree_imp_r : 
@@ -1289,25 +1406,36 @@ Lemma ptree_imp_r :
         provable OC (phi :: gamma) (psi :: delta) alpha ->
             provable OC gamma ((imp phi psi) :: delta) alpha.
 Proof.
-intros OC gamma delta phi psi alpha [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi psi alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (imp_r phi psi P) _).
 repeat split;
 try assumption.
-- refine (incl_tran _ (fst (struct_OC_app _ PSV))).
-  rewrite PG.
-  apply (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror IN))).
-- intros o IN.
-  repeat apply in_app_or in IN as [IN | IN].
-  + apply (fst (struct_OC_app _ PSV)).
+1 : refine (incl_tran _ (fst (struct_OC_app _ PSV))).
+    rewrite PG.
+    apply (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror IN))).
+1 : intros o IN.
+    repeat apply in_app_or in IN as [IN | IN].
+1 : apply (fst (struct_OC_app _ PSV)).
     rewrite PG.
     apply (in_or_app _ _ _ (or_introl IN)).
-  + apply (snd (struct_OC_app _ PSV)).
+1 : apply (snd (struct_OC_app _ PSV)).
     rewrite PD.
     apply (in_or_app _ _ _ (or_introl IN)).
-  + apply (snd (struct_OC_app _ PSV)).
+1 : apply (snd (struct_OC_app _ PSV)).
     rewrite PD.
     apply (in_or_app _ _ _ (or_intror IN)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_cut : 
@@ -1316,20 +1444,29 @@ Lemma ptree_cut :
             provable OC (phi :: gamma) delta alpha2 ->
                 provable OC gamma delta (omax (omax alpha1 alpha2) (oadd (num_conn phi) (cast (nat_ord 1)))).
 Proof.
-intros OC gamma delta phi alpha1 alpha2 [P1 [[[[[P1SV P1Term] P1G] P1D] P1OC] P1Deg]] [P2 [[[[[P2SV P2Term] P2G] P2D] P2OC] P2Deg]].
+intros OC gamma delta phi alpha1 alpha2 [P1 [[[[[P1SV [P1End P1Loops]] P1G] P1D] P1OC] P1Deg]] [P2 [[[[[P2SV [P2End P2Loops]] P2G] P2D] P2OC] P2Deg]].
 subst.
 refine (existT _ (cut phi P1 P2) _).
 repeat split;
 try assumption.
-apply (fst (struct_OC_app _ P1SV)).
-rewrite <- P2OC.
-apply (snd (struct_OC_app _ P2SV)).
-intros PL PT IN.
-unfold leaves in IN;
-fold leaves in IN.
-destruct (@in_app_bor _ ptree_pair_eq_dec _ _ _  IN) as [IN1 | IN2].
-apply P1Term, IN1.
-apply P2Term, IN2.
+1 : apply (fst (struct_OC_app _ P1SV)).
+1 : rewrite <- P2OC.
+    apply (snd (struct_OC_app _ P2SV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat P1End as EQ1.
+    pose proof Forall_eq_repeat P2End as EQ2.
+    rewrite map_app, EQ1, EQ2, <- repeat_app, decr_none_is_none, repeat_app, <- EQ1, <- EQ2, Forall_app.
+    apply (conj P1End P2End).
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat P1End as EQ1;
+      pose proof Forall_eq_repeat P2End as EQ2;
+      rewrite map_app, EQ1, EQ2, <- repeat_app, !map_length, (loop_traces_loop_length _ P1SV), (loop_traces_loop_length _ P2SV), repeat_app, (option_fill_app _ _ _ _ _ (repeat_length _ _) (repeat_length _ _)), !fill_none_is_triv in IN;
+      apply (in_app_bor (list_eq_dec ptree_eq_dec)) in IN as [IN1 | IN2];
+      try destruct (P1Loops _ IN1) as [SPLIT RST];
+      try destruct (P2Loops _ IN2) as [SPLIT RST].
+1,2 : apply SPLIT.
+1,2 : apply RST.
 Qed.
 
 Lemma commutative_left_aux :
@@ -1554,11 +1691,12 @@ Master destruct tactic.
 
 1-2 : destruct PSV.
 3 : destruct PSV as [PG_app PD_app].
-4-9 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-10 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
-11 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
-12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
-13 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
-14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-15 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+4-9 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+10 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
+11 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
+12 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
+13 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+14 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+15 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+
 *)
