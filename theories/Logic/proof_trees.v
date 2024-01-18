@@ -18,7 +18,7 @@ Inductive ptree : Type :=
 | pred : forall (pn : predicate), pure_predicate pn = true -> ptree
 
 
-| loop_head : forall (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (P_Target : ptree), ptree
+| loop_head : forall (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (l : nat), ptree
 
 (*| deg_up : forall (OC : constraint) (gamma delta : list formula) (alpha beta : ordinal) (LT : ord_lt alpha beta) (P' : ptree), ptree *)
 
@@ -57,7 +57,7 @@ match P with
 
 | pred pn pure => [prd pn pure]
 
-| loop_head OC gamma delta alpha P_Target => gamma
+| loop_head OC gamma delta alpha l => gamma
 
 
 | @con_l OC gamma delta phi alpha P' => phi :: gamma
@@ -96,7 +96,7 @@ match P with
 
 | pred pn pure => [prd pn pure]
 
-| loop_head OC gamma delta alpha P_Target => delta
+| loop_head OC gamma delta alpha l => delta
 
 | @con_l OC gamma delta phi alpha P' => delta
 
@@ -134,7 +134,7 @@ match P with
 
 | pred pn pure => empty
 
-| loop_head OC gamma delta alpha P_Target => OC
+| loop_head OC gamma delta alpha l => OC
 
 | @con_l OC gamma delta phi alpha P' => OC
 
@@ -172,7 +172,7 @@ match P with
 
 | pred pn pure => cast Zero
 
-| loop_head OC gamma delta alpha P_Target => alpha
+| loop_head OC gamma delta alpha l => alpha
 
 | @con_l OC gamma delta phi alpha P' => alpha
 
@@ -203,14 +203,14 @@ match P with
 | @cut OC gamma delta phi alpha1 alpha2 P1 P2 => omax (omax alpha1 alpha2) (oadd (num_conn phi) (cast (nat_ord 1)))
 end.
 
-
+(*
 Fixpoint ptree_height (P : ptree) : nat :=
 match P with
 | bot => 1
 
 | pred pn pure => 1
 
-| loop_head OC gamma delta alpha P_Target => S (ptree_height P_Target)
+| loop_head OC gamma delta alpha l => S (ptree_height l)
 
 | @con_l OC gamma delta phi alpha P' => S (ptree_height P')
 
@@ -240,6 +240,7 @@ match P with
 
 | @cut OC gamma delta phi alpha1 alpha2 P1 P2 => S (max (ptree_height P1) (ptree_height P2))
 end.
+*)
 
 Lemma ptree_eq_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
 Proof.
@@ -267,6 +268,7 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (IHP1_2 P2_2) as [EQ2 | NE];
       try destruct (prd_eq_dec pn pn0) as [EQP | NE];
       try destruct (constraint_eq_dec OC OC0) as [EQO | NE];
+      try destruct (nat_eq_dec l l0) as [EQLEN | NE];
 			try destruct (nat_eq_dec v v0) as [EQV | NE];
 			try destruct (nat_eq_dec v1 v0) as [EQV1 | NE];
 			try destruct (nat_eq_dec v2 v3) as [EQV2 | NE];
@@ -301,13 +303,14 @@ apply left, eq_refl.
 all : right; intros FAL; apply NE; inversion FAL; reflexivity.
 Qed.
 
+(*
 Fixpoint ptree_descends_from (P Source : ptree) : bool :=
 match P with
 | bot => false
 
 | pred pn pure => false
 
-| loop_head OC gamma delta alpha P_Target => false
+| loop_head OC gamma delta alpha l => false
 
 | con_l phi P' => if ptree_eq_dec P' Source then true else ptree_descends_from P' Source
 
@@ -337,15 +340,17 @@ match P with
 
 | cut phi P1 P2 => if ptree_eq_dec P1 Source then true else if ptree_eq_dec P2 Source then true else (ptree_descends_from P1 Source || ptree_descends_from P2 Source)
 end.
+*)
 
+(*
 Fixpoint ptree_equiv (P1 P2 : ptree) : Prop :=
 match P1, P2 with
 | bot, bot => True
 
 | pred pn1 pure1, pred pn2 pure2 => prd_eqb pn1 pn2 = true
 
-| loop_head OC1 gamma1 delta1 alpha1 P_Target1, loop_head OC2 gamma2 delta2 alpha2 P_Target2 =>
-    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ (P_Target1 = P_Target2 \/ P_Target2 = bot) /\ alpha1 = alpha2
+| loop_head OC1 gamma1 delta1 alpha1 l1, loop_head OC2 gamma2 delta2 alpha2 l2 =>
+    OC1 = OC2 /\ gamma1 = gamma2 /\ delta1 = delta2 /\ (l1 = l2 \/ l2 = bot) /\ alpha1 = alpha2
 
 | con_l phi1 P1, con_l phi2 P2 => phi1 = phi2 /\ ptree_equiv P1 P2
 
@@ -377,14 +382,16 @@ match P1, P2 with
 
 | _ , _ => False
 end.
+*)
 
+(*
 Fixpoint leaves (P : ptree) : list (ptree * ptree) :=
 match P with
 | bot => []
 
 | pred pn pure => []
 
-| loop_head OC gamma delta alpha P_Target => [pair P P_Target]
+| loop_head OC gamma delta alpha l => [pair P l]
 
 | con_l phi P' => leaves P'
 
@@ -414,7 +421,9 @@ match P with
 
 | cut phi P1 P2 => leaves P1 ++ leaves P2
 end.
+*)
 
+(*
 Definition path_marker := list bool.
 
 Fixpoint path_fit (P : ptree) (M : path_marker) : list ptree :=
@@ -423,7 +432,7 @@ match P, M with
 
 | pred pn pure, [true] => [P]
 
-| loop_head OC gamma delta alpha P_Target, [true] => [P]
+| loop_head OC gamma delta alpha l, [true] => [P]
 
 | con_l phi P', true :: M' => P :: path_fit P' M'
 
@@ -459,6 +468,156 @@ match P, M with
 
 | _ , _ => []
 end.
+*)
+
+Definition option_decr (ON : option nat) : option nat :=
+match ON with
+| Some (S n) => Some n
+| _ => None
+end.
+
+Fixpoint loop_traces (P : ptree) : list (option nat) :=
+match P with
+| bot => []
+
+| pred pn pure => []
+
+| loop_head OC gamma delta alpha l => [Some (S l)]
+
+| con_l phi P' => map option_decr (loop_traces P')
+
+| con_r phi P' => map option_decr (loop_traces P')
+
+| ex_l n P' => map option_decr (loop_traces P')
+
+| ex_r n P' => map option_decr (loop_traces P')
+
+| wkn_l phi P' => map option_decr (loop_traces P')
+
+| wkn_r phi P' => map option_decr (loop_traces P')
+
+| rst kappa P' => map option_decr (loop_traces P')
+
+| bnd_l phi lambda kappa P' => map option_decr (loop_traces P')
+
+| bnd_r phi lambda kappa P' => map option_decr (loop_traces P')
+
+| imp_l phi psi P1 P2 => map option_decr (loop_traces P1 ++ loop_traces P2)
+
+| imp_r phi psi P' => map option_decr (loop_traces P')
+
+| cut phi P1 P2 => map option_decr (loop_traces P1 ++ loop_traces P2)
+end.
+
+Fixpoint option_fill {A B : Type} (a : A) (LOB : list (option B)) (LLA : list (list A)) : list (list A) :=
+match LOB, LLA with
+| Some B :: LOB', LA :: LLA' => (a :: LA) :: (option_fill a LOB' LLA')
+| None :: LOB', LA :: LLA' => LA :: (option_fill a LOB' LLA')
+| _, _ => []
+end.
+
+Fixpoint loops (P : ptree) : list (list ptree) :=
+match P with
+| bot => []
+
+| pred pn pure => []
+
+| loop_head OC gamma delta alpha l => [[P]]
+
+| con_l phi P' => option_fill P (loop_traces P) (loops P')
+
+| con_r phi P' => option_fill P (loop_traces P) (loops P')
+
+| ex_l n P' => option_fill P (loop_traces P) (loops P')
+
+| ex_r n P' => option_fill P (loop_traces P) (loops P')
+
+| wkn_l phi P' => option_fill P (loop_traces P) (loops P')
+
+| wkn_r phi P' => option_fill P (loop_traces P) (loops P')
+
+| rst kappa P' => option_fill P (loop_traces P) (loops P')
+
+| bnd_l phi lambda kappa P' => option_fill P (loop_traces P) (loops P')
+
+| bnd_r phi lambda kappa P' => option_fill P (loop_traces P) (loops P')
+
+| imp_l phi psi P1 P2 => option_fill P (loop_traces P) (loops P1 ++ loops P2)
+
+| imp_r phi psi P' => option_fill P (loop_traces P) (loops P')
+
+| cut phi P1 P2 => option_fill P (loop_traces P) (loops P1 ++ loops P2)
+end.
+
+(*
+Fixpoint traces (P : ptree) : list (option (list ptree)) :=
+match P with
+| bot => [None]
+
+| pred pn pure => [None]
+
+| loop_head OC gamma delta alpha l => [Some [P]]
+
+| con_l phi P' => map (option_map (fun L => P :: L)) (traces P')
+
+| con_r phi P' => map (option_map (fun L => P :: L)) (traces P')
+
+| ex_l n P' => map (option_map (fun L => P :: L)) (traces P')
+
+| ex_r n P' => map (option_map (fun L => P :: L)) (traces P')
+
+| wkn_l phi P' => map (option_map (fun L => P :: L)) (traces P')
+
+| wkn_r phi P' => map (option_map (fun L => P :: L)) (traces P')
+
+| rst kappa P' => map (option_map (fun L => P :: L)) (traces P')
+
+| bnd_l phi lambda kappa P' => map (option_map (fun L => P :: L)) (traces P')
+
+| bnd_r phi lambda kappa P' => map (option_map (fun L => P :: L)) (traces P')
+
+| imp_l phi psi P1 P2 => map (option_map (fun L => P :: L)) (traces P1 ++ traces P2)
+
+| imp_r phi psi P' => map (option_map (fun L => P :: L)) (traces P')
+
+| cut phi P1 P2 => map (option_map (fun L => P :: L)) (traces P1 ++ traces P2)
+end.
+
+Fixpoint loop_lengths (P : ptree) : list (option nat) :=
+match P with
+| bot => [None]
+
+| pred pn pure => [None]
+
+| loop_head OC gamma delta alpha l => [Some (S l)]
+
+| con_l phi P' => loop_lengths P'
+
+| con_r phi P' => loop_lengths P'
+
+| ex_l n P' => loop_lengths P'
+
+| ex_r n P' => loop_lengths P'
+
+| wkn_l phi P' => loop_lengths P'
+
+| wkn_r phi P' => loop_lengths P'
+
+| rst kappa P' => loop_lengths P'
+
+| bnd_l phi lambda kappa P' => loop_lengths P'
+
+| bnd_r phi lambda kappa P' => loop_lengths P'
+
+| imp_l phi psi P1 P2 => loop_lengths P1 ++ loop_lengths P2
+
+| imp_r phi psi P' => loop_lengths P'
+
+| cut phi P1 P2 => loop_lengths P1 ++ loop_lengths P2
+end.
+
+Definition loops (P : ptree) : list (list ptree) := map (fun L : (nat * (list ptree)) => firstn (fst L) (snd L)) (combine (simplify (loop_lengths P)) (simplify (traces P))).
+*)
 
 Definition applicable (OC : constraint) (P : ptree) : Prop := (incl (flat_map vars_in (ptree_left P)) (OC_list OC)) * (incl (flat_map vars_in (ptree_right P)) (OC_list OC)).
 
@@ -468,37 +627,38 @@ match P with
 
 | pred P pure => true = true
 
-| loop_head OC gamma delta alpha P_Target => (struct_valid P_Target) * applicable OC P * ((P_Target = bot) + ((P_Target <> bot) * (ptree_left P_Target = gamma) * (ptree_right P_Target = delta) * (ptree_constraint P_Target = OC) * (ptree_deg P_Target = alpha)))
+| loop_head OC gamma delta alpha l => applicable OC P
 
-| @con_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @con_l OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @con_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
-
-
-| @ex_l OC gamma delta n alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
-
-| @ex_r OC gamma delta n alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @con_r OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
 
-| @wkn_l OC gamma delta phi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @ex_l OC gamma delta n alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @wkn_r OC gamma delta phi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
-
-| @rst OC gamma delta kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha)
-
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha)
-
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha)
+| @ex_r OC gamma delta n alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
 
-| @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => struct_valid P1 * struct_valid P2 * applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2)
+| @wkn_l OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @imp_r OC gamma delta phi psi alpha P' => struct_valid P' * applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = psi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha)
+| @wkn_r OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+
+| @rst OC gamma delta kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
+
+| @bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha))
+
+| @bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
 
 
-| @cut OC gamma delta phi alpha1 alpha2 P1 P2 => struct_valid P1 * struct_valid P2 * applicable OC P * (ptree_left P1 = gamma) * (ptree_right P1 = phi :: delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = phi :: gamma) * (ptree_right P2 = delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2)
+| @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => (struct_valid P1 * struct_valid P2) * (applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
+
+| @imp_r OC gamma delta phi psi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = psi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+
+
+| @cut OC gamma delta phi alpha1 alpha2 P1 P2 => (struct_valid P1 * struct_valid P2) * (applicable OC P * (ptree_left P1 = gamma) * (ptree_right P1 = phi :: delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = phi :: gamma) * (ptree_right P2 = delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
 end.
 
+(*
 Lemma path_fit_nil :
     forall (P : ptree),
         path_fit P [] = [].
@@ -516,11 +676,11 @@ reflexivity.
 Qed.
 
 Lemma descends_is_path :
-    forall (P_Target P_Source : ptree),
-        ptree_descends_from P_Target P_Source = true ->
-            {M : path_marker & {L : list ptree & path_fit P_Target M = P_Target :: L ++ [P_Source]}}.
+    forall (l P_Source : ptree),
+        ptree_descends_from l P_Source = true ->
+            {M : path_marker & {L : list ptree & path_fit l M = l :: L ++ [P_Source]}}.
 Proof.
-induction P_Target;
+induction l;
 intros P_Source DESC.
 
 all : unfold ptree_descends_from in DESC;
@@ -528,18 +688,18 @@ all : unfold ptree_descends_from in DESC;
 
 1-3 : inversion DESC.
 
-12 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
+12 :  { case (ptree_eq_dec l1 P_Source) as [EQ1 | NE1];
         subst.
         refine (existT _ [false; true] (existT _ [] _)).
-        2 : case (ptree_eq_dec P_Target2 P_Source) as [EQ2 | NE2];
+        2 : case (ptree_eq_dec l2 P_Source) as [EQ2 | NE2];
             subst.
         2 : refine (existT _ [true; true] (existT _ [] _)).
         3 : unfold "||" in DESC;
-            case (ptree_descends_from P_Target1 P_Source) eqn:DESC1.
-        3 : destruct (IHP_Target1 _ DESC1) as [M [L EQ]];
-            refine (existT _ (false :: M) (existT _ (P_Target1 :: L) _)).
-        4 : destruct (IHP_Target2 _ DESC) as [M [L EQ]];
-            refine (existT _ (true :: M) (existT _ (P_Target2 :: L) _)).
+            case (ptree_descends_from l1 P_Source) eqn:DESC1.
+        3 : destruct (IHl1 _ DESC1) as [M [L EQ]];
+            refine (existT _ (false :: M) (existT _ (l1 :: L) _)).
+        4 : destruct (IHl2 _ DESC) as [M [L EQ]];
+            refine (existT _ (true :: M) (existT _ (l2 :: L) _)).
         all : try rewrite app_nil_l;
               unfold path_fit;
               fold path_fit;
@@ -547,18 +707,18 @@ all : unfold ptree_descends_from in DESC;
               try rewrite EQ;
               reflexivity. }
 
-10 :  { case (ptree_eq_dec P_Target1 P_Source) as [EQ1 | NE1];
+10 :  { case (ptree_eq_dec l1 P_Source) as [EQ1 | NE1];
         subst.
         refine (existT _ [false; true] (existT _ [] _)).
-        2 : case (ptree_eq_dec P_Target2 P_Source) as [EQ2 | NE2];
+        2 : case (ptree_eq_dec l2 P_Source) as [EQ2 | NE2];
             subst.
         2 : refine (existT _ [true; true] (existT _ [] _)).
         3 : unfold "||" in DESC;
-            case (ptree_descends_from P_Target1 P_Source) eqn:DESC1.
-        3 : destruct (IHP_Target1 _ DESC1) as [M [L EQ]];
-            refine (existT _ (false :: M) (existT _ (P_Target1 :: L) _)).
-        4 : destruct (IHP_Target2 _ DESC) as [M [L EQ]];
-            refine (existT _ (true :: M) (existT _ (P_Target2 :: L) _)).
+            case (ptree_descends_from l1 P_Source) eqn:DESC1.
+        3 : destruct (IHl1 _ DESC1) as [M [L EQ]];
+            refine (existT _ (false :: M) (existT _ (l1 :: L) _)).
+        4 : destruct (IHl2 _ DESC) as [M [L EQ]];
+            refine (existT _ (true :: M) (existT _ (l2 :: L) _)).
         all : try rewrite app_nil_l;
               unfold path_fit;
               fold path_fit;
@@ -566,7 +726,7 @@ all : unfold ptree_descends_from in DESC;
               try rewrite EQ;
               reflexivity. }
 
-all : case (ptree_eq_dec P_Target P_Source) as [EQ | NE];
+all : case (ptree_eq_dec l P_Source) as [EQ | NE];
       subst.
 
 1,3,5,7,9,11,13,15,17,19 :
@@ -577,13 +737,14 @@ all : case (ptree_eq_dec P_Target P_Source) as [EQ | NE];
   rewrite path_fit_single;
   reflexivity.
 
-all : destruct (IHP_Target _ DESC) as [M [L EQ]];
-      refine (existT _ (true :: M) (existT _ (P_Target :: L) _));
+all : destruct (IHl _ DESC) as [M [L EQ]];
+      refine (existT _ (true :: M) (existT _ (l :: L) _));
       unfold path_fit;
       fold path_fit;
       rewrite EQ;
       reflexivity.
 Defined.  
+*)
 
 Definition resets_var (P : ptree) (lambda : ovar) : Prop :=
 match P with
@@ -591,17 +752,108 @@ match P with
 | _ => False
 end.
 
+(*
 Definition valid (P : ptree) : Type :=
   (struct_valid P) *
-    (forall (P_Leaf P_Target : ptree) (IN : In (pair P_Leaf P_Target) (leaves P)),
+    (forall (P_Leaf l : ptree) (IN : In (pair P_Leaf l) (leaves P)),
         {P_Base : ptree &
-            ((ptree_equiv P_Base P_Target) *
+            ((ptree_equiv P_Base l) *
             {DESC : (ptree_descends_from P_Base P_Leaf = true) &
                 {kappa : ovar & 
                     (forall (P_path : ptree),
                         In P_path (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) ->
                             OC_elt (ptree_constraint P_path) kappa) *
                     { P_reset : ptree & In P_reset (path_fit P_Base (projT1 (descends_is_path P_Base P_Leaf DESC))) /\ resets_var P_reset kappa}}})%type}).
+*)
+
+(*
+Lemma loop_length_ge_1_aux :
+    forall (P : ptree) (len : nat),
+        In len (simplify (loop_lengths P)) ->
+            1 <= len.
+Proof.
+induction P;
+intros len IN;
+unfold loop_lengths, simplify in IN;
+fold loop_lengths @simplify in IN.
+1-2 : inversion IN.
+1 : apply in_single in IN.
+    rewrite IN.
+    lia.
+all : try apply (IHP _ IN);
+      rewrite simplify_app in IN;
+      apply in_app_or in IN as [IN1 | IN2];
+      try apply (IHP1 _ IN1);
+      apply (IHP2 _ IN2).
+Qed.
+
+Lemma loop_length_ge_1 :
+    forall (P : ptree) (Loop : list ptree),
+        In Loop (loops P) ->
+            1 <= length Loop.
+Proof.
+induction P;
+intros Loop IN.
+1,2 : inversion IN.
+1 : unfold loops, traces, loop_lengths, combine, map, fst, snd, firstn, simplify in IN;
+    fold (@firstn ptree) in IN.
+    rewrite firstn_nil in IN.
+    apply in_single in IN.
+    rewrite IN.
+    reflexivity.
+all : unfold loops, traces, loop_lengths in *;
+      fold traces loop_lengths in *;
+      rewrite simplify_map_comm in IN;
+      apply in_map_iff in IN as [[Loop_len Loop_elt] [EQ IN]];
+      unfold fst, snd in EQ;
+      apply in_combine_l in IN as INL;
+      apply in_combine_r in IN as INR;
+      apply in_map_iff in INR as [Loop_sub_elt [EQ' IN']];
+      rewrite <- EQ, <- EQ';
+      try rewrite simplify_app in INL;
+      try apply in_app_or in INL as [INL1 | INL2];
+      try pose proof (loop_length_ge_1_aux _ _ INL) as LE;
+      try pose proof (loop_length_ge_1_aux _ _ INL1) as LE;
+      try pose proof (loop_length_ge_1_aux _ _ INL2) as LE;
+      destruct Loop_len;
+      inversion LE;
+      unfold firstn, length;
+      lia.
+Qed.
+*)
+
+(*
+Definition valid (P : ptree) : Type :=
+  (struct_valid P) *
+  (simplify (loop_lengths P) = map (@length ptree) (loops P)) *
+  (forall (Loop : list ptree) (IN : In Loop (loops P)),
+      { L_Start : ptree & { L_End : ptree & { L_Mid : list ptree & Loop = L_Start :: L_Mid ++ [L_End] /\
+      (ptree_constraint L_Start = ptree_constraint L_End) *
+      (ptree_left L_Start = ptree_left L_End) *
+      (ptree_right L_Start = ptree_right L_End) *
+      (ptree_deg L_Start = ptree_deg L_End)}}} *
+      {kappa : ovar & 
+          (forall (P_loop : ptree),
+              In P_loop Loop ->
+                  OC_elt (ptree_constraint P_loop) kappa) *
+          { P_reset : ptree & In P_reset Loop}})%type.
+*)
+
+Definition valid (P : ptree) : Type :=
+  (struct_valid P) *
+  ((Forall (eq None) (map option_decr (loop_traces P))) *
+  (forall (Loop : list ptree) (IN : In Loop (loops P)),
+      { L_Start : ptree & { L_End : ptree & { L_Mid : list ptree & Loop = L_Start :: L_Mid ++ [L_End] /\
+      (ptree_constraint L_Start = ptree_constraint L_End) *
+      (ptree_left L_Start = ptree_left L_End) *
+      (ptree_right L_Start = ptree_right L_End) *
+      (ptree_deg L_Start = ptree_deg L_End)}}} *
+      {kappa : ovar & 
+          (forall (P_loop : ptree),
+              In P_loop Loop ->
+                  OC_elt (ptree_constraint P_loop) kappa) *
+          { P_reset : ptree & In P_reset Loop /\ resets_var P_reset kappa}})%type).
+
 
 Definition P_proves (P : ptree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
   (valid P) * (ptree_left P = gamma) * (ptree_right P = delta) * (ptree_constraint P = OC) * (ptree_deg P = alpha).
@@ -618,14 +870,14 @@ induction P;
 intros PSV.
 
 1-2 : destruct PSV.
-3 : destruct PSV as [[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]].
-5-10 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-11 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
-12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
-13 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
-14 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
-15 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-16 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+3 : destruct PSV as [PG_app PD_app].
+4-9 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+10 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
+11 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
+12 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
+13 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+14 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+15 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
 
 all : repeat split;
       unfold ptree_left, ptree_right, flat_map, vars_in;
@@ -645,20 +897,160 @@ all : try apply PG_app;
       intros o.
 Qed.
 
+(*
+Lemma test {A : Type} {LA : list (nat * list A)} : (map (@length A) (map (fun L : nat * list A => firstn (fst L) (snd L)) LA) = map (fun L => Nat.min (fst L) (length (snd L))) LA).
+Proof.
+induction LA.
+reflexivity.
+unfold map in *.
+rewrite firstn_length, IHLA.
+reflexivity.
+Qed.
+
+Lemma nat_min_S_1 :
+    forall (n : nat),
+        Nat.min (S n) 1 = 1.
+Proof.
+induction n;
+reflexivity.
+Qed.
+*)
+
+Lemma option_fill_incl :
+    forall (LON : list (option nat)) (LP : list ptree) (LLP : list (list ptree)) (P : ptree),
+        In LP (option_fill P LON LLP) ->
+            In LP LLP + {LP' & LP = P :: LP' /\ In LP' LLP}.
+Proof.
+induction LON as [ | [ n | ] LON];
+intros LP LLP P INP;
+unfold option_fill in INP;
+fold @option_fill in INP;
+induction LLP;
+try contradiction INP;
+rewrite <- (app_nil_l (option_fill _ _ _)), app_comm_cons in INP;
+apply (in_app_bor (list_eq_dec ptree_eq_dec)) in INP;
+destruct INP as [IN1 | IN2];
+try apply in_single in IN1.
+3 : apply inl, or_introl, eq_sym, IN1.
+1 : apply inr, (existT _ a (conj IN1 (or_introl eq_refl))).
+all : destruct (IHLON _ _ _ IN2) as [IN3 | [LP' [EQ IN4]]].
+1,3 : apply inl, or_intror, IN3.
+all : apply inr, (existT _ LP' (conj EQ (or_intror IN4))).
+Qed.
+
+Lemma option_fill_len {A B : Type} :
+forall (LOB : list (option B)) (LLA : list (list A)) (a : A),
+        length (LOB) = length (LLA) ->
+            length (option_fill a LOB LLA) = length LOB.
+Proof.
+induction LOB as [ | [b | ] LOB];
+destruct LLA as [ | LA LLA];
+intros a EQ.
+1 : reflexivity.
+all : unfold option_fill, length;
+      fold @option_fill (@length (list A)) (@length (option B));
+      inversion EQ as [EQ'];
+      rewrite (IHLOB _ _ EQ');
+      reflexivity.
+Qed.
+
+Lemma loop_traces_loop_length :
+    forall (P : ptree),
+        struct_valid P ->
+            length (loop_traces P) = length (loops P).
+Proof.
+induction P;
+intros PSV.
+1-3 : reflexivity.
+all : destruct PSV as [PSV _];
+      unfold loops, loop_traces;
+      fold loop_traces loops;
+      apply eq_sym, option_fill_len;
+      rewrite map_length;
+      try apply (IHP PSV);
+      destruct PSV as [P1SV P2SV];
+      rewrite !app_length, (IHP1 P1SV), (IHP2 P2SV);
+      reflexivity.
+Qed.
+
+Lemma decr_none_is_none :
+    forall (n : nat),
+        map option_decr (repeat None n) = repeat None n.
+Proof.
+induction n.
+reflexivity.
+unfold repeat;
+fold (repeat (@None nat) n);
+unfold map;
+fold (map option_decr).
+rewrite IHn.
+reflexivity.
+Qed.
+
+Lemma fill_none_is_triv :
+    forall (P : ptree) (LP : list (list ptree)),
+        option_fill P (repeat (@None nat) (length LP)) LP = LP.
+Proof.
+intros P.
+induction LP.
+reflexivity.
+unfold length, repeat, option_fill.
+rewrite <- IHLP at 3.
+reflexivity.
+Qed.
+
+(*
+Lemma valid_option_null :
+    forall (P : ptree),
+        valid P ->
+            (map option_decr (loop_traces P)) = repeat None (length (loop_traces P)).
+Proof.
+induction P;
+intros [PSV [PEnd PLoops]];
+unfold loops in PLoops;
+fold loops in PLoops;
+unfold loop_traces;
+fold loop_traces.
+1,2 : reflexivity.
+1 : specialize (PLoops _ (or_introl eq_refl)) as [_ [kappa [_ [P [INP RST]]]]].
+    apply in_single in INP.
+    subst.
+    inversion RST.
+all : rewrite map_length.
+      rewrite IHP.
+      apply decr_none_is_none.
+      destruct PSV as [PSV _].
+      split.
+      apply PSV.
+      unfold loop_traces in PLoops;
+      fold loop_traces in PLoops.
+*)
+
 Lemma ptree_con_l :
     forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha : ordinal),
         provable OC (phi :: phi :: gamma) delta alpha ->
             provable OC (phi :: gamma) delta alpha.
 Proof.
-intros OC gamma delta phi alpha [P [[[[[PSV PTerm] PG] PD] POC] PDeg]].
+intros OC gamma delta phi alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (con_l phi P) _).
 repeat split;
 try assumption.
-refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: phi :: gamma) (fun (A : formula) (IN : In A (phi :: gamma)) => (or_intror IN))) _).
-rewrite <- PG.
-apply (fst (struct_OC_app _ PSV)).
-apply (snd (struct_OC_app _ PSV)).
+1 : refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: phi :: gamma) (fun (A : formula) (IN : In A (phi :: gamma)) => (or_intror IN))) _).
+    rewrite <- PG.
+    apply (fst (struct_OC_app _ PSV)).
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
 Qed.
 
 Lemma ptree_con_r :
@@ -1161,12 +1553,12 @@ Qed.
 Master destruct tactic.
 
 1-2 : destruct PSV.
-3 : destruct PSV as [[PSV [PG_app PD_app]] [PBot | [[[[PRec PG] PD] POC] PDeg]]].
-5-10 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-11 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
-12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
-13 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
-14 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
-15 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
-16 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+3 : destruct PSV as [PG_app PD_app].
+4-9 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+10 : destruct PSV as [[[[[[[PSV [PG_app PD_app]] PG] PD] KNING] KNIND] [KIN POC]] PDeg].
+11 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] POC] POC_rel] PDeg].
+12 : destruct PSV as [[[[[[PSV [PG_app PD_app]] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg].
+13 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
+14 : destruct PSV as [[[[[PSV [PG_app PD_app]] PG] PD] POC] PDeg].
+15 : destruct PSV as [[[[[[[[[[P1SV P2SV] [PG_app PD_app]] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2].
 *)

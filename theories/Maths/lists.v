@@ -13,6 +13,76 @@ Open Scope list_scope.
 
 Import ListNotations.
 
+Fixpoint simplify {A : Type} (LL : list (option A)) : list A :=
+match LL with
+| [] => []
+| None :: LL' => simplify LL'
+| Some a :: LL' => a :: simplify LL'
+end.
+
+(*
+Lemma simplify_works {A : Type} {LL : list (list A)} : ~ In [] (simplify LL).
+Proof.
+induction LL.
+intros FAL.
+inversion FAL.
+intros FAL.
+apply IHLL.
+destruct a.
+apply FAL.
+destruct FAL as [FAL1 | FAL2].
+inversion FAL1.
+apply FAL2.
+Qed.
+
+Lemma simplify_sub {A : Type} {LL : list (list A)} {L : list A} :
+    In L (simplify LL) -> 
+        In L LL.
+Proof.
+induction LL;
+intros IN.
+inversion IN.
+destruct L.
+contradiction (simplify_works IN).
+destruct a.
+apply or_intror, IHLL, IN.
+destruct IN as [IN1 | IN2].
+apply or_introl, IN1.
+apply or_intror, IHLL, IN2.
+Qed.
+*)
+
+Lemma simplify_map_comm {A B : Type} :
+    forall (F : A -> B) (L : list (option A)),
+        simplify (map (option_map F) L) = map F (simplify L).
+Proof.
+intros F.
+induction L.
+reflexivity.
+destruct a;
+unfold simplify, map;
+fold @simplify (map F) (map (option_map F));
+unfold option_map at 1;
+rewrite IHL;
+reflexivity.
+Qed.
+
+Lemma simplify_app {A : Type} {L1 L2 : list (option A)} :
+    simplify (L1 ++ L2) = simplify L1 ++ simplify L2.
+Proof.
+revert L2.
+induction L1;
+intros L2.
+- rewrite !app_nil_l.
+  reflexivity.
+- destruct a;
+  rewrite <- app_comm_cons;
+  unfold simplify;
+  fold @simplify;
+  rewrite IHL1;
+  reflexivity.
+Qed.
+
 Lemma Exists_sig {A : Type} {L : list A} {P : A -> Prop} :
     (forall (a : A), {P a} + {~ P a}) ->
         Exists P L -> {a : A & In a L /\ P a}.
@@ -1256,7 +1326,7 @@ apply (NIN1 IN1).
 apply (NIN2 IN2).
 Qed.
 
-Lemma in_app_bor {A : Type} {DEC : forall (a b : A), {a = b} + {a <> b}} :
+Lemma in_app_bor {A : Type} (DEC : forall (a b : A), {a = b} + {a <> b}) :
     forall (L1 L2 : list A) (a : A),
         In a (L1 ++ L2) ->
             {In a L1} + {In a L2}.
