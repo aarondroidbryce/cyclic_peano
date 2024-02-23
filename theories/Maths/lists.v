@@ -20,6 +20,12 @@ match LL with
 | Some a :: LL' => a :: simplify LL'
 end.
 
+Fixpoint fzip {A B C : Type} (f : A -> B -> C) (LAB : list (A * B)) : list C :=
+match LAB with
+| [] => []
+| (a, b) :: LAB' => (f a b) :: fzip f LAB'
+end.
+
 (*
 Lemma simplify_works {A : Type} {LL : list (list A)} : ~ In [] (simplify LL).
 Proof.

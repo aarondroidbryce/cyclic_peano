@@ -3055,7 +3055,8 @@ Inductive ordinal : Type :=
 | cast : ord -> ordinal
 | assn : ovar -> ordinal
 | oadd : ordinal -> ordinal -> ordinal
-| omax : ordinal -> ordinal -> ordinal.
+| omax : ordinal -> ordinal -> ordinal
+| olim : ordinal.
 
 Lemma ord_eq_dec : forall x y : ord, {x = y} + {x <> y}.
 Proof.
@@ -3087,10 +3088,10 @@ destruct y;
 try destruct (ord_eq_dec o o0) as [[] | NE];
 try destruct (nat_eq_dec o o0) as [[] | NE].
 
-13,18 :  case (IHx1 y1) as [[] | NE1];
+15,21 :  case (IHx1 y1) as [[] | NE1];
          case (IHx2 y2) as [[] | NE2].
-1,7,13,17 : left;
-            reflexivity.
+1,8,15,19,33 :  left;
+                reflexivity.
 
 all : right;
       intros FAL;

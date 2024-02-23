@@ -36,11 +36,9 @@ Inductive formula : Type :=
 | fal : formula
 | imp : formula -> formula -> formula
 | bnd : ovar -> ovar -> formula -> formula
-| prd : forall (pn : predicate), pure_predicate pn = true -> formula.
-(*
-| mu : forall n, (predicate n) -> formula -> formula
-| muk : forall n, (predicate n) -> ordinal -> formula -> formula.
-*)
+| prd : forall (pn : predicate), pure_predicate pn = true -> formula
+| nu : forall (i : nat), formula -> formula
+| nuk : forall (i : nat), ovar -> formula -> formula.
 
 Fixpoint num_conn (A : formula) : ordinal :=
 match A with
@@ -48,6 +46,8 @@ match A with
 | imp B C => oadd (oadd (num_conn B) (num_conn C)) (cast (nat_ord 1))
 | bnd o1 o2 B => oadd (num_conn B) (cast (nat_ord 1))
 | prd pn pure => cast Zero
+| nu i phi => oadd olim (num_conn phi)
+| nuk i kappa phi => oadd (assn kappa) (num_conn phi)
 end.
 
 Fixpoint vars_in (a : formula) : list ovar :=
@@ -56,6 +56,8 @@ match a with
 | imp B C => (vars_in B) ++ (vars_in C)
 | bnd o1 o2 B => o2 :: remove nat_eq_dec o1 (vars_in B)
 | prd pn pure => []
+| nu i phi => vars_in phi
+| nuk i kappa phi => kappa :: vars_in phi
 end.
 
 Fixpoint vars_used (a : formula) : list ovar :=
@@ -64,6 +66,8 @@ match a with
 | imp B C => (vars_used B) ++ (vars_used C)
 | bnd o1 o2 B => o2 :: vars_used B
 | prd pn pure => []
+| nu i phi => vars_used phi
+| nuk i kappa phi => kappa :: vars_used phi
 end.
 
 Definition prd_eqb (pn1 pn2 : predicate) : bool :=
@@ -79,15 +83,9 @@ match A1, A2 with
 | imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
 | bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
 | prd pn1 _, prd pn2 _ => prd_eqb pn1 pn2
+| nu i1 phi1, nu i2 phi2 => nat_eqb i1 i2 && form_eqb phi1 phi2
+| nuk i1 kappa1 phi1, nuk i2 kappa2 phi2 => nat_eqb i1 i2 && nat_eqb kappa1 kappa2 && form_eqb phi1 phi2
 | _, _ => false
-end.
-
-Fixpoint form_depth (phi : formula) : nat :=
-match phi with
-| fal => 0
-| imp B C => max (form_depth B) (form_depth C)
-| bnd o1 o2 B => form_depth B
-| prd pn pure => 0
 end.
 
 Lemma vars_in_is_used : 
@@ -100,6 +98,8 @@ fold vars_in vars_used.
 1,4 : intros o IN; apply IN.
 apply (incl_app_app IHphi1 IHphi2).
 apply incl_head, (incl_tran (incl_remove _ _) IHphi).
+apply IHphi.
+apply incl_head, IHphi.
 Qed.
 
 Lemma vars_not_used_not_in : 
@@ -202,6 +202,10 @@ try apply nat_eqb_eq in EQ1 as [].
 - apply prd_eqb_eq in EQ'.
   subst.
   rewrite (UIP  _ _ _ e e0).
+  reflexivity.
+- rewrite (IHA _ EQ0).
+  reflexivity.
+- rewrite (IHA _ EQ0).
   reflexivity.
 Qed.
 

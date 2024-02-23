@@ -18,7 +18,7 @@ Inductive ptree : Type :=
 | pred : forall (pn : predicate), pure_predicate pn = true -> ptree
 
 
-| loop_head : forall (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (l : nat), ptree
+| loop_head : forall (OC : constraint) (gamma delta : list (nat * ovar * formula)) (alpha : ordinal) (l : nat), ptree
 
 (*| deg_up : forall (OC : constraint) (gamma delta : list formula) (alpha beta : ordinal) (LT : ord_lt alpha beta) (P' : ptree), ptree *)
 
@@ -57,7 +57,7 @@ match P with
 
 | pred pn pure => [prd pn pure]
 
-| loop_head OC gamma delta alpha l => gamma
+| loop_head OC gamma delta alpha l => fzip (uncurry nuk) gamma
 
 
 | @con_l OC gamma delta phi alpha P' => phi :: gamma
@@ -96,7 +96,7 @@ match P with
 
 | pred pn pure => [prd pn pure]
 
-| loop_head OC gamma delta alpha l => delta
+| loop_head OC gamma delta alpha l => fzip (uncurry nuk) delta
 
 | @con_l OC gamma delta phi alpha P' => delta
 
@@ -172,7 +172,7 @@ match P with
 
 | pred pn pure => cast Zero
 
-| loop_head OC gamma delta alpha l => alpha
+| loop_head OC gamma delta alpha l => cast Zero
 
 | @con_l OC gamma delta phi alpha P' => alpha
 
@@ -242,6 +242,17 @@ match P with
 end.
 *)
 
+
+Lemma pair_eq_dec {A B : Type} (DECA : forall (a1 a2 : A), {a1 = a2} + {a1 <> a2}) (DECB : forall (b1 b2 : B), {b1 = b2} + {b1 <> b2}) : forall (X Y : A * B), {X = Y} + {X <> Y}.
+Proof.
+intros [A1 B1] [A2 B2].
+case (DECA A1 A2) as [EQ1 | NE].
+case (DECB B1 B2) as [EQ2 | NE].
+subst.
+apply left, eq_refl.
+all : right; intros FAL; apply NE; inversion FAL; reflexivity.
+Qed.
+
 Lemma ptree_eq_dec : forall (P1 P2 : ptree), {P1 = P2} + {P1 <> P2}.
 Proof.
 induction P1;
@@ -273,7 +284,9 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
 			try destruct (nat_eq_dec v1 v0) as [EQV1 | NE];
 			try destruct (nat_eq_dec v2 v3) as [EQV2 | NE];
       try destruct (list_eq_dec form_eq_dec gamma gamma0) as [EQG | NE];
+      try destruct (list_eq_dec (pair_eq_dec (pair_eq_dec nat_eq_dec nat_eq_dec) form_eq_dec) gamma gamma0) as [EQG | NE];
       try destruct (list_eq_dec form_eq_dec delta delta0) as [EQD | NE];
+      try destruct (list_eq_dec (pair_eq_dec (pair_eq_dec nat_eq_dec nat_eq_dec) form_eq_dec) delta delta0) as [EQD | NE];
 			try destruct (list_eq_dec form_eq_dec pi pi0) as [EQPI | NE];
 			try destruct (list_eq_dec form_eq_dec sigma sigma0) as [EQS | NE];
       try destruct (form_eq_dec phi phi0) as [EQP1 | NE];
@@ -291,16 +304,6 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       inversion FAL as [FAL'];
       repeat apply inj_pair2 in FAL';
       try contradiction NE.
-Qed.
-
-Lemma ptree_pair_eq_dec : forall (P1 P2 : ptree * ptree), {P1 = P2} + {P1 <> P2}.
-Proof.
-intros [P1 P2] [P3 P4].
-case (ptree_eq_dec P1 P3) as [EQ1 | NE].
-case (ptree_eq_dec P2 P4) as [EQ2 | NE].
-subst.
-apply left, eq_refl.
-all : right; intros FAL; apply NE; inversion FAL; reflexivity.
 Qed.
 
 (*
@@ -621,7 +624,7 @@ Definition loops (P : ptree) : list (list ptree) := map (fun L : (nat * (list pt
 
 Definition applicable (OC : constraint) (P : ptree) : Prop := (incl (flat_map vars_in (ptree_left P)) (OC_list OC)) * (incl (flat_map vars_in (ptree_right P)) (OC_list OC)).
 
-Fixpoint struct_valid (P : ptree) : Type :=
+Fixpoint well_struct (P : ptree) : Type :=
 match P with
 | bot => true = true
 
@@ -629,33 +632,33 @@ match P with
 
 | loop_head OC gamma delta alpha l => applicable OC P
 
-| @con_l OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+| @con_l OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @con_r OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
-
-
-| @ex_l OC gamma delta n alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
-
-| @ex_r OC gamma delta n alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+| @con_r OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: phi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
 
-| @wkn_l OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+| @ex_l OC gamma delta n alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @wkn_r OC gamma delta phi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
-
-| @rst OC gamma delta kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
-
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha))
-
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
+| @ex_r OC gamma delta n alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
 
-| @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => (struct_valid P1 * struct_valid P2) * (applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
+| @wkn_l OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @imp_r OC gamma delta phi psi alpha P' => struct_valid P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = psi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+| @wkn_r OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+
+| @rst OC gamma delta kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
+
+| @bnd_l OC gamma delta phi lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha))
+
+| @bnd_r OC gamma delta phi lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
 
 
-| @cut OC gamma delta phi alpha1 alpha2 P1 P2 => (struct_valid P1 * struct_valid P2) * (applicable OC P * (ptree_left P1 = gamma) * (ptree_right P1 = phi :: delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = phi :: gamma) * (ptree_right P2 = delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
+| @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => (well_struct P1 * well_struct P2) * (applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
+
+| @imp_r OC gamma delta phi psi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = psi :: delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+
+
+| @cut OC gamma delta phi alpha1 alpha2 P1 P2 => (well_struct P1 * well_struct P2) * (applicable OC P * (ptree_left P1 = gamma) * (ptree_right P1 = phi :: delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = phi :: gamma) * (ptree_right P2 = delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
 end.
 
 (*
@@ -753,8 +756,8 @@ match P with
 end.
 
 (*
-Definition valid (P : ptree) : Type :=
-  (struct_valid P) *
+Definition well_formed (P : ptree) : Type :=
+  (well_struct P) *
     (forall (P_Leaf l : ptree) (IN : In (pair P_Leaf l) (leaves P)),
         {P_Base : ptree &
             ((ptree_equiv P_Base l) *
@@ -823,8 +826,8 @@ Qed.
 *)
 
 (*
-Definition valid (P : ptree) : Type :=
-  (struct_valid P) *
+Definition well_formed (P : ptree) : Type :=
+  (well_struct P) *
   (simplify (loop_lengths P) = map (@length ptree) (loops P)) *
   (forall (Loop : list ptree) (IN : In Loop (loops P)),
       { L_Start : ptree & { L_End : ptree & { L_Mid : list ptree & Loop = L_Start :: L_Mid ++ [L_End] /\
@@ -839,15 +842,14 @@ Definition valid (P : ptree) : Type :=
           { P_reset : ptree & In P_reset Loop}})%type.
 *)
 
-Definition valid (P : ptree) : Type :=
-  (struct_valid P) *
+Definition well_formed (P : ptree) : Type :=
+  (well_struct P) *
   ((Forall (eq None) (map option_decr (loop_traces P))) *
   (forall (Loop : list ptree) (IN : In Loop (loops P)),
       { L_Start : ptree & { L_End : ptree & { L_Mid : list ptree & Loop = L_Start :: L_Mid ++ [L_End] /\
       (ptree_constraint L_Start = ptree_constraint L_End) *
       (ptree_left L_Start = ptree_left L_End) *
-      (ptree_right L_Start = ptree_right L_End) *
-      (ptree_deg L_Start = ptree_deg L_End)}}} *
+      (ptree_right L_Start = ptree_right L_End)}}} *
       {kappa : ovar & 
           (forall (P_loop : ptree),
               In P_loop Loop ->
@@ -856,14 +858,14 @@ Definition valid (P : ptree) : Type :=
 
 
 Definition P_proves (P : ptree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
-  (valid P) * (ptree_left P = gamma) * (ptree_right P = delta) * (ptree_constraint P = OC) * (ptree_deg P = alpha).
+  (well_formed P) * (ptree_left P = gamma) * (ptree_right P = delta) * (ptree_constraint P = OC) * (ptree_deg P = alpha).
 
 Definition provable (OC : constraint) (gamma delta : list formula) (alpha : ordinal) : Type :=
   {P : ptree & (P_proves P OC gamma delta alpha)}.
 
 Lemma struct_OC_app :
     forall (P : ptree),
-        struct_valid P ->
+        well_struct P ->
             applicable (ptree_constraint P) P.
 Proof.
 induction P;
@@ -956,7 +958,7 @@ Qed.
 
 Lemma loop_traces_loop_length :
     forall (P : ptree),
-        struct_valid P ->
+        well_struct P ->
             length (loop_traces P) = length (loops P).
 Proof.
 induction P;
@@ -1020,9 +1022,9 @@ all : destruct LLA1 as [ | LA LLA1 ];
 Qed.
 
 (*
-Lemma valid_option_null :
+Lemma well_formed_option_null :
     forall (P : ptree),
-        valid P ->
+        well_formed P ->
             (map option_decr (loop_traces P)) = repeat None (length (loop_traces P)).
 Proof.
 induction P;

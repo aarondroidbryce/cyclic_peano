@@ -614,6 +614,25 @@ try reflexivity.
       rewrite (IHphi _ _ IN NIN).
       apply andb_false_r.
 - contradiction (NIN IN).
+- unfold vars_in in *;
+  fold vars_in in *.
+  rewrite (IHphi _ _ IN NIN), andb_false_r.
+  reflexivity.
+- unfold vars_in in *;
+  fold vars_in in *.
+  assert (ov <> o) as NE.
+  { intros FAL.
+    apply NIN, or_introl, eq_sym, FAL. }
+  destruct IN as [EQ | IN].
+  + subst.  
+    case (nat_eqb o ov) eqn:FAL.
+    apply nat_eqb_eq in FAL.
+    contradiction (NE (eq_sym FAL)).
+    rewrite andb_false_r, andb_false_l.
+    reflexivity.
+  + apply (nin_head nat_eq_dec) in NIN.
+    rewrite (IHphi _ _ IN NIN), andb_false_r.
+    reflexivity.
 Qed.
 
 Lemma var_ne_sub_triv :
@@ -674,6 +693,25 @@ try reflexivity.
       rewrite (var_ne_neb _ _ _ IN NIN), andb_false_r.
       reflexivity.
 - contradiction (NIN IN).
+- unfold vars_in in *;
+  fold vars_in in *.
+  rewrite (var_ne_neb _ _ _ IN NIN), andb_false_r.
+  reflexivity.
+- unfold vars_in in *;
+  fold vars_in in *.
+  assert (ov <> o) as NE.
+  { intros FAL.
+    apply NIN, or_introl, eq_sym, FAL. }
+  destruct IN as [EQ | IN].
+  + subst.  
+    case (nat_eqb o ov) eqn:FAL.
+    apply nat_eqb_eq in FAL.
+    contradiction (NE (eq_sym FAL)).
+    rewrite andb_false_r, andb_false_l.
+    reflexivity.
+  + apply (nin_head nat_eq_dec) in NIN.
+    rewrite (var_ne_neb _ _ _ IN NIN), andb_false_r.
+    reflexivity.
 Qed.
 
 Lemma var_ne_batch_sub_triv :
