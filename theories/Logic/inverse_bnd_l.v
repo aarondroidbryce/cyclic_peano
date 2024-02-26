@@ -17,7 +17,6 @@ Definition bnd_left_inv_formula (phi A : formula) (lambda kappa : ovar) (b : boo
 
 Definition bnd_left_inv_batch (gamma : list formula) (A : formula) (lambda kappa : ovar) (S : subst_ind) : list formula := batch_sub gamma (bnd lambda kappa A) A S.
 
-
 Lemma bnd_l_formula_inv_vars_sub :
     forall (phi : formula) (A : formula) (lambda kappa : ovar) (b : bool),
         incl (vars_in (bnd_left_inv_formula phi A lambda kappa b)) (lambda :: (vars_in phi)).

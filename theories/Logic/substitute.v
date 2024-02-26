@@ -957,6 +957,17 @@ rewrite list_filter_app.
   reflexivity.
 Qed.
 
+Lemma batch_sub_fold_head :
+    forall {phi A B : formula} {gamma : list formula} {b : bool} {S : subst_ind},
+        (length gamma =? length S) = true ->
+            formula_sub phi A B b :: batch_sub_fit gamma A B S = batch_sub (phi :: gamma) A B (b :: S).
+Proof.
+intros phi A B gamma b S EQ.
+unfold batch_sub, length, nat_eqb in *.
+rewrite EQ.
+reflexivity.
+Qed.
+
 (*
 Lemma sub_fit_true :
     forall (L : list formula) (D E : formula) (S : subst_ind),

@@ -21,6 +21,7 @@ theories/Logic/constraints.v
 theories/Logic/fol.v
 theories/Logic/substitute.v
 theories/Logic/proof_trees.v
+theories/Logic/cpl_trees.v
 theories/Logic/inverse_ug_l.v
 theories/Logic/inverse_dem_1.v
 theories/Logic/inverse_dem_2.v
