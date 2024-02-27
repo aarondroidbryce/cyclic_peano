@@ -17,7 +17,7 @@ Require Import Arith.
 Inductive cpl_tree : Type :=
 | leaf : forall (OC : constraint) (gamma delta : list formula) (alpha : ordinal), cpl_tree
 
-| deg_up : forall {OC : constraint} {gamma delta : list formula} (alpha beta : ordinal) (T' : cpl_tree), cpl_tree 
+| deg_up : forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) (T' : cpl_tree), cpl_tree 
 
 | con_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) {alpha : ordinal} (T' : cpl_tree), cpl_tree
 
@@ -234,9 +234,9 @@ match T with
 
 | @deg_up OC gamma delta alpha beta T' => cpl_tree_depth T'
 
-| @con_l OC gamma delta phi alpha T' => cpl_tree_depth T'
+| @con_l OC gamma delta phi alpha T' => S (cpl_tree_depth T')
 
-| @con_r OC gamma delta phi alpha T' => cpl_tree_depth T'
+| @con_r OC gamma delta phi alpha T' => S (cpl_tree_depth T')
 
 
 | @ex_l OC gamma delta n alpha T' => cpl_tree_depth T'
@@ -470,13 +470,13 @@ Qed.
 
 
 Lemma cpl_tree_deg_up :
-  forall {OC : constraint} {gamma delta : list formula} {alpha beta : ordinal} {d : nat},
+  forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) {d : nat},
       showable OC gamma delta alpha d ->
           showable OC gamma delta (omax alpha beta) d.
 Proof.
 intros OC gamma delta alpha beta d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
 subst.
-refine (existT _ (deg_up (cpl_tree_deg T) beta T) _).
+refine (existT _ (deg_up beta T) _).
 repeat split;
 try assumption.
 1 : apply (fst (structured_OC_semiapp _ Tstr)).
@@ -486,7 +486,7 @@ Qed.
 Lemma cpl_tree_con_l :
   forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d : nat},
       showable OC (phi :: phi :: gamma) delta alpha d ->
-          showable OC (phi :: gamma) delta alpha d.
+          showable OC (phi :: gamma) delta alpha (S d).
 Proof.
 intros OC gamma delta phi alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
 subst.
@@ -502,7 +502,7 @@ Qed.
 Lemma cpl_tree_con_r :
   forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d : nat},
       showable OC gamma (phi :: phi :: delta) alpha d ->
-          showable OC gamma (phi :: delta) alpha d.
+          showable OC gamma (phi :: delta) alpha (S d).
 Proof.
 intros OC gamma delta phi alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
 subst.
@@ -530,7 +530,7 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_ex_r : 
-  forall {OC : constraint} {gamma delta : list formula} {n : nat} {alpha : ordinal} {d : nat},
+  forall {OC : constraint} {gamma delta : list formula} (n : nat) {alpha : ordinal} {d : nat},
       showable OC gamma delta alpha d ->
           showable OC gamma (bury delta n) alpha d.
 Proof.
@@ -800,16 +800,16 @@ Lemma prove_dups_left_aux :
   forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
       length gamma = n ->
           showable OC gamma delta alpha d ->
-              showable OC (nodup form_eq_dec gamma) delta alpha d.
+              {d' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d'}.
 Proof.
 induction n;
 intros gamma delta OC alpha d EQ Tshow.
 - destruct gamma.
-  + apply Tshow.
+  + refine (existT _ d Tshow).
   + inversion EQ.
 - case (no_dup_dec_cases form_eq_dec gamma) as [NDG | DG].
   + rewrite (nodup_fixed_point _ NDG).
-    apply Tshow.
+    refine (existT _ d Tshow).
   + destruct (has_dups_split form_eq_dec DG) as [A [gamma1 [gamma2 [gamma3 EQL]]]].
     rewrite EQL in *.
     assert (length (A :: gamma1 ++ gamma2 ++ gamma3) = n) as LEN.
@@ -821,15 +821,15 @@ intros gamma delta OC alpha d EQ Tshow.
       fold (@length formula) in EQ.
       repeat rewrite <- plus_n_Sm in EQ.
       lia. }
-    apply (cpl_tree_comm_left (perm_sym (perm_nodup form_eq_dec double_perm_head))).
-    rewrite nodup_double_cons.
-    apply (IHn _ _ _ _ _ LEN (cpl_tree_con_l (cpl_tree_comm_left (double_perm_head) Tshow))).
+    pose proof (IHn _ _ _ _ _ LEN (cpl_tree_con_l (cpl_tree_comm_left (double_perm_head) Tshow))) as [d' Tshow'].
+    rewrite <- nodup_double_cons in Tshow'.
+    refine (existT _ d' (cpl_tree_comm_left (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
 Qed.
 
 Lemma cpl_tree_nodups_left :
   forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
       showable OC gamma delta alpha d ->
-          showable OC (nodup form_eq_dec gamma) delta alpha d.
+          {d' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d'}.
 Proof.
 intros gamma delta OC alpha d Tshow.
 apply (prove_dups_left_aux eq_refl Tshow).
@@ -876,7 +876,7 @@ Lemma cpl_tree_equiv_left :
               {d' : nat & showable OC gamma2 delta alpha d'}.
 Proof.
 intros gamma1 gamma2 delta OC alpha d EQUIV Tshow.
-apply (cpl_tree_redups_left ((cpl_tree_comm_left (equiv_nodup_perm form_eq_dec EQUIV)) (cpl_tree_nodups_left Tshow))).
+apply (cpl_tree_redups_left ((cpl_tree_comm_left (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_left Tshow)))).
 Qed.
 
 Lemma commutative_right_aux :
@@ -910,35 +910,36 @@ Lemma prove_dups_right_aux :
   forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
       length delta = n ->
           showable OC gamma delta alpha d ->
-              showable OC gamma (nodup form_eq_dec delta) alpha d.
+              {d' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d'}.
 Proof.
 induction n;
 intros gamma delta OC alpha d EQ Tshow.
 - destruct delta.
-  apply Tshow.
+  refine (existT _ d Tshow).
   inversion EQ.
 - case (no_dup_dec_cases form_eq_dec delta) as [NDD | DD].
   + rewrite (nodup_fixed_point _ NDD).
-    apply Tshow.
+    refine (existT _ d Tshow).
   + destruct (has_dups_split form_eq_dec DD) as [A [delta1 [delta2 [delta3 EQL]]]].
     subst.
-    apply (cpl_tree_comm_right (perm_sym (perm_nodup form_eq_dec double_perm_head))).
-    rewrite nodup_double_cons.
-    apply IHn, cpl_tree_con_r, (cpl_tree_comm_right (double_perm_head)), Tshow.
-    rewrite app_length in EQ.
-    unfold length in *;
-    fold (@length formula) in *.
-    repeat rewrite app_length in *.
-    unfold length in EQ;
-    fold (@length formula) in EQ.
-    repeat rewrite <- plus_n_Sm in EQ.
-    lia.
+    assert (length (A :: delta1 ++ delta2 ++ delta3) = n) as LEN.
+    { rewrite app_length in EQ.
+      unfold length in *;
+      fold (@length formula) in *.
+      repeat rewrite app_length in *.
+      unfold length in EQ;
+      fold (@length formula) in EQ.
+      repeat rewrite <- plus_n_Sm in EQ.
+      lia. }
+    pose proof (IHn _ _ _ _ _ LEN (cpl_tree_con_r (cpl_tree_comm_right (double_perm_head) Tshow))) as [d' Tshow'].
+    rewrite <- nodup_double_cons in Tshow'.
+    refine (existT _ d' (cpl_tree_comm_right (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
 Qed.
 
 Lemma cpl_tree_nodups_right :
   forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
       showable OC gamma delta alpha d ->
-          showable OC gamma (nodup form_eq_dec delta) alpha d.
+          {d' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d'}.
 Proof.
 intros gamma delta OC alpha d Tshow.
 apply (prove_dups_right_aux eq_refl Tshow).
@@ -985,7 +986,7 @@ Lemma cpl_tree_equiv_right :
               {d' : nat & showable OC gamma delta2 alpha d'}.
 Proof.
 intros gamma delta1 delta2 OC alpha d EQUIV Tshow.
-apply (cpl_tree_redups_right ((cpl_tree_comm_right (equiv_nodup_perm form_eq_dec EQUIV)) (cpl_tree_nodups_right Tshow))).
+apply (cpl_tree_redups_right ((cpl_tree_comm_right (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_right Tshow)))).
 Qed.
 
 
@@ -995,15 +996,52 @@ Proof.
   exact (fun p P F => induction_ltof1 nat (fun m => m) P F p).
 Defined.
 
+
+Fixpoint left_ops (T : cpl_tree) : nat :=
+match T with
+| leaf OC gamma delta alpha => 0
+
+| @deg_up OC gamma delta alpha beta T' => left_ops T'
+
+| @con_l OC gamma delta phi alpha T' => S (left_ops T')
+
+| @con_r OC gamma delta phi alpha T' => left_ops T'
+
+
+| @ex_l OC gamma delta n alpha T' => left_ops T'
+
+| @ex_r OC gamma delta n alpha T' => left_ops T'
+
+
+| @wkn_l OC gamma delta phi alpha T' => S (left_ops T')
+
+| @wkn_r OC gamma delta phi alpha T' => left_ops T'
+
+| @rst OC gamma delta kappa alpha T' => left_ops T'
+
+
+| @bnd_l OC gamma delta phi lambda kappa alpha T' => S (left_ops T')
+
+| @bnd_r OC gamma delta phi lambda kappa alpha T' => left_ops T'
+
+
+| @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => S (max (left_ops T1) (left_ops T2))
+
+| @imp_r OC gamma delta phi psi alpha T' => left_ops T'
+
+
+| @cut OC gamma delta phi alpha1 alpha2 T1 T2 => max (left_ops T1) (left_ops T2)
+end.
+
 Lemma cpl_tree_imp_l_inv_2 :
-forall {n : nat} {T : cpl_tree} {gamma delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal} {d : nat},
-    n = length gamma ->
-        T_shows T OC (imp phi psi :: gamma) delta alpha d ->
-            showable OC gamma (phi :: delta) alpha d.
+forall {d : nat} {T : cpl_tree} {gamma delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal},
+    cpl_tree_depth T <= d ->
+        T_shows T OC (imp phi psi :: gamma) delta alpha (cpl_tree_depth T) ->
+            {d' : nat & ((showable OC gamma (delta ++ [phi]) alpha d') * (d' <= cpl_tree_depth T))%type}.
 Proof.
-induction n as [n IND] using strong_ind_type.
+induction d as [d IND] using strong_ind_type.
 induction T;
-intros gamma' delta' phi' psi' OC' alpha' d' EQL Tshow;
+intros gamma' delta' phi' psi' OC' alpha' LT Tshow;
 inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
 
 1 : destruct Tstr as [TG_app TD_app].
@@ -1018,171 +1056,101 @@ inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
 all : unfold cpl_tree_left in Tgam;
       subst.
 
-1 : refine (existT _ (leaf OC gamma' (phi' :: delta) alpha) _).
+1 : refine (existT _ 0 (pair (existT _ (leaf OC gamma' (delta ++ [phi']) alpha) _) (Nat.le_refl _))).
     repeat split.
     refine (fun o IN => TG_app o (in_or_app _ _ _ (or_intror IN))).
     intros o IN.
+    unfold cpl_tree_right in IN.
+    rewrite flat_map_app in IN.
     apply in_app_or in IN as [IN1 | IN2].
-    refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN1))))).
-    refine (TD_app o IN2).
+    refine (TD_app o IN1).
+    unfold flat_map in IN2.
+    rewrite app_nil_r in IN2.
+    refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN2))))).
 
 1 : assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
     { repeat split.
       apply Tstr.
       apply Tgam. }
-    apply cpl_tree_deg_up.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    apply (IHT _ _ _ _ _ _ _ eq_refl Tshow').
-
-1 : assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      inversion Tgam as [[EQ1 EQ2]].
-      subst.
-      apply TG. }
-    apply cpl_tree_con_r.
-    unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
-    unfold cpl_tree_depth.
-    fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ _ Tshow').
-
-Lemma cpl_tree_imp_l_inv_2 :
-forall {gamma delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal} {d : nat},
-    showable OC (imp phi psi :: gamma) delta alpha d ->
-        showable OC gamma (phi :: delta) alpha d.
-Proof.
-induction gamma;
-intros delta' phi' psi' OC' alpha' d' [T Tshow];
-inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
-
-induction T.
-
-1 : destruct Tstr as [TG_app TD_app].
-2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-
-all : unfold cpl_tree_left in Tgam;
-      subst.
-
-1 : refine (existT _ (leaf OC [] (phi' :: delta) alpha) _).
-    repeat split.
-    intros o IN.
-    inversion IN.
-    intros o IN.
-    apply in_app_or in IN as [IN1 | IN2].
-    refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN1))))).
-    refine (TD_app o IN2).
-
-1 : assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: []) (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
-    apply cpl_tree_deg_up.
-    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
-    simpl in IHT.
-    unfold cpl_tree_depth.
-    fold cpl_tree_depth.
-    apply (IHT _ _ _ _ _ _ _).
-
-
-1 : destruct Tstr as [TG_app TD_app].
-2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-
-all : unfold cpl_tree_left in TG_app, Tgam;
-    unfold cpl_tree_right in TD_app, Tdelt;
-    unfold cpl_tree_constraint in Tcon;
-    unfold cpl_tree_deg in Tdeg;
-    unfold cpl_tree_depth in Tdepth;
-    fold cpl_tree_depth in Tdepth;
+    pose proof (IHT _ _ _ _ _ _ LT Tshow') as [d' [Tshow'' LT']].
     subst.
+    refine (existT _ d' (pair (cpl_tree_deg_up _ Tshow'') LT')).
 
-1 : refine (existT _ (leaf OC' gamma' (phi' :: delta') alpha') _).
-  repeat split.
-  refine (fun o IN => TG_app o (in_or_app _ _ _ (or_intror IN))).
-  intros o IN.
-  apply in_app_or in IN as [IN1 | IN2].
-  refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN1))))).
-  refine (TD_app o IN2).
-
-1 : assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-  { repeat split.
-    apply Tstr.
-    apply Tgam. }
-  apply cpl_tree_deg_up.
-  apply (IHT _ _ _ _ _ _ _ Tshow').
-
-
-
-Qed.
-
-
-Lemma cpl_tree_imp_l_inv_2 :
-  forall {T : cpl_tree} {gamma delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal} {d : nat},
-      T_shows T OC (imp phi psi :: gamma) delta alpha d ->
-          showable OC gamma (phi :: delta) alpha d.
-Proof.
-induction T;
-intros gamma' delta' phi' psi' OC' alpha' d' Tshow;
-inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
-
-1 : destruct Tstr as [TG_app TD_app].
-2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-
-all : unfold cpl_tree_left in TG_app, Tgam;
-      unfold cpl_tree_right in TD_app, Tdelt;
-      unfold cpl_tree_constraint in Tcon;
-      unfold cpl_tree_deg in Tdeg;
-      unfold cpl_tree_depth in Tdepth;
-      fold cpl_tree_depth in Tdepth;
+1 : { assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
+      { repeat split.
+        apply Tstr.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        apply TG. }
+      unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
+      unfold cpl_tree_depth.
+      fold cpl_tree_depth.
+      pose proof (IND _ LT _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [[T' Tshow''] LT']].
+      inversion Tshow'' as [[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'].
       subst.
+      pose proof (IND _ LT _ _ _ _ _ _ _ LT' Tshow'') as [d'' [[T'' [[[[[Tstr'' Tgam''] Tdelt''] Tcon''] Tdeg''] Tdepth'']] LT'']].
+      subst.
+      refine (existT _ (S (cpl_tree_depth T'')) (pair ((existT _ (con_r phi' T'') _)) (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))).
+      repeat split;
+      try assumption.
+      - rewrite Tcon'' in *.
+        unfold cpl_tree_left at 1 in TG_app. 
+        rewrite Tgam in TG_app.
+        unfold cpl_tree_left at 1.
+        refine (fun o IN => TG_app o (in_or_app _ _ _ (or_intror IN))).
+      - rewrite Tcon'' in *.
+        intros o IN.
+        apply in_app_or in IN as [IN1 | IN2].
+        unfold cpl_tree_left at 1 in TG_app. 
+        rewrite Tgam in TG_app.
+        refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN1))))).
+        refine (TD_app o IN2).
+      - }
 
-1 : refine (existT _ (leaf OC' gamma' (phi' :: delta') alpha') _).
-    repeat split.
-    refine (fun o IN => TG_app o (in_or_app _ _ _ (or_intror IN))).
-    intros o IN.
-    apply in_app_or in IN as [IN1 | IN2].
-    refine (TG_app o (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN1))))).
-    refine (TD_app o IN2).
+1 : { assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
+      { repeat split.
+        apply Tstr.
+        apply Tgam. }
+      unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+      unfold cpl_tree_depth.
+      fold cpl_tree_depth.
+      pose proof (IHT _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [[T' Tshow''] LT']].
+      inversion Tshow'' as [[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'].
+      subst.
+      refine (existT _ (S (cpl_tree_depth T')) (pair _ (le_n_S _ _ LT'))).
+      pose proof (@perm_head _ (phi :: delta) [] phi') as PERM.
+      rewrite app_nil_r in PERM.
+      apply (cpl_tree_comm_right PERM), cpl_tree_con_r.
+      rewrite !app_comm_cons, <- TD.
+      apply (cpl_tree_ex_r 0 (existT _ T' Tshow'')). }
 
-1 : assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: gamma') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
-    apply cpl_tree_deg_up.
-    apply (IHT _ _ _ _ _ _ _ Tshow').
+1 : { destruct n as [ | n].
+      admit.
+      assert (T_shows T (cpl_tree_constraint T) (imp phi' psi' :: (unbury gamma' n)) (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
+      { repeat split.
+        apply Tstr.
+        destruct (cpl_tree_left T).
+        inversion Tgam.
+        unfold bury in Tgam;
+        fold @bury in Tgam.
+        rewrite <- (@bury_unbury _ gamma' n) in Tgam.
+        inversion Tgam as [[EQ1 EQ2]].
+        apply bury_eq in EQ2.
+        rewrite EQ2.
+        reflexivity. }
+      unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+      unfold cpl_tree_depth.
+      fold cpl_tree_depth.
+      pose proof (IHT _ _ _ _ _ _ LT Tshow') as [d' [Tshow'' LT']].
+      refine (existT _ d' (pair _ LT')).
+      rewrite <- (@bury_unbury _ gamma' n).
+      apply cpl_tree_ex_l.
+      apply Tshow''. }
 
-
-
-Qed.
-
-
-Lemma cpl_tree_imp_l_inv_2 :
-  forall {gamma delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal} {d : nat},
-      showable OC (imp phi psi :: gamma) delta alpha d ->
-          showable OC gamma (phi :: delta) alpha d.
-Proof.
-intros gamma delta phi psi OC alpha d Tshow.
-apply (cpl_tree_redups_right ((cpl_tree_comm_right (equiv_nodup_perm form_eq_dec EQUIV)) (cpl_tree_nodups_right Tshow))).
-Qed.
+Admitted.
 
 (*
 Master destruct tactic.

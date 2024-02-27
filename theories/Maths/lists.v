@@ -462,6 +462,32 @@ intros n.
     reflexivity.
 Qed.
 
+Lemma bury_eq {A : Type} {L1 L2 : list A} {n : nat} : bury L1 n = bury L2 n -> L1 = L2.
+Proof.
+revert L2 n;
+induction L1;
+intros L2 n EQ.
+destruct L2.
+reflexivity.
+destruct n.
+destruct L2.
+1-3 : inversion EQ.
+destruct L2.
+destruct n.
+destruct L1.
+1-3 : inversion EQ.
+destruct n;
+unfold bury in EQ;
+fold @bury in EQ.
+apply app_inj_tail in EQ as [EQ1 EQ2].
+subst.
+reflexivity.
+inversion EQ as [[EQ1 EQ2]].
+subst.
+rewrite (IHL1 _ _ EQ2).
+reflexivity.
+Qed.
+
 Fixpoint set_bury {A : Type} (LA : list A) (LN : list nat) : list A :=
 match LN with
 | [] => LA
