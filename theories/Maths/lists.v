@@ -839,6 +839,45 @@ induction perm.
   apply IHperm1.
 Qed.
 
+Lemma perm_app {A : Type} : forall {L1 L2 L3 L4 : list A}, perm L1 L2 -> perm L3 L4 -> perm (L1 ++ L3) (L2 ++ L4).
+Proof.
+intros L1 L2 L3 L4 perm1.
+revert L3 L4.
+induction perm1;
+intros L3' L4' perm2.
+- apply perm2.
+- apply perm_skip, IHperm1, perm2.
+- rewrite <- !app_comm_cons.
+  revert L L3' L4' perm2.
+  induction L;
+  intros L3 L4 perm2.
+  + rewrite !app_nil_l.
+    apply perm_trans with (a :: b :: L3).
+    apply perm_swap.
+    apply perm_skip, perm_skip, perm2.
+  + pose proof (IHL _ _ perm2) as perm3.
+    apply (perm_skip a0) in perm3.
+    apply perm_trans with (a :: b :: (a0 :: L) ++ L3).
+    apply perm_swap.
+    rewrite <- !app_comm_cons.
+    apply perm_trans with (a :: a0 :: b :: L ++ L3).
+    apply perm_skip, perm_swap.
+    apply perm_trans with (a0 :: a :: b :: L ++ L3).
+    apply perm_swap.
+    apply perm_trans with (a0 :: b :: a :: L ++ L3).
+    apply perm_skip, perm_swap.
+    apply perm_trans with (a0 :: a :: b :: L ++ L4).
+    apply perm3.
+    apply perm_trans with (a :: a0 :: b :: L ++ L4).
+    apply perm_swap.
+    apply perm_trans with (a :: b :: a0 :: L ++ L4).
+    apply perm_skip, perm_swap.
+    apply perm_refl.
+- apply perm_trans with (L2 ++ L4').
+  apply IHperm1_1, perm2.
+  apply IHperm1_2, perm_refl.
+Qed.
+
 Lemma perm_length {A : Type} {L1 L2 : list A} : perm L1 L2 -> length L1 = length L2.
 Proof.
 intros perm.
@@ -879,6 +918,44 @@ induction L1.
   apply perm_skip.
   apply IHL1.
   apply perm_swap.
+Qed.
+
+Lemma perm_swap_bulk {A : Type} : forall {L1 L2 L3 : list A}, perm (L1 ++ L2) L3 -> perm (L2 ++ L1) L3.
+Proof.
+induction L1.
+- apply perm_ind_type.
+  + apply perm_nil.
+  + intros a L1 L2 perm1 perm2.
+    rewrite app_nil_r.
+    apply perm_skip, perm1.
+  + intros a b L1 L2 perm1 perm2.
+    rewrite app_nil_r.
+    apply perm_trans with (a :: b :: L1).
+    apply perm_swap.
+    apply perm_skip, perm_skip, perm1.
+  + intros L1 L2 L3 perm1 perm2 perm3 perm4.
+    rewrite !app_nil_r in *.
+    apply (perm_trans _ _ _ perm1 perm3).
+- intros L2 L3 perm1.
+  rewrite <- app_comm_cons in perm1.
+  apply perm_trans with ((a :: L2) ++ L1).
+  apply perm_head.
+  apply perm_trans with (L1 ++ a :: L2).
+  apply IHL1, perm_refl.
+  apply perm_trans with (a :: L1 ++ L2).
+  apply perm_head.
+  apply perm1.
+Qed.
+
+Lemma bury_is_perm {A : Type} : forall {L : list A} {n : nat}, perm L (bury L n).
+Proof.
+induction L;
+intros n.
+apply perm_nil.
+destruct n.
+rewrite <- app_nil_r at 1.
+apply perm_sym, perm_head.
+apply perm_skip, IHL.
 Qed.
 
 Lemma double_perm_head {A : Type} {L1 L2 L3 : list A} {a : A} : perm (L1 ++ a :: L2 ++ a :: L3) (a :: a :: L1 ++ L2 ++ L3).
