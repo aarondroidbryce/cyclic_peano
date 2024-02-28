@@ -24,7 +24,7 @@ let REC := (fun PT SI => (cpl_tree_imp_l_inv_1_fit PT A B SI)) in
 match T, S with
 | leaf OC gamma delta l, _ => leaf OC (imp_left_inv_1_batch gamma A B S) delta l
 
-| @deg_up OC gamma delta alpha beta T', _ => @deg_up OC (cpl_tree_left (REC T' S)) delta alpha beta (REC T' S)
+| @deg_up OC gamma delta alpha beta b T', _ => @deg_up OC (cpl_tree_left (REC T' S)) delta alpha beta b (REC T' S)
 
 | @con_l OC gamma delta phi alpha T', s :: S' => @con_l OC (imp_left_inv_1_batch gamma A B S') delta (imp_left_inv_1_formula phi A B s) alpha (REC T' (s :: s :: S'))
 
@@ -45,7 +45,7 @@ match T, S with
 | @bnd_r OC gamma delta phi eta iota alpha T', _ => @bnd_r OC (cpl_tree_left (REC T' S)) delta phi eta iota alpha (REC T' S)
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2, s :: S' => match (form_eqb phi A), (form_eqb psi B), s with
-    | true, true, true => @deg_up OC (cpl_tree_left (REC T1 (false :: S'))) delta alpha1 alpha2 (REC T1 (false :: S'))
+    | true, true, true => @deg_up OC (cpl_tree_left (REC T1 (false :: S'))) delta alpha1 alpha2 true (REC T1 (false :: S'))
     | _, _ , _ => @imp_l OC (imp_left_inv_1_batch gamma A B S') delta phi psi alpha1 alpha2 (REC T1 (false :: S')) (REC T2 S')
     end
 
@@ -267,12 +267,12 @@ all : subst;
 
 all : destruct S as [ | b S];
       inversion EQ;
+      try rewrite H0;
       try case (form_eqb phi A) eqn:EQF1;
       try case (form_eqb psi B) eqn:EQF2;
       destruct b;
       try reflexivity.
 Qed.
-
 
 Lemma imp_l_formula_inv_1_vars_in :
     forall (phi : formula) (A B : formula) (b : bool) (OC : constraint),

@@ -20,7 +20,7 @@ Inductive ptree : Type :=
 
 | loop_head : forall (OC : constraint) (gamma delta : list (nat * ovar * formula)) (alpha : ordinal) (l : nat), ptree
 
-| deg_up : forall {OC : constraint} {gamma delta : list formula} (alpha beta : ordinal) (P' : ptree), ptree 
+| deg_up : forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) (b : bool) (P' : ptree), ptree 
 
 | con_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) {alpha : ordinal} (P' : ptree), ptree
 
@@ -59,7 +59,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => fzip (uncurry nuk) gamma
 
-| @deg_up OC gamma delta alpha beta P' => gamma 
+| @deg_up OC gamma delta alpha beta b P' => gamma 
 
 | @con_l OC gamma delta phi alpha P' => phi :: gamma
 
@@ -99,7 +99,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => fzip (uncurry nuk) delta
 
-| @deg_up OC gamma delta alpha beta P' => delta
+| @deg_up OC gamma delta alpha beta b P' => delta
 
 | @con_l OC gamma delta phi alpha P' => delta
 
@@ -139,7 +139,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => OC
 
-| @deg_up OC gamma delta alpha beta P' => OC
+| @deg_up OC gamma delta alpha beta b P' => OC
 
 | @con_l OC gamma delta phi alpha P' => OC
 
@@ -179,7 +179,9 @@ match P with
 
 | loop_head OC gamma delta alpha l => cast Zero
 
-| @deg_up OC gamma delta alpha beta P' => omax alpha beta 
+| @deg_up OC gamma delta alpha beta true P' => omax alpha beta 
+
+| @deg_up OC gamma delta alpha beta false P' => omax beta alpha 
 
 | @con_l OC gamma delta phi alpha P' => alpha
 
@@ -218,7 +220,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => 1
 
-| @deg_up OC gamma delta alpha beta P' => (ptree_height P') 
+| @deg_up OC gamma delta alpha beta b P' => (ptree_height P') 
 
 | @con_l OC gamma delta phi alpha P' => S (ptree_height P')
 
@@ -305,6 +307,7 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (ordinal_eq_dec alpha2 alpha3) as [EQA2 | NE];
 			try destruct (nat_eq_dec kappa kappa0) as [EQK | NE];
       try destruct (nat_eq_dec lambda lambda0) as [EQL | NE];
+      try destruct (Bool.bool_dec b b0) as [EQBL | NE];
       subst;
       try rewrite (proof_irrelevance _ e e0);
 			try apply (left (eq_refl));
@@ -496,7 +499,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => [Some (S l)]
 
-| @deg_up OC gamma delta alpha beta P' => map option_decr (loop_traces P') 
+| @deg_up OC gamma delta alpha beta b P' => map option_decr (loop_traces P') 
 
 | con_l phi P' => map option_decr (loop_traces P')
 
@@ -538,7 +541,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => [[P]]
 
-| @deg_up OC gamma delta alpha beta P' => option_fill P (loop_traces P) (loops P') 
+| @deg_up OC gamma delta alpha beta b P' => option_fill P (loop_traces P) (loops P') 
 
 | con_l phi P' => option_fill P (loop_traces P) (loops P')
 
@@ -608,7 +611,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => [S l]
 
-| @deg_up OC gamma delta alpha beta P' => (loop_lengths P') 
+| @deg_up OC gamma delta alpha beta b P' => (loop_lengths P') 
 
 | con_l phi P' => loop_lengths P'
 
@@ -649,7 +652,7 @@ match P with
 
 | loop_head OC gamma delta alpha l => applicable OC P
 
-| @deg_up OC gamma delta alpha beta P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
+| @deg_up OC gamma delta alpha beta b P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
 | @con_l OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = phi :: phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
@@ -1069,14 +1072,14 @@ all : rewrite map_length.
 *)
 
 
-Lemma ptree_deg_up :
+Lemma ptree_deg_up_1 :
     forall {OC : constraint} {gamma delta : list formula} {alpha beta : ordinal},
         provable OC gamma delta alpha ->
             provable OC gamma delta (omax alpha beta).
 Proof.
 intros OC gamma delta alpha beta [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
-refine (existT _ (deg_up (ptree_deg P) beta P) _).
+refine (existT _ (deg_up beta true P) _).
 repeat split;
 try assumption.
 1 : apply (fst (struct_OC_app _ PSV)).
@@ -1093,6 +1096,32 @@ try assumption.
 1 : apply SPLIT.
 1 : apply RST.
 Qed.
+
+Lemma ptree_deg_up_2 :
+    forall {OC : constraint} {gamma delta : list formula} {alpha beta : ordinal},
+        provable OC gamma delta alpha ->
+            provable OC gamma delta (omax beta alpha).
+Proof.
+intros OC gamma delta alpha beta [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+subst.
+refine (existT _ (deg_up beta false P) _).
+repeat split;
+try assumption.
+1 : apply (fst (struct_OC_app _ PSV)).
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
+Qed.
+
 
 Lemma ptree_con_l :
     forall (OC : constraint) (gamma delta : list formula) (phi : formula) (alpha : ordinal),

@@ -744,7 +744,7 @@ apply perm_nil.
 apply perm_skip, IHL.
 Qed.
 
-(*
+
 Theorem perm_ind_prop {A : Type} :
  forall P : list A -> list A -> Prop,
    P [] [] ->
@@ -798,7 +798,7 @@ induction 1.
     * apply Hnil.
     * apply (Hskip _ _ _ perm_refl IHL).
 - apply (Htrans _ _ _ X1 IHX1 X2 IHX2).
-Qed.*)
+Qed.
 
 Theorem perm_ind_type {A : Type} :
  forall P : list A -> list A -> Type,
@@ -1084,6 +1084,52 @@ apply perm_ind_type.
   exists (LN1 ++ LN2).
   rewrite set_bury_app, EQ1, EQ2.
   reflexivity.
+Defined.
+
+Lemma perm_split {A : Type} :
+    forall {L1 L2 : list A} ,
+        perm L1 L2 ->
+            (forall {L3 L4 : list A} {a : A},
+                L1 = L3 ++ a :: L4 ->
+                    {L5 : list A & {L6 : list A & ((L2 = L5 ++ a :: L6) * (perm (L3 ++ L4) (L5 ++ L6)))%type}}).
+Proof.
+intros L1 L2 perm.
+induction perm;
+intros L3' L4' a' EQ.
+- destruct L3';
+  inversion EQ.
+- destruct L3'.
+  + rewrite app_nil_l in EQ.
+    inversion EQ as [[EQ1 EQ2]].
+    subst.
+    refine (existT _ [] (existT _ L2 (pair eq_refl perm0))).
+  + rewrite <- app_comm_cons in EQ.
+    inversion EQ as [[EQ1 EQ2]].
+    subst.
+    destruct (IHperm _ _ _ eq_refl) as [LX [LY [EQL perm]]].
+    refine (existT _ (a0 :: LX) (existT _ LY (pair _ (perm_skip _ _ _ perm)))).
+    rewrite EQL.
+    reflexivity.
+- destruct L3' as [ | x [ | y L3]].
+  destruct L4' as [ | x L4].
+  + inversion EQ.
+  + rewrite app_nil_l in EQ.
+    inversion EQ as [[EQ1 EQ2]].
+    subst.
+    refine (existT _ [x] (existT _ L4 (pair eq_refl perm_refl))).
+  + rewrite <- app_comm_cons, app_nil_l in EQ.
+    inversion EQ as [[EQ1 EQ2]].
+    subst.
+    refine (existT _ [] (existT _ (x :: L4') (pair eq_refl perm_refl))).
+  + rewrite <- !app_comm_cons in EQ.
+    inversion EQ as [[EQ1 EQ2]].
+    subst.
+    refine (existT _ (y :: x :: L3) (existT _ L4' (pair eq_refl _))).
+    rewrite <- !app_comm_cons.
+    apply perm_swap.
+- destruct (IHperm1 _ _ _ EQ) as [LX [LY [EQ1 perm1']]].
+  destruct (IHperm2 _ _ _ EQ1) as [LX' [LY' [EQ2 perm2']]].
+  refine (existT _ LX' (existT _ LY' (pair EQ2 (perm_trans _ _ _ perm1' perm2')))).
 Defined.
 
 Lemma length_split_n {A : Type} {L : list A} {n : nat} : n < length L -> {L1 : list A & {L2 : list A & {a : A & length L1 = n /\ L1 ++ a :: L2 = L}}}.
