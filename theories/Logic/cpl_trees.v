@@ -236,9 +236,9 @@ match T with
 
 | @deg_up OC gamma delta alpha beta b T' => cpl_tree_depth T'
 
-| @con_l OC gamma delta phi alpha T' => S (cpl_tree_depth T')
+| @con_l OC gamma delta phi alpha T' => cpl_tree_depth T'
 
-| @con_r OC gamma delta phi alpha T' => S (cpl_tree_depth T')
+| @con_r OC gamma delta phi alpha T' => cpl_tree_depth T'
 
 
 | @ex_l OC gamma delta n alpha T' => cpl_tree_depth T'
@@ -246,11 +246,11 @@ match T with
 | @ex_r OC gamma delta n alpha T' => cpl_tree_depth T'
 
 
-| @wkn_l OC gamma delta phi alpha T' => S (cpl_tree_depth T')
+| @wkn_l OC gamma delta phi alpha T' => cpl_tree_depth T'
 
-| @wkn_r OC gamma delta phi alpha T' => S (cpl_tree_depth T')
+| @wkn_r OC gamma delta phi alpha T' => cpl_tree_depth T'
 
-| @rst OC gamma delta kappa alpha T' => S (cpl_tree_depth T')
+| @rst OC gamma delta kappa alpha T' => cpl_tree_depth T'
 
 
 | @bnd_l OC gamma delta phi lambda kappa alpha T' => S (cpl_tree_depth T')
@@ -445,11 +445,83 @@ all : unfold provable in *;
     apply (IHT2 T2str (fun L IN => LEAF L (in_or_app _ _ _ (or_intror IN)))).
 Qed.
 
-Definition T_shows (T : cpl_tree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (d : nat) : Type :=
-  (structured T) * (cpl_tree_left T = gamma) * (cpl_tree_right T = delta) * (cpl_tree_constraint T = OC) * (cpl_tree_deg T = alpha) * (cpl_tree_depth T = d).
+Fixpoint left_ops (T : cpl_tree) : nat :=
+match T with
+| leaf OC gamma delta alpha => 0
 
-Definition showable (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (d : nat) : Type :=
-  {T : cpl_tree & (T_shows T OC gamma delta alpha d)}.
+| @deg_up OC gamma delta alpha beta b T' => left_ops T'
+
+| @con_l OC gamma delta phi alpha T' => S (left_ops T')
+
+| @con_r OC gamma delta phi alpha T' => left_ops T'
+
+
+| @ex_l OC gamma delta n alpha T' => left_ops T'
+
+| @ex_r OC gamma delta n alpha T' => left_ops T'
+
+
+| @wkn_l OC gamma delta phi alpha T' => left_ops T'
+
+| @wkn_r OC gamma delta phi alpha T' => left_ops T'
+
+| @rst OC gamma delta kappa alpha T' => left_ops T'
+
+
+| @bnd_l OC gamma delta phi lambda kappa alpha T' => left_ops T'
+
+| @bnd_r OC gamma delta phi lambda kappa alpha T' => left_ops T'
+
+
+| @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => max (left_ops T1) (left_ops T2)
+
+| @imp_r OC gamma delta phi psi alpha T' => left_ops T'
+
+
+| @cut OC gamma delta phi alpha1 alpha2 T1 T2 => max (left_ops T1) (left_ops T2)
+end.
+
+Fixpoint right_ops (T : cpl_tree) : nat :=
+match T with
+| leaf OC gamma delta alpha => 0
+
+| @deg_up OC gamma delta alpha beta b T' => right_ops T'
+
+| @con_l OC gamma delta phi alpha T' => right_ops T'
+
+| @con_r OC gamma delta phi alpha T' => S (right_ops T')
+
+
+| @ex_l OC gamma delta n alpha T' => right_ops T'
+
+| @ex_r OC gamma delta n alpha T' => right_ops T'
+
+
+| @wkn_l OC gamma delta phi alpha T' => right_ops T'
+
+| @wkn_r OC gamma delta phi alpha T' => right_ops T'
+
+| @rst OC gamma delta kappa alpha T' => right_ops T'
+
+
+| @bnd_l OC gamma delta phi lambda kappa alpha T' => right_ops T'
+
+| @bnd_r OC gamma delta phi lambda kappa alpha T' => right_ops T'
+
+
+| @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => max (right_ops T1) (right_ops T2)
+
+| @imp_r OC gamma delta phi psi alpha T' => right_ops T'
+
+
+| @cut OC gamma delta phi alpha1 alpha2 T1 T2 => max (right_ops T1) (right_ops T2)
+end.
+
+Definition T_shows (T : cpl_tree) (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (d l r : nat) : Type :=
+  (structured T) * (cpl_tree_left T = gamma) * (cpl_tree_right T = delta) * (cpl_tree_constraint T = OC) * (cpl_tree_deg T = alpha) * (cpl_tree_depth T = d) * (left_ops T = l) * (right_ops T = r).
+
+Definition showable (OC : constraint) (gamma delta : list formula) (alpha : ordinal) (d l r: nat) : Type :=
+  {T : cpl_tree & (T_shows T OC gamma delta alpha d l r)}.
 
 Lemma structured_OC_semiapp :
   forall (T : cpl_tree),
@@ -477,11 +549,11 @@ Qed.
 
 
 Lemma cpl_tree_deg_up_1 :
-  forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) {d : nat},
-      showable OC gamma delta alpha d ->
-          showable OC gamma delta (omax alpha beta) d.
+  forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) {d l r: nat},
+      showable OC gamma delta alpha d l r ->
+          showable OC gamma delta (omax alpha beta) d l r.
 Proof.
-intros OC gamma delta alpha beta d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta alpha beta d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (deg_up beta true T) _).
 repeat split;
@@ -491,11 +563,11 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_deg_up_2 :
-  forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) {d : nat},
-      showable OC gamma delta alpha d ->
-          showable OC gamma delta (omax beta alpha) d.
+  forall {OC : constraint} {gamma delta : list formula} {alpha : ordinal} (beta : ordinal) {d l r: nat},
+      showable OC gamma delta alpha d l r ->
+          showable OC gamma delta (omax beta alpha) d l r.
 Proof.
-intros OC gamma delta alpha beta d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta alpha beta d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (deg_up beta false T) _).
 repeat split;
@@ -505,11 +577,11 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_con_l :
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d : nat},
-      showable OC (phi :: phi :: gamma) delta alpha d ->
-          showable OC (phi :: gamma) delta alpha (S d).
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d l r: nat},
+      showable OC (phi :: phi :: gamma) delta alpha d l r ->
+          showable OC (phi :: gamma) delta alpha d (S l) r.
 Proof.
-intros OC gamma delta phi alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (con_l phi T) _).
 repeat split;
@@ -521,11 +593,11 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_con_r :
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d : nat},
-      showable OC gamma (phi :: phi :: delta) alpha d ->
-          showable OC gamma (phi :: delta) alpha (S d).
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha : ordinal} {d l r: nat},
+      showable OC gamma (phi :: phi :: delta) alpha d l r ->
+          showable OC gamma (phi :: delta) alpha d l (S r).
 Proof.
-intros OC gamma delta phi alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (con_r phi T) _).
 repeat split;
@@ -537,11 +609,11 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_ex_l : 
-  forall {OC : constraint} {gamma delta : list formula} {n : nat} {alpha : ordinal} {d : nat},
-      showable OC gamma delta alpha d ->
-          showable OC (bury gamma n) delta alpha d.
+  forall {OC : constraint} {gamma delta : list formula} {n : nat} {alpha : ordinal} {d l r: nat},
+      showable OC gamma delta alpha d l r->
+          showable OC (bury gamma n) delta alpha d l r.
 Proof.
-intros OC gamma delta n alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta n alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (ex_l n T) _).
 repeat split;
@@ -551,11 +623,11 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_ex_r : 
-  forall {OC : constraint} {gamma delta : list formula} (n : nat) {alpha : ordinal} {d : nat},
-      showable OC gamma delta alpha d ->
-          showable OC gamma (bury delta n) alpha d.
+  forall {OC : constraint} {gamma delta : list formula} (n : nat) {alpha : ordinal} {d l r: nat},
+      showable OC gamma delta alpha d l r->
+          showable OC gamma (bury delta n) alpha d l r.
 Proof.
-intros OC gamma delta n alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta n alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (ex_r n T) _).
 repeat split;
@@ -565,12 +637,12 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_wkn_l : 
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha: ordinal} {d : nat},
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha: ordinal} {d l r : nat},
       incl (vars_in phi) (OC_list OC) ->
-          showable OC gamma delta alpha d ->
-              showable OC (phi :: gamma) delta alpha (S d).
+          showable OC gamma delta alpha d l r->
+              showable OC (phi :: gamma) delta alpha d l r.
 Proof.
-intros OC gamma delta phi alpha d SUB [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi alpha d l r SUB [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (wkn_l phi T) _).
 repeat split;
@@ -580,12 +652,12 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_wkn_r : 
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha: ordinal} {d : nat},
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha: ordinal} {d l r : nat},
       incl (vars_in phi) (OC_list OC) ->
-          showable OC gamma delta alpha d ->
-              showable OC gamma (phi :: delta) alpha (S d).
+          showable OC gamma delta alpha d l r->
+              showable OC gamma (phi :: delta) alpha d l r.
 Proof.
-intros OC gamma delta phi alpha d SUB [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi alpha d l r SUB [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (wkn_r phi T) _).
 repeat split;
@@ -595,22 +667,20 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_weaken_left : 
-  forall {gamma delta sigma : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {gamma delta sigma : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       incl (flat_map vars_in sigma) (OC_list OC) ->
-          showable OC gamma delta alpha d ->
-              showable OC (gamma ++ sigma) delta alpha (length sigma + d).
+          showable OC gamma delta alpha d l r ->
+              showable OC (gamma ++ sigma) delta alpha d l r.
 Proof.
 intros gamma delta sigma.
 revert gamma delta.
-apply (rev_ind_type (fun sigma => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal) (d : nat), incl (flat_map vars_in sigma) (OC_list OC) -> showable OC gamma delta alpha d -> showable OC (gamma ++ sigma) delta alpha (length sigma + d))).
-- intros gamma delta OC alpha d SUB Tshow.
+apply (rev_ind_type (fun sigma => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal) (d l r : nat), incl (flat_map vars_in sigma) (OC_list OC) -> showable OC gamma delta alpha d l r-> showable OC (gamma ++ sigma) delta alpha d l r)).
+- intros gamma delta OC alpha d l r SUB Tshow.
   rewrite app_nil_r.
   apply Tshow.
-- intros phi sigma' IND gamma delta OC alpha d SUB Tshow.
+- intros phi sigma' IND gamma delta OC alpha d l r SUB Tshow.
   rewrite app_assoc.
-  rewrite <- (app_nil_l ((gamma ++ sigma') ++ [phi])), <- (@bury_type _ phi [] (gamma ++ sigma')), app_nil_l, app_length.
-  unfold length at 3.
-  rewrite <- plus_n_Sm, <- plus_n_O, plus_Sn_m.
+  rewrite <- (app_nil_l ((gamma ++ sigma') ++ [phi])), <- (@bury_type _ phi [] (gamma ++ sigma')), app_nil_l.
   apply cpl_tree_ex_l, cpl_tree_wkn_l, IND, Tshow;
   rewrite flat_map_app in SUB.
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_intror (in_or_app _ _ _ (or_introl IN))))).
@@ -618,22 +688,20 @@ apply (rev_ind_type (fun sigma => forall (gamma delta : list formula) (OC : cons
 Qed.
 
 Lemma cpl_tree_weaken_right : 
-  forall {gamma delta pi : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {gamma delta pi : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       incl (flat_map vars_in pi) (OC_list OC) ->
-          showable OC gamma delta alpha d ->
-              showable OC gamma (delta ++ pi) alpha (length pi + d).
+          showable OC gamma delta alpha d l r ->
+              showable OC gamma (delta ++ pi) alpha d l r.
 Proof.
 intros gamma delta pi.
 revert gamma delta.
-apply (rev_ind_type (fun pi => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal) (d : nat), incl (flat_map vars_in pi) (OC_list OC) -> showable OC gamma delta alpha d -> showable OC gamma (delta ++ pi) alpha (length pi + d))).
-- intros gamma delta OC alpha d SUB Tshow.
+apply (rev_ind_type (fun pi => forall (gamma delta : list formula) (OC : constraint) (alpha : ordinal) (d l r : nat), incl (flat_map vars_in pi) (OC_list OC) -> showable OC gamma delta alpha d l r -> showable OC gamma (delta ++ pi) alpha d l r)).
+- intros gamma delta OC alpha d l r SUB Tshow.
   rewrite app_nil_r.
   apply Tshow.
-- intros phi pi' IND gamma delta OC alpha d SUB Tshow.
+- intros phi pi' IND gamma delta OC alpha d l r SUB Tshow.
   rewrite app_assoc.
-  rewrite <- (app_nil_l ((delta ++ pi') ++ [phi])), <- (@bury_type _ phi [] (delta ++ pi')), app_nil_l, app_length.
-  unfold length at 3.
-  rewrite <- plus_n_Sm, <- plus_n_O, plus_Sn_m.
+  rewrite <- (app_nil_l ((delta ++ pi') ++ [phi])), <- (@bury_type _ phi [] (delta ++ pi')), app_nil_l.
   apply cpl_tree_ex_r, cpl_tree_wkn_r, IND, Tshow;
   rewrite flat_map_app in SUB.
   refine (fun o IN => SUB _ (in_or_app _ (flat_map vars_in [phi]) _ (or_intror (in_or_app _ _ _ (or_introl IN))))).
@@ -641,14 +709,14 @@ apply (rev_ind_type (fun pi => forall (gamma delta : list formula) (OC : constra
 Qed.
 
 Lemma cpl_tree_reset : 
-  forall {gamma delta : list formula} {OC : constraint} {kappa : ovar} {alpha: ordinal} {d : nat},
+  forall {gamma delta : list formula} {OC : constraint} {kappa : ovar} {alpha: ordinal} {d l r : nat},
       ~ In kappa (flat_map vars_used gamma) ->
           ~ In kappa (flat_map vars_used delta) ->
               OC_elt OC kappa ->
-                  showable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha d ->
-                      showable OC gamma delta alpha (S d).
+                  showable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha d l r ->
+                      showable OC gamma delta alpha d l r.
 Proof.
-intros gamma delta OC kappa alpha d NING NIND ELT [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros gamma delta OC kappa alpha d l r NING NIND ELT [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (rst kappa T) _).
 repeat split;
@@ -660,12 +728,12 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_bnd_l : 
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {lambda kappa : ovar} {alpha : ordinal} {d : nat},
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {lambda kappa : ovar} {alpha : ordinal} {d l r : nat},
       OC_rel OC lambda kappa = true ->
-          showable OC (phi :: gamma) delta alpha d ->
-              showable OC ((bnd lambda kappa phi) :: gamma) delta alpha (S d).
+          showable OC (phi :: gamma) delta alpha d l r ->
+              showable OC ((bnd lambda kappa phi) :: gamma) delta alpha (S d) l r.
 Proof.
-intros OC gamma delta phi lambda kappa alpha d rel [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi lambda kappa alpha d l r rel [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (bnd_l phi lambda kappa T) _).
 repeat split;
@@ -685,13 +753,13 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_bnd_r : 
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {lambda kappa : ovar} {alpha : ordinal} {d : nat} (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa),
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {lambda kappa : ovar} {alpha : ordinal} {d l r : nat} (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa),
       ~ In lambda (flat_map vars_used gamma) ->
           ~ In lambda (flat_map vars_used (phi :: delta)) ->
-              showable (add_fresh_child OC lambda kappa NEW KIN) gamma (phi :: delta) alpha d ->
-                  showable OC gamma ((bnd lambda kappa phi) :: delta) alpha (S d).
+              showable (add_fresh_child OC lambda kappa NEW KIN) gamma (phi :: delta) alpha d l r ->
+                  showable OC gamma ((bnd lambda kappa phi) :: delta) alpha (S d) l r.
 Proof.
-intros OC gamma delta phi lambda kappa alpha d NEW KIN NING NIND [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi lambda kappa alpha d l r NEW KIN NING NIND [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (bnd_r phi lambda kappa T) _).
 repeat split;
@@ -724,12 +792,12 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_imp_l : 
-  forall {OC : constraint} {gamma delta : list formula} {phi psi : formula} {alpha1 alpha2 : ordinal} {d1 d2 : nat},
-      showable OC (psi :: gamma) delta alpha1 d1 ->
-          showable OC gamma (phi :: delta) alpha2 d2 ->
-              showable OC ((imp phi psi) :: gamma) delta (omax alpha1 alpha2) (S (max d1 d2)).
+  forall {OC : constraint} {gamma delta : list formula} {phi psi : formula} {alpha1 alpha2 : ordinal} {d1 d2 l1 l2 r1 r2 : nat},
+      showable OC (psi :: gamma) delta alpha1 d1 l1 r1 ->
+          showable OC gamma (phi :: delta) alpha2 d2 l2 r2 ->
+              showable OC ((imp phi psi) :: gamma) delta (omax alpha1 alpha2) (S (max d1 d2)) (max l1 l2) (max r1 r2).
 Proof.
-intros OC gamma delta phi psi alpha1 alpha2 d1 d2 [T1 [[[[[T1str T1gam] T1delt] T1con] T1deg] T1dep]] [T2 [[[[[T2str T2gam] T2delt] T2con] T2deg] T2dep]].
+intros OC gamma delta phi psi alpha1 alpha2 d1 d2 l1 l2 r1 r2 [T1 [[[[[[[T1str T1gam] T1delt] T1con] T1deg] T1dep] T1left] T1right]] [T2 [[[[[[[T2str T2gam] T2delt] T2con] T2deg] T2dep] T2left] T2right]].
 subst.
 refine (existT _ (imp_l phi psi T1 T2) _).
 repeat split;
@@ -749,20 +817,20 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_imp_r : 
-  forall {OC : constraint} {gamma delta : list formula} {phi psi : formula} {alpha : ordinal} {d : nat},
-      showable OC (phi :: gamma) (psi :: delta) alpha d ->
-          showable OC gamma ((imp phi psi) :: delta) alpha (S d).
+  forall {OC : constraint} {gamma delta : list formula} {phi psi : formula} {alpha : ordinal} {d l r : nat},
+      showable OC (phi :: gamma) (psi :: delta) alpha d l r ->
+          showable OC gamma ((imp phi psi) :: delta) alpha (S d) l r.
 Proof.
-intros OC gamma delta phi psi alpha d [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+intros OC gamma delta phi psi alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (imp_r phi psi T) _).
 repeat split;
 try assumption.
 1 : refine (incl_tran _ (fst (structured_OC_semiapp _ Tstr))).
-  rewrite Tgam.
-  apply (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror IN))).
+    rewrite Tgam.
+    apply (@flat_map_incl _ _ form_eq_dec nat_eq_dec vars_in _ (phi :: gamma) (fun (A : formula) (IN : In A gamma) => (or_intror IN))).
 1 : intros o IN.
-  repeat apply in_app_or in IN as [IN | IN].
+    repeat apply in_app_or in IN as [IN | IN].
 1 : apply (fst (structured_OC_semiapp _ Tstr)).
     rewrite Tgam.
     apply (in_or_app _ _ _ (or_introl IN)).
@@ -775,12 +843,12 @@ try assumption.
 Qed.
 
 Lemma cpl_tree_cut : 
-  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha1 alpha2 : ordinal} {d1 d2 : nat},
-      showable OC gamma (phi :: delta) alpha1 d1 ->
-          showable OC (phi :: gamma) delta alpha2 d2 ->
-              showable OC gamma delta (omax (omax alpha1 alpha2) (oadd (num_conn phi) (cast (nat_ord 1)))) (S (max d1 d2)).
+  forall {OC : constraint} {gamma delta : list formula} {phi : formula} {alpha1 alpha2 : ordinal} {d1 d2 l1 l2 r1 r2 : nat},
+      showable OC gamma (phi :: delta) alpha1 d1 l1 r1 ->
+          showable OC (phi :: gamma) delta alpha2 d2 l2 r2 ->
+              showable OC gamma delta (omax (omax alpha1 alpha2) (oadd (num_conn phi) (cast (nat_ord 1)))) (S (max d1 d2)) (max l1 l2) (max r1 r2).
 Proof.
-intros OC gamma delta phi alpha1 alpha2 d1 d2 [T1 [[[[[T1str T1gam] T1delt] T1con] T1deg] T1dep]] [T2 [[[[[T2str T2gam] T2delt] T2con] T2deg] T2dep]].
+intros OC gamma delta phi alpha1 alpha2 d1 d2 l1 l2 r1 r2 [T1 [[[[[[[T1str T1gam] T1delt] T1con] T1deg] T1dep] T1left] T1right]] [T2 [[[[[[[T2str T2gam] T2delt] T2con] T2deg] T2dep] T2left] T2right]].
 subst.
 refine (existT _ (cut phi T1 T2) _).
 repeat split;
@@ -791,46 +859,46 @@ try assumption.
 Qed.
 
 Lemma commutative_left_aux :
-  forall {LN : list nat} {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {LN : list nat} {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       (set_bury gamma1 LN = gamma2) ->
-          showable OC gamma1 delta alpha d ->
-              showable OC gamma2 delta alpha d.
+          showable OC gamma1 delta alpha d l r ->
+              showable OC gamma2 delta alpha d l r.
 Proof.
 induction LN;
-intros gamma1 gamma2 delta OC alpha d EQ Tshow.
+intros gamma1 gamma2 delta OC alpha d l r EQ Tshow.
 - unfold set_bury in EQ.
   subst.
   apply Tshow.
 - unfold set_bury in EQ;
   fold @set_bury in EQ.
-  apply (IHLN _ _ _ _ _ _ EQ), cpl_tree_ex_l, Tshow.
+  apply (IHLN _ _ _ _ _ _ _ _ EQ), cpl_tree_ex_l, Tshow.
 Qed.
 
 Lemma cpl_tree_comm_left :
-  forall {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha : ordinal} {d : nat},
+  forall {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha : ordinal} {d l r : nat},
       (perm gamma1 gamma2) ->
-          showable OC gamma1 delta alpha d ->
-              showable OC gamma2 delta alpha d.
+          showable OC gamma1 delta alpha d l r ->
+              showable OC gamma2 delta alpha d l r.
 Proof.
-intros gamma1 gamma2 delta OC alpha d perm SHOW.
+intros gamma1 gamma2 delta OC alpha d l r perm SHOW.
 pose proof (set_bury_eq_perm perm) as [LN EQ].
 apply (commutative_left_aux EQ SHOW).
 Defined.
 
 Lemma prove_dups_left_aux :
-  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       length gamma = n ->
-          showable OC gamma delta alpha d ->
-              {d' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d'}.
+          showable OC gamma delta alpha d l r ->
+              {l' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d l' r}.
 Proof.
 induction n;
-intros gamma delta OC alpha d EQ Tshow.
+intros gamma delta OC alpha d l r EQ Tshow.
 - destruct gamma.
-  + refine (existT _ d Tshow).
+  + refine (existT _ l Tshow).
   + inversion EQ.
 - case (no_dup_dec_cases form_eq_dec gamma) as [NDG | DG].
   + rewrite (nodup_fixed_point _ NDG).
-    refine (existT _ d Tshow).
+    refine (existT _ l Tshow).
   + destruct (has_dups_split form_eq_dec DG) as [A [gamma1 [gamma2 [gamma3 EQL]]]].
     rewrite EQL in *.
     assert (length (A :: gamma1 ++ gamma2 ++ gamma3) = n) as LEN.
@@ -842,105 +910,105 @@ intros gamma delta OC alpha d EQ Tshow.
       fold (@length formula) in EQ.
       repeat rewrite <- plus_n_Sm in EQ.
       lia. }
-    pose proof (IHn _ _ _ _ _ LEN (cpl_tree_con_l (cpl_tree_comm_left (double_perm_head) Tshow))) as [d' Tshow'].
+    pose proof (IHn _ _ _ _ _ _ _ LEN (cpl_tree_con_l (cpl_tree_comm_left (double_perm_head) Tshow))) as [l' Tshow'].
     rewrite <- nodup_double_cons in Tshow'.
-    refine (existT _ d' (cpl_tree_comm_left (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
+    refine (existT _ l' (cpl_tree_comm_left (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
 Qed.
 
 Lemma cpl_tree_nodups_left :
-  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
-      showable OC gamma delta alpha d ->
-          {d' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d'}.
+  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
+      showable OC gamma delta alpha d l r ->
+          {l' : nat & showable OC (nodup form_eq_dec gamma) delta alpha d l' r}.
 Proof.
-intros gamma delta OC alpha d Tshow.
+intros gamma delta OC alpha d l r Tshow.
 apply (prove_dups_left_aux eq_refl Tshow).
 Qed.
 
 Lemma prove_extras_left_aux :
-  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       length gamma = n ->
-          showable OC (nodup form_eq_dec gamma) delta alpha d ->
-              {d' : nat & showable OC gamma delta alpha d'}.
+          showable OC (nodup form_eq_dec gamma) delta alpha d l r ->
+              showable OC gamma delta alpha d l r.
 Proof.
 induction n;
-intros gamma delta OC alpha d EQ Tshow.
+intros gamma delta OC alpha d l r EQ Tshow.
 - destruct gamma.
-  apply (existT _ d Tshow).
-  inversion EQ.
+  + apply Tshow.
+  + inversion EQ.
 - case (no_dup_dec_cases form_eq_dec gamma) as [NDG | DG].
-+ rewrite <- (nodup_fixed_point form_eq_dec NDG).
-  apply (existT _ d Tshow).
-+ destruct (has_dups_split form_eq_dec DG) as [A [gamma1 [gamma2 [gamma3 EQL]]]].
-  subst.
-  destruct (@nodup_split_perm _ form_eq_dec (A :: A :: gamma1 ++ gamma2 ++ gamma3)) as [sigma [PERM SUB]].
-  assert (incl (flat_map vars_in sigma) (OC_list OC)) as SUB'.
-  { destruct Tshow as [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
-    refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ _ (incl_tran SUB (incl_tran (fun B IN => perm_in form_eq_dec (perm_sym double_perm_head) _ IN) (fun B IN => proj2 (nodup_In _ _ _) IN)))) _).
-    rewrite <- Tgam, <- Tcon.
-    apply (fst (structured_OC_semiapp _ Tstr)). }
-  apply (existT _ (length sigma + d) (cpl_tree_comm_left (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head)) (cpl_tree_weaken_left SUB' ((cpl_tree_comm_left (perm_nodup form_eq_dec double_perm_head)) Tshow)))).
+  + rewrite <- (nodup_fixed_point form_eq_dec NDG).
+    apply Tshow.
+  + destruct (has_dups_split form_eq_dec DG) as [A [gamma1 [gamma2 [gamma3 EQL]]]].
+    subst.
+    destruct (@nodup_split_perm _ form_eq_dec (A :: A :: gamma1 ++ gamma2 ++ gamma3)) as [sigma [PERM SUB]].
+    assert (incl (flat_map vars_in sigma) (OC_list OC)) as SUB'.
+    { destruct Tshow as [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+      refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ _ (incl_tran SUB (incl_tran (fun B IN => perm_in form_eq_dec (perm_sym double_perm_head) _ IN) (fun B IN => proj2 (nodup_In _ _ _) IN)))) _).
+      rewrite <- Tgam, <- Tcon.
+      apply (fst (structured_OC_semiapp _ Tstr)). }
+    apply (cpl_tree_comm_left (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head)) (cpl_tree_weaken_left SUB' ((cpl_tree_comm_left (perm_nodup form_eq_dec double_perm_head)) Tshow))).
 Qed.
 
 Lemma cpl_tree_redups_left :
-  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
-      showable OC (nodup form_eq_dec gamma) delta alpha d ->
-          {d' : nat & showable OC gamma delta alpha d'}.
+  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
+      showable OC (nodup form_eq_dec gamma) delta alpha d l r ->
+          showable OC gamma delta alpha d l r.
 Proof.
-intros gamma delta OC alpha d Tshow.
+intros gamma delta OC alpha d l r Tshow.
 apply (prove_extras_left_aux eq_refl Tshow).
 Qed.
 
 Lemma cpl_tree_equiv_left :
-  forall {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha : ordinal} {d : nat},
+  forall {gamma1 gamma2 delta : list formula} {OC : constraint} {alpha : ordinal} {d l r : nat},
       (forall A : formula, In A gamma1 <-> In A gamma2) ->
-          showable OC gamma1 delta alpha d ->
-              {d' : nat & showable OC gamma2 delta alpha d'}.
+          showable OC gamma1 delta alpha d l r ->
+              {l' : nat & showable OC gamma2 delta alpha d l' r}.
 Proof.
-intros gamma1 gamma2 delta OC alpha d EQUIV Tshow.
-apply (cpl_tree_redups_left ((cpl_tree_comm_left (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_left Tshow)))).
+intros gamma1 gamma2 delta OC alpha d l r EQUIV Tshow.
+apply (existT _ (projT1 (cpl_tree_nodups_left Tshow)) (cpl_tree_redups_left ((cpl_tree_comm_left (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_left Tshow))))).
 Qed.
 
 Lemma commutative_right_aux :
-  forall {LN : list nat} {gamma delta1 delta2 : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {LN : list nat} {gamma delta1 delta2 : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       (set_bury delta1 LN = delta2) ->
-          showable OC gamma delta1 alpha d ->
-              showable OC gamma delta2 alpha d.
+          showable OC gamma delta1 alpha d l r->
+              showable OC gamma delta2 alpha d l r.
 Proof.
 induction LN;
-intros gamma1 gamma2 delta OC alpha d EQ Tshow.
+intros gamma1 gamma2 delta OC alpha d l r EQ Tshow.
 - unfold set_bury in EQ.
   subst.
   apply Tshow.
 - unfold set_bury in EQ;
   fold @set_bury in EQ.
-  apply (IHLN _ _ _ _ _ _ EQ), cpl_tree_ex_r, Tshow.
+  apply (IHLN _ _ _ _ _ _ _ _ EQ), cpl_tree_ex_r, Tshow.
 Qed.
 
 Lemma cpl_tree_comm_right :
-  forall {gamma delta1 delta2 : list formula} {OC : constraint} {alpha : ordinal} {d : nat},
+  forall {gamma delta1 delta2 : list formula} {OC : constraint} {alpha : ordinal} {d l r : nat},
       (perm delta1 delta2) ->
-          showable OC gamma delta1 alpha d ->
-              showable OC gamma delta2 alpha d.
+          showable OC gamma delta1 alpha d l r ->
+              showable OC gamma delta2 alpha d l r.
 Proof.
-intros gamma delta1 delta2 OC alpha d perm.
+intros gamma delta1 delta2 OC alpha d l r perm.
 pose proof (set_bury_eq_perm perm) as [LN EQ].
 apply (commutative_right_aux EQ).
 Defined.
 
 Lemma prove_dups_right_aux :
-  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       length delta = n ->
-          showable OC gamma delta alpha d ->
-              {d' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d'}.
+          showable OC gamma delta alpha d l r ->
+              {r' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d l r'}.
 Proof.
 induction n;
-intros gamma delta OC alpha d EQ Tshow.
+intros gamma delta OC alpha d l r EQ Tshow.
 - destruct delta.
-  refine (existT _ d Tshow).
+  refine (existT _ r Tshow).
   inversion EQ.
 - case (no_dup_dec_cases form_eq_dec delta) as [NDD | DD].
   + rewrite (nodup_fixed_point _ NDD).
-    refine (existT _ d Tshow).
+    refine (existT _ r Tshow).
   + destruct (has_dups_split form_eq_dec DD) as [A [delta1 [delta2 [delta3 EQL]]]].
     subst.
     assert (length (A :: delta1 ++ delta2 ++ delta3) = n) as LEN.
@@ -952,64 +1020,63 @@ intros gamma delta OC alpha d EQ Tshow.
       fold (@length formula) in EQ.
       repeat rewrite <- plus_n_Sm in EQ.
       lia. }
-    pose proof (IHn _ _ _ _ _ LEN (cpl_tree_con_r (cpl_tree_comm_right (double_perm_head) Tshow))) as [d' Tshow'].
+    pose proof (IHn _ _ _ _ _ _ _ LEN (cpl_tree_con_r (cpl_tree_comm_right (double_perm_head) Tshow))) as [r' Tshow'].
     rewrite <- nodup_double_cons in Tshow'.
-    refine (existT _ d' (cpl_tree_comm_right (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
+    refine (existT _ r' (cpl_tree_comm_right (perm_sym (perm_nodup form_eq_dec double_perm_head)) Tshow')).
 Qed.
 
 Lemma cpl_tree_nodups_right :
-  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
-      showable OC gamma delta alpha d ->
-          {d' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d'}.
+  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
+      showable OC gamma delta alpha d l r ->
+          {r' : nat & showable OC gamma (nodup form_eq_dec delta) alpha d l r'}.
 Proof.
-intros gamma delta OC alpha d Tshow.
+intros gamma delta OC alpha d l r Tshow.
 apply (prove_dups_right_aux eq_refl Tshow).
 Qed.
 
 Lemma prove_extras_right_aux :
-  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
+  forall {n : nat} {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
       length delta = n ->
-          showable OC gamma (nodup form_eq_dec delta) alpha d ->
-              {d' : nat & showable OC gamma delta alpha d'}.
+          showable OC gamma (nodup form_eq_dec delta) alpha d l r ->
+              showable OC gamma delta alpha d l r.
 Proof.
 induction n;
-intros gamma delta OC alpha d EQ Tshow.
+intros gamma delta OC alpha d l r EQ Tshow.
 - destruct delta.
-  refine (existT _ d Tshow).
-  inversion EQ.
+  + apply Tshow.
+  + inversion EQ.
 - case (no_dup_dec_cases form_eq_dec delta) as [NDD | DD].
   + rewrite <- (nodup_fixed_point form_eq_dec NDD).
-    refine (existT _ d Tshow).
+    apply Tshow.
   + destruct (has_dups_split form_eq_dec DD) as [A [delta1 [delta2 [delta3 EQL]]]].
     subst.
     destruct (@nodup_split_perm _ form_eq_dec (A :: A :: delta1 ++ delta2 ++ delta3)) as [pi [PERM SUB]].
     assert (incl (flat_map vars_in pi) (OC_list OC)) as SUB'.
-    { destruct Tshow as [T [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep]].
+    { destruct Tshow as [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
       refine (incl_tran (@flat_map_incl _ _ form_eq_dec nat_eq_dec _ _ _ (incl_tran SUB (incl_tran (fun B IN => perm_in form_eq_dec (perm_sym double_perm_head) _ IN) (fun B IN => proj2 (nodup_In _ _ _) IN)))) _).
       rewrite <- Tdelt, <- Tcon.
       apply (snd (structured_OC_semiapp _ Tstr)). }
-    apply (existT _ (length pi + d) (cpl_tree_comm_right (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head)) (cpl_tree_weaken_right SUB' ((cpl_tree_comm_right (perm_nodup form_eq_dec double_perm_head)) Tshow)))).
+    apply (cpl_tree_comm_right (perm_trans _ _ _ (perm_sym PERM) (perm_sym double_perm_head)) (cpl_tree_weaken_right SUB' ((cpl_tree_comm_right (perm_nodup form_eq_dec double_perm_head)) Tshow))).
 Qed.
 
 Lemma cpl_tree_redups_right :
-  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d : nat},
-      showable OC gamma (nodup form_eq_dec delta) alpha d ->
-          {d' : nat & showable OC gamma delta alpha d'}.
+  forall {gamma delta : list formula} {OC : constraint} {alpha: ordinal} {d l r : nat},
+      showable OC gamma (nodup form_eq_dec delta) alpha d l r ->
+          showable OC gamma delta alpha d l r.
 Proof.
-intros gamma delta OC alpha d Tshow.
+intros gamma delta OC alpha d l r Tshow.
 apply (prove_extras_right_aux eq_refl Tshow).
 Qed.
 
 Lemma cpl_tree_equiv_right :
-  forall {gamma delta1 delta2 : list formula} {OC : constraint} {alpha : ordinal} {d : nat},
+  forall {gamma delta1 delta2 : list formula} {OC : constraint} {alpha : ordinal} {d l r : nat},
       (forall A : formula, In A delta1 <-> In A delta2) ->
-          showable OC gamma delta1 alpha d ->
-              {d' : nat & showable OC gamma delta2 alpha d'}.
+          showable OC gamma delta1 alpha d l r ->
+              {r' : nat & showable OC gamma delta2 alpha d l r'}.
 Proof.
-intros gamma delta1 delta2 OC alpha d EQUIV Tshow.
-apply (cpl_tree_redups_right ((cpl_tree_comm_right (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_right Tshow)))).
+intros gamma delta1 delta2 OC alpha d l r EQUIV Tshow.
+apply (existT _ (projT1 (cpl_tree_nodups_right Tshow)) (cpl_tree_redups_right ((cpl_tree_comm_right (equiv_nodup_perm form_eq_dec EQUIV)) (projT2 (cpl_tree_nodups_right Tshow))))).
 Qed.
-
 
 Lemma strong_ind_type :
   forall n (P : nat -> Type), (forall n, (forall m, m < n -> P m) -> P n) -> P n.
@@ -1017,53 +1084,27 @@ Proof.
   exact (fun p P F => induction_ltof1 nat (fun m => m) P F p).
 Defined.
 
-(*
-Fixpoint left_ops (T : cpl_tree) : nat :=
-match T with
-| leaf OC gamma delta alpha => 0
-
-| @deg_up OC gamma delta alpha beta b T' => left_ops T'
-
-| @con_l OC gamma delta phi alpha T' => S (left_ops T')
-
-| @con_r OC gamma delta phi alpha T' => left_ops T'
-
-
-| @ex_l OC gamma delta n alpha T' => left_ops T'
-
-| @ex_r OC gamma delta n alpha T' => left_ops T'
-
-
-| @wkn_l OC gamma delta phi alpha T' => S (left_ops T')
-
-| @wkn_r OC gamma delta phi alpha T' => left_ops T'
-
-| @rst OC gamma delta kappa alpha T' => left_ops T'
-
-
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => S (left_ops T')
-
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => left_ops T'
-
-
-| @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => S (max (left_ops T1) (left_ops T2))
-
-| @imp_r OC gamma delta phi psi alpha T' => left_ops T'
-
-
-| @cut OC gamma delta phi alpha1 alpha2 T1 T2 => max (left_ops T1) (left_ops T2)
-end. *)
-
-Lemma cpl_tree_imp_l_inv_2 :
-forall {d : nat} {T : cpl_tree} {gamma1 gamma2 delta : list formula} {phi psi : formula} {OC : constraint} {alpha : ordinal},
-    cpl_tree_depth T <= d ->
-        T_shows T OC (gamma1 ++ imp phi psi :: gamma2) delta alpha (cpl_tree_depth T) ->
-            {d' : nat & ((showable OC (gamma1 ++ gamma2) (delta ++ [phi]) alpha d') * (d' <= cpl_tree_depth T))%type}.
+Lemma struct_show_self :
+    forall {T : cpl_tree},
+        structured T ->
+            T_shows T (cpl_tree_constraint T) (cpl_tree_left T) (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T) (left_ops T) (right_ops T).
 Proof.
-induction d as [d IND] using strong_ind_type.
+intros T Tstr.
+repeat split.
+apply Tstr.
+Qed.
+
+
+Lemma cpl_tree_imp_l_inv_1 :
+forall {l : nat} {T : cpl_tree} {gamma1 gamma2 delta : list formula} {phi psi : formula} {OC : constraint} {d r : nat} {alpha : ordinal},
+    left_ops T <= l ->
+        T_shows T OC (gamma1 ++ imp phi psi :: gamma2) delta alpha d (left_ops T) r ->
+            {d' : nat & {l' : nat & {r' : nat & ((showable OC (gamma1 ++ psi :: gamma2) delta alpha d' l' r') * (d' <= cpl_tree_depth T) * (l' <= left_ops T))%type}}}.
+Proof.
+induction l as [l IND] using strong_ind_type.
 induction T;
-intros gamma1' gamma2' delta' phi' psi' OC' alpha' LT Tshow;
-inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
+intros gamma1' gamma2' delta' phi' psi' OC' d r alpha' LT Tshow;
+inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
@@ -1077,7 +1118,247 @@ inversion Tshow as [[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth].
 all : unfold cpl_tree_left in Tgam;
       subst.
 
-1 : refine (existT _ 0 (pair (existT _ (leaf OC (gamma1' ++ gamma2') (delta ++ [phi']) alpha) _) (Nat.le_refl _))).
+1 : refine (existT _ 0 (existT _ 0 (existT _ 0 (pair (pair (existT _ (leaf OC (gamma1' ++ psi' :: gamma2') delta alpha) _) (Nat.le_refl _)) (Nat.le_refl _))))).
+    repeat split;
+    intros o IN;
+    unfold cpl_tree_left in *;
+    unfold cpl_tree_right in *;
+    rewrite flat_map_app in *.
+    apply in_app_or in IN as [IN1 | IN2].
+    refine (TG_app o (in_or_app _ _ _ (or_introl IN1))).
+    apply in_app_or in IN2 as [IN2 | IN3].
+    refine (TG_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_intror IN2))))))).
+    refine (TG_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_intror IN3))))).
+    refine (TD_app o IN).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    subst.
+    destruct b.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_1 _ Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_2 _ Tshow'') LTD) LT')))).
+
+1 : { destruct gamma1' as [ | f gamma1'].
+      - rewrite app_nil_l in Tgam.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        rewrite TG in Tshow'.
+        rewrite <- (app_nil_l (_ :: gamma2')), app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[[T' Tshow''] LTD] LT']]]].
+        inversion Tshow'' as [[[[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'] Tleft'] Tright'].
+        subst.
+        rewrite <- app_comm_cons, app_nil_l, <- (app_nil_l (_ :: _)) in Tshow''.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ LT' Tshow'') as [d'' [l'' [r'' [[Tshow''' LTD'] LT'']]]].
+        rewrite app_nil_l in *.
+        refine (existT _ d'' (existT _ (S l'') (existT _ r'' (pair (pair (cpl_tree_con_l Tshow''') (Nat.le_trans _ _ _ LTD' LTD)) (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))))).
+      - rewrite <- app_comm_cons in Tgam.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG in Tshow'.
+        rewrite !app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        rewrite <- app_comm_cons.
+        refine (existT _ d' (existT _ (S l') (existT _ r' (pair (pair (cpl_tree_con_l Tshow'') LTD) (le_n_S _ _ LT'))))). }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TD in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ (S r') (pair (pair (cpl_tree_con_r Tshow'') LTD) LT')))).
+
+1 : destruct (perm_split (perm_sym bury_is_perm) Tgam) as [gamma1 [gamma2 [EQ perm]]].
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite EQ in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, cpl_tree_deg.
+    fold cpl_tree_depth (cpl_tree_deg T).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_left _ Tshow'') LTD) LT')))).
+    apply perm_trans with (psi' :: gamma1 ++ gamma2).
+    apply perm_head.
+    apply perm_trans with (psi' :: gamma1' ++ gamma2').
+    apply perm_skip, perm_sym, perm.
+    apply perm_sym, perm_head.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_right bury_is_perm Tshow'') LTD) LT')))).
+
+1 : { destruct gamma1'.
+      - rewrite app_nil_l in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_wkn_l _ (existT _ T _)) (Nat.le_refl _)) (Nat.le_refl _))))).
+        intros o IN.
+        apply TG_app, in_or_app, or_introl, in_or_app, or_intror, IN.
+        repeat split.
+        apply Tstr.
+      - rewrite <- app_comm_cons in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite EQ2 in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_l _ Tshow'') LTD) LT')))).
+        intros o IN.
+        apply TG_app, in_or_app, or_introl, IN. }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_r _ Tshow'') LTD) LT')))).
+    intros o IN.
+    apply TD_app, in_or_app, or_introl, IN.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    intros FAL.
+    apply KNING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply KNIND, FAL.
+
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply NIND, FAL.
+
+1 : { destruct gamma1'.
+      - rewrite app_nil_l in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self T1str) as T1show.
+        rewrite <- T1G.
+        unfold cpl_tree_deg at 5.
+        refine (existT _ (cpl_tree_depth T1) (existT _ (left_ops T1) (existT _ (right_ops T1) (pair (pair (cpl_tree_deg_up_1 _ (existT _ T1 T1show)) (le_S _ _ (Nat.le_max_l _ _))) (Nat.le_max_l _ _))))).
+      - rewrite <- app_comm_cons in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self T1str) as T1show.
+        rewrite T1G, EQ2, app_comm_cons in T1show.
+        pose proof (struct_show_self T2str) as T2show.
+        rewrite T2D, EQ2, T2OC in T2show.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth, left_ops;
+        fold cpl_tree_depth left_ops.
+        pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _) LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+        pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _) LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+        refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_imp_l T1show' T2show') _) _)))).
+        lia.
+        lia. }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, TD, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite Tgam, T1D in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2G, Tgam, T2OC, app_comm_cons in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, left_ops;
+    fold cpl_tree_depth left_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+Qed.
+
+Lemma cpl_tree_imp_l_inv_2 :
+forall {l : nat} {T : cpl_tree} {gamma1 gamma2 delta : list formula} {phi psi : formula} {OC : constraint} {d r : nat} {alpha : ordinal},
+    left_ops T <= l ->
+        T_shows T OC (gamma1 ++ imp phi psi :: gamma2) delta alpha d (left_ops T) r ->
+            {d' : nat & {l' : nat & {r' : nat & ((showable OC (gamma1 ++ gamma2) (delta ++ [phi]) alpha d' l' r') * (d' <= cpl_tree_depth T) * (l' <= left_ops T))%type}}}.
+Proof.
+induction l as [l IND] using strong_ind_type.
+induction T;
+intros gamma1' gamma2' delta' phi' psi' OC' d r alpha' LT Tshow;
+inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
+
+1 : destruct Tstr as [TG_app TD_app].
+2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+
+all : unfold cpl_tree_left in Tgam;
+      subst.
+
+1 : refine (existT _ 0 (existT _ 0 (existT _ 0 (pair (pair (existT _ (leaf OC (gamma1' ++ gamma2') (delta ++ [phi']) alpha) _) (Nat.le_refl _)) (Nat.le_refl _))))).
     repeat split;
     intros o IN;
     unfold cpl_tree_left in *;
@@ -1091,36 +1372,34 @@ all : unfold cpl_tree_left in Tgam;
     rewrite app_nil_r in IN2.
     refine (TG_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN2))))))).
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ LT Tshow') as [d' [Tshow'' LT']].
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     subst.
     destruct b.
-    refine (existT _ d' (pair (cpl_tree_deg_up_1 _ Tshow'') LT')).
-    refine (existT _ d' (pair (cpl_tree_deg_up_2 _ Tshow'') LT')).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_1 _ Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_2 _ Tshow'') LTD) LT')))).
 
 1 : { destruct gamma1' as [ | f gamma1'].
       - rewrite app_nil_l in Tgam.
-        assert (T_shows T (cpl_tree_constraint T) ([] ++ imp phi' psi' :: imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-        { repeat split.
-          apply Tstr.
-          inversion Tgam as [[EQ1 EQ2]].
-          subst.
-          apply TG. }
+        pose proof (struct_show_self Tstr) as Tshow'.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        rewrite TG in Tshow'.
+        rewrite <- (app_nil_l (_ :: _)) in Tshow'.
         unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
         unfold cpl_tree_depth.
         fold cpl_tree_depth.
-        pose proof (IND _ LT _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [[T' Tshow''] LT']].
-        inversion Tshow'' as [[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'].
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[[T' Tshow''] LTD] LT']]]].
+        inversion Tshow'' as [[[[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'] Tleft'] Tright'].
         subst.
-        pose proof (IND _ LT _ _ _ _ _ _ _ _ LT' Tshow'') as [d'' [Tshow''' LT'']].
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ LT' Tshow'') as [d'' [l'' [r'' [[Tshow''' LTD'] LT'']]]].
         rewrite <- app_assoc in Tshow'''.
-        refine (existT _ (S (d'')) (pair _ (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))).
+        unfold app at 3 in Tshow'''.
+        refine (existT _ d'' (existT _ l'' (existT _ (S r'') (pair (pair _ (Nat.le_trans _ _ _ LTD' LTD)) (le_S _ _ (Nat.le_trans _ _ _ LT'' LT')))))).
         pose proof (@perm_head _ (cpl_tree_right T) [] phi') as PERM.
         rewrite app_nil_r in PERM.
         pose proof (@perm_head _ (phi' :: (cpl_tree_right T)) [] phi') as PERM1.
@@ -1130,55 +1409,48 @@ all : unfold cpl_tree_left in Tgam;
       - rewrite <- app_comm_cons in Tgam.
         inversion Tgam as [[EQ1 EQ2]].
         subst.
-        assert (T_shows T (cpl_tree_constraint T) ((f :: f :: gamma1') ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-        { repeat split.
-          apply Tstr.
-          apply TG. }
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG in Tshow'.
+        rewrite !app_comm_cons in Tshow'.
         unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
         unfold cpl_tree_depth.
         fold cpl_tree_depth.
-        pose proof (IND _ LT _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [ Tshow'' LT']].
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
         rewrite <- app_comm_cons.
-        refine (existT _ (S d') (pair (cpl_tree_con_l Tshow'') (le_n_S _ _ LT'))). }
+        refine (existT _ d' (existT _ (S l') (existT _ r' (pair (pair (cpl_tree_con_l Tshow'') LTD) (le_n_S _ _ LT'))))). }
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ (S d') (pair (cpl_tree_con_r _) (le_n_S _ _ LT'))).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ (S r') (pair (pair (cpl_tree_con_r _) LTD) LT')))).
     rewrite !app_comm_cons, <- TD.
     apply Tshow''.
 
 1 : destruct (perm_split (perm_sym bury_is_perm) Tgam) as [gamma1 [gamma2 [EQ perm]]].
-    assert (T_shows T (cpl_tree_constraint T) (gamma1 ++ imp phi' psi' :: gamma2) (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply EQ. }
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite EQ in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth, cpl_tree_deg.
     fold cpl_tree_depth (cpl_tree_deg T).
-    pose proof (IHT _ _ _ _ _ _ _ LT Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ d' (pair (cpl_tree_comm_left (perm_sym perm) Tshow'') LT')).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_left (perm_sym perm) Tshow'') LTD) LT')))).
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ LT Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ d' (pair (cpl_tree_comm_right (perm_app (bury_is_perm) perm_refl) Tshow'') LT')).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_right (perm_app (bury_is_perm) perm_refl) Tshow'') LTD) LT')))).
 
 1 : { destruct gamma1'.
       - rewrite app_nil_l in *.
         inversion Tgam as [[EQ1 EQ2]].
         subst.
-        refine (existT _ (S (cpl_tree_depth T)) (pair (cpl_tree_weaken_right _ (existT _ T _)) (Nat.le_refl _))).
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_weaken_right _ (existT _ T _)) (Nat.le_refl _)) (Nat.le_refl _))))).
         intros o IN.
         unfold flat_map in IN.
         rewrite app_nil_r in IN.
@@ -1188,40 +1460,34 @@ all : unfold cpl_tree_left in Tgam;
       - rewrite <- app_comm_cons in *.
         inversion Tgam as [[EQ1 EQ2]].
         subst.
-        assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-        { repeat split.
-          apply Tstr.
-          apply EQ2. }
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite EQ2 in Tshow'.
         unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
         unfold cpl_tree_depth.
         fold cpl_tree_depth.
-        pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
-        refine (existT _ (S d') (pair (cpl_tree_wkn_l _ Tshow'') (le_n_S _ _ LT'))).
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_l _ Tshow'') LTD) LT')))).
         intros o IN.
         apply TG_app, in_or_app, or_introl, IN. }
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ (S d') (pair (cpl_tree_wkn_r _ Tshow'') (le_n_S _ _ LT'))).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_r _ Tshow'') LTD) LT')))).
     intros o IN.
     apply TD_app, in_or_app, or_introl, IN.
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TOC in Tshow''.
-    refine (existT _ (S d') (pair (cpl_tree_reset _ _ KIN Tshow'') (le_n_S _ _ LT'))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
     intros FAL.
     apply KNING.
     rewrite Tgam.
@@ -1245,26 +1511,22 @@ all : unfold cpl_tree_left in Tgam;
     rewrite <- app_comm_cons in *.
     inversion Tgam as [[EQ1 EQ2]].
     subst.
-    assert (T_shows T (cpl_tree_constraint T) ((phi :: gamma1') ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply TG. }
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ (S d') (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LT'))).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
 
-1 : assert (T_shows T (cpl_tree_constraint T) (gamma1' ++ imp phi' psi' :: gamma2') (cpl_tree_right T) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply Tgam. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TOC, TD in Tshow''.
-    refine (existT _ (S d') (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LT'))).
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
     intros FAL.
     apply NING.
     rewrite Tgam.
@@ -1287,58 +1549,572 @@ all : unfold cpl_tree_left in Tgam;
       - rewrite app_nil_l in *.
         inversion Tgam as [[EQ1 EQ2]].
         subst.
-        assert (T_shows T2 (cpl_tree_constraint T2) (cpl_tree_left T2) (phi' :: (cpl_tree_right T1)) (cpl_tree_deg T2) (cpl_tree_depth T2)) as T2show.
-        { repeat split;
-          assumption. }
+        pose proof (struct_show_self T2str) as T2show.
         rewrite <- T2OC.
         unfold cpl_tree_deg at 5.
-        refine (existT _ (cpl_tree_depth T2) (pair (cpl_tree_deg_up_2 _ (cpl_tree_comm_right _ (existT _ T2 T2show))) (le_S _ _ (Nat.le_max_r _ _)))).
-        rewrite <- (app_nil_r (cpl_tree_right T1)) at 1.
+        refine (existT _ (cpl_tree_depth T2) (existT _ (left_ops T2) (existT _ (right_ops T2) (pair (pair (cpl_tree_deg_up_2 _ (cpl_tree_comm_right _ (existT _ T2 T2show))) (le_S _ _ (Nat.le_max_r _ _))) (Nat.le_max_r _ _))))).
+        rewrite T2D, <- (app_nil_r (cpl_tree_right T1)) at 1.
         apply perm_sym, perm_head.
       - rewrite <- app_comm_cons in *.
         inversion Tgam as [[EQ1 EQ2]].
         subst.
-        assert (T_shows T1 (cpl_tree_constraint T1) ((psi :: gamma1') ++ imp phi' psi' :: gamma2') (cpl_tree_right T1) (cpl_tree_deg T1) (cpl_tree_depth T1)) as T1show.
-        { repeat split;
-          try assumption.
-          rewrite T1G, EQ2.
-          reflexivity. }
-        assert (T_shows T2 (cpl_tree_constraint T1) (gamma1' ++ imp phi' psi' :: gamma2') (phi :: (cpl_tree_right T1)) (cpl_tree_deg T2) (cpl_tree_depth T2)) as T2show.
-          { repeat split;
-            try assumption. }
+        pose proof (struct_show_self T1str) as T1show.
+        rewrite T1G, EQ2, app_comm_cons in T1show.
+        pose proof (struct_show_self T2str) as T2show.
+        rewrite T2D, EQ2, T2OC in T2show.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth, left_ops;
+        fold cpl_tree_depth left_ops.
+        pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _) LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+        pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _) LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+        refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_imp_l T1show' T2show') _) _)))).
+        lia.
+        lia. }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, TD, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite Tgam, T1D in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2G, Tgam, T2OC, app_comm_cons in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, left_ops;
+    fold cpl_tree_depth left_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+Qed.
+
+
+Lemma cpl_tree_imp_r_inv :
+forall {r : nat} {T : cpl_tree} {gamma delta1 delta2 : list formula} {phi psi : formula} {OC : constraint} {d l : nat} {alpha : ordinal},
+    right_ops T <= r ->
+        T_shows T OC gamma (delta1 ++ imp phi psi :: delta2) alpha d l (right_ops T) ->
+            {d' : nat & {l' : nat & {r' : nat & ((showable OC (gamma ++ [phi]) (delta1 ++ psi :: delta2) alpha d' l' r') * (d' <= cpl_tree_depth T) * (r' <= right_ops T))%type}}}.
+Proof.
+induction r as [r IND] using strong_ind_type.
+induction T;
+intros gamma' delta1' delta2' phi' psi' OC' d l alpha' LT Tshow;
+inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
+
+1 : destruct Tstr as [TG_app TD_app].
+2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+
+all : unfold cpl_tree_right in Tdelt;
+      subst.
+
+1 : refine (existT _ 0 (existT _ 0 (existT _ 0 (pair (pair (existT _ (leaf OC (gamma ++ [phi']) (delta1' ++ psi' :: delta2') alpha) _) (Nat.le_refl _)) (Nat.le_refl _))))).
+    repeat split;
+    intros o IN;
+    unfold cpl_tree_left in *;
+    unfold cpl_tree_right in *;
+    rewrite flat_map_app in *;
+    apply in_app_or in IN as [IN1 | IN2].
+    refine (TG_app o IN1).
+    unfold flat_map in IN2.
+    rewrite app_nil_r in IN2.
+    refine (TD_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_introl IN2))))))).
+    refine (TD_app o (in_or_app _ _ _ (or_introl IN1))).
+    apply in_app_or in IN2 as [IN2 | IN3].
+    refine (TD_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_introl (in_or_app _ _ _ (or_intror IN2))))))).
+    refine (TD_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_intror IN3))))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    subst.
+    destruct b.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_1 _ Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_2 _ Tshow'') LTD) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt,TG in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ (S l') (existT _ r' (pair (pair (cpl_tree_con_l Tshow'') LTD) LT')))).
+
+1 : { destruct delta1' as [ | f delta1'].
+      - rewrite app_nil_l in *.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        rewrite TD in Tshow'.
+        rewrite <- (app_nil_l (imp phi' psi' :: delta2')), app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[[T' Tshow''] LTD] LT']]]].
+        rewrite <- app_comm_cons, app_nil_l, <- (app_nil_l (imp _ _ :: _)) in Tshow''.
+        inversion Tshow'' as [[[[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'] Tleft'] Tright'].
+        subst.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ LT' Tshow'') as [d'' [l'' [r'' [[Tshow''' LTD'] LT'']]]].
+        rewrite <- app_assoc in Tshow'''.
+        unfold app at 2 3 in Tshow'''.
+        refine (existT _ d'' (existT _ (S l'') (existT _ (S r'') (pair (pair _ (Nat.le_trans _ _ _ LTD' LTD)) (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))))).
+        pose proof (@perm_head _ (cpl_tree_left T) [] phi') as PERM.
+        rewrite app_nil_r in PERM.
+        pose proof (@perm_head _ (phi' :: (cpl_tree_left T)) [] phi') as PERM1.
+        rewrite app_nil_r in PERM1.
+        pose proof (@perm_head _ (cpl_tree_left T) [phi'] phi') as PERM2.
+        apply (cpl_tree_comm_left (perm_sym PERM)), cpl_tree_con_l, (cpl_tree_comm_left PERM1), (cpl_tree_comm_left PERM2), cpl_tree_con_r, Tshow'''.
+      - rewrite <- app_comm_cons in Tdelt.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TD in Tshow'.
+        rewrite !app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        rewrite <- app_comm_cons.
+        refine (existT _ d' (existT _ l' (existT _ (S r') (pair (pair (cpl_tree_con_r Tshow'') LTD) (le_n_S _ _ LT'))))). }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_left (perm_app (bury_is_perm) perm_refl) Tshow'') LTD) LT')))).
+
+1 : destruct (perm_split (perm_sym bury_is_perm) Tdelt) as [delta1 [delta2 [EQ perm]]].
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite EQ in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth, cpl_tree_deg.
+    fold cpl_tree_depth (cpl_tree_deg T).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_right _ Tshow'') LTD) LT')))).
+    apply perm_trans with (psi' :: delta1 ++ delta2).
+    apply perm_head.
+    apply perm_trans with (psi' :: delta1' ++ delta2').
+    apply perm_skip, perm_sym, perm.
+    apply perm_sym, perm_head.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_l _ Tshow'') LTD) LT')))).
+    intros o IN.
+    apply TG_app, in_or_app, or_introl, IN.
+
+1 : { destruct delta1'.
+      - rewrite app_nil_l in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_weaken_left _ (cpl_tree_wkn_r _ (existT _ T _))) (Nat.le_refl _)) (Nat.le_refl _))))).
+        intros o IN.
+        unfold flat_map in IN.
+        rewrite app_nil_r in IN.
+        apply TD_app, in_or_app, or_introl, in_or_app, or_introl, IN.
+        intros o IN.
+        unfold flat_map in IN.
+        apply TD_app, in_or_app, or_introl, in_or_app, or_intror, IN.
+        repeat split.
+        apply Tstr.
+      - rewrite <- app_comm_cons in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite EQ2 in Tshow'.
         unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
         unfold cpl_tree_depth.
         fold cpl_tree_depth.
-        pose proof (IHT1 _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _) (le_S_n _ _ (le_S _ _  LT))) T1show) as [d1 [T1show' LT1]].
-        pose proof (IHT2 _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _) (le_S_n _ _ (le_S _ _  LT))) T2show) as [d2 [T2show' LT2]].
-        refine (existT _ (S (Init.Nat.max d1 d2)) (pair (cpl_tree_imp_l T1show' T2show') (le_n_S _ _ _))).
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_r _ Tshow'') LTD) LT')))).
+        intros o IN.
+        apply TD_app, in_or_app, or_introl, IN. }    
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply KNING, FAL1.
+    apply KNIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    rewrite Tdelt.
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply KNIND.
+    rewrite Tdelt, flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite Tdelt, T1G in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2D, Tdelt, T2OC, app_comm_cons in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, right_ops;
+    fold cpl_tree_depth right_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_imp_l T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+
+1 : { destruct delta1'.
+      - rewrite app_nil_l in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG, TD in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_comm_left _ (existT _ T Tshow')) (le_S _ _ (Nat.le_refl _))) (Nat.le_refl _))))).
+        apply perm_sym.
+        rewrite <- app_nil_r.
+        apply perm_head.
+      - rewrite <- app_comm_cons in Tdelt.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG, TD, app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LTD)) LT')))). }
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite T1D, Tdelt, app_comm_cons in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2G, Tdelt, T2OC in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, right_ops;
+    fold cpl_tree_depth right_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+Qed.
+
+
+Lemma cpl_tree_bnd_l_inv :
+forall {l : nat} {T : cpl_tree} {gamma1 gamma2 delta : list formula} {phi : formula} {lambda kappa} {OC : constraint} {d r : nat} {alpha : ordinal},
+    left_ops T <= l ->
+        (OC_rel (cpl_tree_constraint T) lambda kappa = true) ->
+            T_shows T OC (gamma1 ++ bnd lambda kappa phi :: gamma2) delta alpha d (left_ops T) r ->
+                {d' : nat & {l' : nat & {r' : nat & ((showable OC (gamma1 ++ phi :: gamma2) delta alpha d' l' r') * (d' <= cpl_tree_depth T) * (l' <= left_ops T))%type}}}.
+Proof.
+induction l as [l IND] using strong_ind_type.
+induction T;
+intros gamma1' gamma2' delta' phi' lambda' kappa' OC' d r alpha' LT REL Tshow;
+inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
+
+1 : destruct Tstr as [TG_app TD_app].
+2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+
+all : unfold cpl_tree_left in Tgam;
+      subst.
+
+1 : refine (existT _ 0 (existT _ 0 (existT _ 0 (pair (pair (existT _ (leaf OC (gamma1' ++ phi' :: gamma2') delta alpha) _) (Nat.le_refl _)) (Nat.le_refl _))))).
+    repeat split;
+    intros o IN;
+    unfold cpl_tree_left in *;
+    unfold cpl_tree_right in *;
+    rewrite flat_map_app in *.
+    apply in_app_or in IN as [IN1 | IN2].
+    refine (TG_app o (in_or_app _ _ _ (or_introl IN1))).
+    apply in_app_or in IN2 as [IN2 | IN3].
+    apply (bnd_vars_in_type lambda' kappa') in IN2 as [EQ | [NE IN2]].
+    subst.
+    apply (OC_null OC _ _ REL).
+    apply TG_app, in_or_app, or_intror, in_or_app, or_introl, IN2.
+    apply TG_app, in_or_app, or_intror, in_or_app, or_intror, IN3.
+    apply TD_app, IN.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    subst.
+    destruct b.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_1 _ Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_2 _ Tshow'') LTD) LT')))).
+
+1 : { destruct gamma1' as [ | f gamma1'].
+      - rewrite app_nil_l in Tgam.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        rewrite TG in Tshow'.
+        rewrite <- (app_nil_l (_ :: gamma2')), app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[[T' Tshow''] LTD] LT']]]].
+        inversion Tshow'' as [[[[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'] Tleft'] Tright'].
+        subst.
+        rewrite <- app_comm_cons, app_nil_l, <- (app_nil_l (_ :: _)) in Tshow''.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ LT' Tshow'') as [d'' [l'' [r'' [[Tshow''' LTD'] LT'']]]].
+        rewrite app_nil_l in *.
+        refine (existT _ d'' (existT _ (S l'') (existT _ r'' (pair (pair (cpl_tree_con_l Tshow''') (Nat.le_trans _ _ _ LTD' LTD)) (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))))).
+      - rewrite <- app_comm_cons in Tgam.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG in Tshow'.
+        rewrite !app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        rewrite <- app_comm_cons.
+        refine (existT _ d' (existT _ (S l') (existT _ r' (pair (pair (cpl_tree_con_l Tshow'') LTD) (le_n_S _ _ LT'))))). }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TD in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ (S r') (pair (pair (cpl_tree_con_r Tshow'') LTD) LT')))).
+
+1 : destruct (perm_split (perm_sym bury_is_perm) Tgam) as [gamma1 [gamma2 [EQ perm]]].
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite EQ in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, cpl_tree_deg.
+    fold cpl_tree_depth (cpl_tree_deg T).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_left _ Tshow'') LTD) LT')))).
+    apply perm_trans with (psi' :: gamma1 ++ gamma2).
+    apply perm_head.
+    apply perm_trans with (psi' :: gamma1' ++ gamma2').
+    apply perm_skip, perm_sym, perm.
+    apply perm_sym, perm_head.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_right bury_is_perm Tshow'') LTD) LT')))).
+
+1 : { destruct gamma1'.
+      - rewrite app_nil_l in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_wkn_l _ (existT _ T _)) (Nat.le_refl _)) (Nat.le_refl _))))).
+        intros o IN.
+        apply TG_app, in_or_app, or_introl, in_or_app, or_intror, IN.
+        repeat split.
+        apply Tstr.
+      - rewrite <- app_comm_cons in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite EQ2 in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_l _ Tshow'') LTD) LT')))).
+        intros o IN.
+        apply TG_app, in_or_app, or_introl, IN. }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_r _ Tshow'') LTD) LT')))).
+    intros o IN.
+    apply TD_app, in_or_app, or_introl, IN.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    intros FAL.
+    apply KNING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply KNIND, FAL.
+
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply NIND, FAL.
+
+1 : { destruct gamma1'.
+      - rewrite app_nil_l in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self T1str) as T1show.
+        rewrite <- T1G.
+        unfold cpl_tree_deg at 5.
+        refine (existT _ (cpl_tree_depth T1) (existT _ (left_ops T1) (existT _ (right_ops T1) (pair (pair (cpl_tree_deg_up_1 _ (existT _ T1 T1show)) (le_S _ _ (Nat.le_max_l _ _))) (Nat.le_max_l _ _))))).
+      - rewrite <- app_comm_cons in *.
+        inversion Tgam as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self T1str) as T1show.
+        rewrite T1G, EQ2, app_comm_cons in T1show.
+        pose proof (struct_show_self T2str) as T2show.
+        rewrite T2D, EQ2, T2OC in T2show.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth, left_ops;
+        fold cpl_tree_depth left_ops.
+        pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _) LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+        pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _) LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+        refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_imp_l T1show' T2show') _) _)))).
+        lia.
         lia. }
 
-1 : assert (T_shows T (cpl_tree_constraint T) ((phi :: gamma1') ++ imp phi' psi' :: gamma2') (psi :: delta) (cpl_tree_deg T) (cpl_tree_depth T)) as Tshow'.
-    { repeat split.
-      apply Tstr.
-      apply TG.
-      apply TD. }
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, TD, app_comm_cons in Tshow'.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
-    pose proof (IHT _ _ _ _ _ _ _ (le_S_n _ _ (le_S _ _ LT)) Tshow') as [d' [Tshow'' LT']].
-    refine (existT _ (S d') (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LT'))).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LTD)) LT')))).
 
-1 : assert (T_shows T1 (cpl_tree_constraint T1) (gamma1' ++ imp phi' psi' :: gamma2') (phi :: cpl_tree_right T2) (cpl_tree_deg T1) (cpl_tree_depth T1)) as T1show.
-    { repeat split;
-      try assumption. }
-    assert (T_shows T2 (cpl_tree_constraint T1) ((phi :: gamma1') ++ imp phi' psi' :: gamma2') (cpl_tree_right T2) (cpl_tree_deg T2) (cpl_tree_depth T2)) as T2show.
-    { repeat split;
-      try assumption.
-      rewrite T2G, Tgam.
-      reflexivity. }
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite Tgam, T1D in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2G, Tgam, T2OC, app_comm_cons in T2show.
     unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
-    unfold cpl_tree_depth.
-    fold cpl_tree_depth.
-    pose proof (IHT1 _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _) (le_S_n _ _ (le_S _ _  LT))) T1show) as [d1 [T1show' LT1]].
-    pose proof (IHT2 _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _) (le_S_n _ _ (le_S _ _  LT))) T2show) as [d2 [T2show' LT2]].
-    refine (existT _ (S (Init.Nat.max d1 d2)) (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _))).
+    unfold cpl_tree_depth, left_ops;
+    fold cpl_tree_depth left_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
     lia.
 Qed.
 

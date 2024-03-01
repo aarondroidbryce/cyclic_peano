@@ -129,7 +129,64 @@ Proof.
 intros gamma o NIN FAL.
 apply NIN.
 apply vars_in_list_is_used, FAL.
-Qed.  
+Qed.
+
+Lemma bnd_vars_in_type :
+    forall {phi : formula} (lambda kappa : ovar) {o : ovar},
+        In o (vars_in phi) ->
+            o = lambda \/ (o <> lambda /\ In o (vars_in (bnd lambda kappa phi))).
+Proof.
+induction phi;
+intros lambda' kappa' o' IN.
+- inversion IN.
+- apply in_app_or in IN as [IN1 | IN2].
+  + destruct (IHphi1 lambda' kappa' _ IN1) as [EQ | [NE [EQ | IN]]].
+    apply or_introl, EQ.
+    apply or_intror, (conj NE), or_introl, EQ.
+    apply or_intror, (conj NE), or_intror.
+    rewrite remove_app.
+    apply in_or_app, or_introl, IN.
+  + destruct (IHphi2 lambda' kappa' _ IN2) as [EQ | [NE [EQ | IN]]].
+    apply or_introl, EQ.
+    apply or_intror, (conj NE), or_introl, EQ.
+    apply or_intror, (conj NE), or_intror.
+    rewrite remove_app.
+    apply in_or_app, or_intror, IN.
+- destruct IN as [EQ | IN].
+  + subst.
+    destruct (nat_eq_dec o' lambda') as [EQ | NE].
+    * apply or_introl, EQ.
+    * apply or_intror, (conj NE), or_intror, (in_in_remove _ _ NE), or_introl, eq_refl.
+  + apply in_remove in IN as [IN NE].
+    destruct (IHphi lambda' kappa' _ IN) as [EQ | [NE' [EQ | IN']]].
+    * apply or_introl, EQ.
+    * apply or_intror, (conj NE'), or_introl, EQ.
+    * apply or_intror, (conj NE'), or_intror.
+      fold vars_in (@In ovar).
+      unfold remove at 1;
+      fold (remove nat_eq_dec).
+      case nat_eq_dec eqn:EQ';
+      try apply or_intror;
+      rewrite remove_remove_comm;
+      apply (in_in_remove _ _ NE IN').
+- inversion IN.
+- apply IHphi, IN.
+- destruct IN as [EQ | IN].
+  + subst.
+    destruct (nat_eq_dec o' lambda') as [EQ | NE].
+    * apply or_introl, EQ.
+    * apply or_intror, (conj NE), or_intror, (in_in_remove _ _ NE), or_introl, eq_refl.
+  + destruct (IHphi lambda' kappa' _ IN) as [EQ | [NE' [EQ | IN']]].
+    * apply or_introl, EQ.
+    * apply or_intror, (conj NE'), or_introl, EQ.
+    * apply or_intror, (conj NE'), or_intror.
+      fold vars_in (@In ovar).
+      unfold remove at 1;
+      fold (remove nat_eq_dec).
+      case nat_eq_dec eqn:EQ';
+      try apply or_intror;
+      apply IN'.
+Qed.
 
 Lemma prd_eqb_sym :
     forall (pn1 pn2 : predicate),
