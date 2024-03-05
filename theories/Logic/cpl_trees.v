@@ -9,7 +9,6 @@ From Cyclic_PA.Logic Require Import proof_trees.
 Require Import Lia.
 Require Import List.
 Import ListNotations.
-Require Import Coq.Logic.ProofIrrelevance.
 Require Import Coq.Logic.Eqdep_dec.
 Require Import Arith.
 
@@ -36,9 +35,13 @@ Inductive cpl_tree : Type :=
 | rst : forall {OC : constraint} {gamma delta : list formula} (kappa : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
 
 
-| bnd_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (lambda kappa : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
+| nu_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) {alpha : ordinal} (T' : cpl_tree), cpl_tree
 
-| bnd_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (lambda kappa : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
+| nu_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
+
+| nuk_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda kappa : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
+
+| nuk_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda kappa : ovar) {alpha : ordinal} (T' : cpl_tree), cpl_tree
 
 
 | imp_l : forall {OC : constraint} {gamma delta : list formula} (phi psi : formula) {alpha1 alpha2 : ordinal} (T1 T2 : cpl_tree), cpl_tree
@@ -71,9 +74,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => gamma
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => (bnd lambda kappa phi) :: gamma
+| @nu_l OC gamma delta phi x alpha T' => (nu x phi) :: gamma
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => gamma
+| @nu_r OC gamma delta phi x lambda alpha T' => gamma
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => (nuk x kappa phi) :: gamma
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => gamma
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => (imp phi psi) :: gamma
@@ -107,9 +114,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => delta
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => delta
+| @nu_l OC gamma delta phi x alpha T' => delta
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => (bnd lambda kappa phi) :: delta
+| @nu_r OC gamma delta phi x lambda alpha T' => (nu x phi) :: delta
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => delta
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => (nuk x kappa phi) :: delta
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => delta
@@ -143,9 +154,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => OC
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => OC
+| @nu_l OC gamma delta phi x alpha T' => OC
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => OC
+| @nu_r OC gamma delta phi x lambda alpha T' => OC
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => OC
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => OC
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => OC
@@ -180,9 +195,13 @@ match T with
 
 | @rst OC gamma delta L alpha T' => alpha
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => alpha
+| @nu_l OC gamma delta phi x alpha T' => alpha
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => alpha
+| @nu_r OC gamma delta phi x lambda alpha T' => alpha
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => alpha
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => alpha
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => omax alpha1 alpha2
@@ -216,9 +235,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => (cpl_leaves T')
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => (cpl_leaves T')
+| @nu_l OC gamma delta phi x alpha T' => (cpl_leaves T')
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => (cpl_leaves T')
+| @nu_r OC gamma delta phi x lambda alpha T' => (cpl_leaves T')
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => (cpl_leaves T')
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => (cpl_leaves T')
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => (cpl_leaves T1) ++ (cpl_leaves T2)
@@ -253,9 +276,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => cpl_tree_depth T'
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => S (cpl_tree_depth T')
+| @nu_l OC gamma delta phi x alpha T' => S (cpl_tree_depth T')
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => S (cpl_tree_depth T')
+| @nu_r OC gamma delta phi x lambda alpha T' => S (cpl_tree_depth T')
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => S (cpl_tree_depth T')
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => S (cpl_tree_depth T')
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => S (max (cpl_tree_depth T1) (cpl_tree_depth T2))
@@ -271,21 +298,22 @@ Proof.
 induction T1;
 destruct T2.
 
-2-15 : right; discriminate.
-3-16 : right; discriminate.
-4-17 : right; discriminate.
-5-18 : right; discriminate.
-6-19 : right; discriminate.
-7-20 : right; discriminate.
-8-21 : right; discriminate.
-9-22 : right; discriminate.
-10-23 : right; discriminate.
-11-24 : right; discriminate.
-12-25 : right; discriminate.
-13-26 : right; discriminate.
-14-27 : right; discriminate.
+2-17 : right; discriminate.
+3-18 : right; discriminate.
+4-19 : right; discriminate.
+5-20 : right; discriminate.
+6-21 : right; discriminate.
+7-22 : right; discriminate.
+8-23 : right; discriminate.
+9-24 : right; discriminate.
+10-25 : right; discriminate.
+11-26 : right; discriminate.
+12-27 : right; discriminate.
+13-28 : right; discriminate.
+14-29 : right; discriminate.
 
 all : try destruct (nat_eq_dec n n0) as [EQN | NE];
+      try destruct (nat_eq_dec x x0) as [EQX | NE];
       try destruct (IHT1 T2) as [EQ | NE];
 			try destruct (IHT1_1 T2_1) as [EQ1 | NE];
       try destruct (IHT1_2 T2_2) as [EQ2 | NE];
@@ -309,7 +337,6 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (nat_eq_dec lambda lambda0) as [EQL | NE];
       try destruct (Bool.bool_dec b b0) as [EQBL | NE];
       subst;
-      try rewrite (proof_irrelevance _ e e0);
 			try apply (left (eq_refl));
       right;
       intros FAL;
@@ -342,9 +369,14 @@ match T with
 
 | @rst OC gamma delta kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & cpl_tree_constraint T' = restriction OC (children OC kappa) (children_subset OC kappa)} * (cpl_tree_deg T' = alpha))
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = phi :: gamma) * (cpl_tree_right T' = delta) * (cpl_tree_constraint T' = OC) * (OC_rel OC lambda kappa = true) * (cpl_tree_deg T' = alpha))
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & cpl_tree_constraint T' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (cpl_tree_deg T' = alpha))
+| @nu_l OC gamma delta phi x alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = (pvar_sub phi x (nu x phi)) :: gamma) * (cpl_tree_right T' = delta) * (cpl_tree_constraint T' = OC) * (cpl_tree_deg T' = alpha))
+
+| @nu_r OC gamma delta phi x lambda alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = (nuk x lambda phi) :: delta) * {NEW : ~ OC_elt OC lambda & cpl_tree_constraint T' = (add_fresh OC lambda NEW)} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (cpl_tree_deg T' = alpha))
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = (pvar_sub phi x (nuk x lambda phi)) :: gamma) * (cpl_tree_right T' = delta) * (cpl_tree_constraint T' = OC) * (OC_rel OC lambda kappa = true) * (cpl_tree_deg T' = alpha))
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = (pvar_sub phi x (nuk x lambda phi)) :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & cpl_tree_constraint T' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (cpl_tree_deg T' = alpha))
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => (structured T1 * structured T2) * (semi_applicable OC T * (cpl_tree_left T1 = psi :: gamma) * (cpl_tree_right T1 = delta) * (cpl_tree_constraint T1 = OC) * (cpl_tree_left T2 = gamma) * (cpl_tree_right T2 = phi :: delta) * (cpl_tree_constraint T2 = OC) * (cpl_tree_deg T1 = alpha1) * (cpl_tree_deg T2 = alpha2))
@@ -369,11 +401,13 @@ intros Tstr LEAF.
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 all : unfold provable in *;
       unfold cpl_tree_constraint, cpl_tree_left, cpl_tree_right, cpl_tree_deg.
@@ -419,14 +453,22 @@ all : unfold provable in *;
     rewrite <- TG, <- TD, <- TOC, <- TDeg.
     apply (IHT Tstr LEAF).
 
-1 : apply ptree_bnd_l.
-    apply TOC_rel.
+1 : apply ptree_nu_l.
     rewrite <- TG, <- TD, <- TOC, <- TDeg.
     apply (IHT Tstr LEAF).
 
-1 : apply (ptree_bnd_r _ _ _ _ _ _ _ NEW KIN NING NIND).
+1 : apply (ptree_nu_r _ _ _ _ _ _ _ NEW NING NIND).
     rewrite <- TG, <- TD, <- TOC, <- TDeg.
     apply (IHT Tstr LEAF).
+
+1 : apply (ptree_nuk_l _ _ _ _ _ _ _ _ TOC_rel).
+    rewrite <- TG, <- TD, <- TOC, <- TDeg.
+    apply (IHT Tstr LEAF).
+
+1 : apply (ptree_nuk_r _ _ _ _ _ _ _ _ NEW KIN NING NIND).
+    rewrite <- TG, <- TD, <- TOC, <- TDeg.
+    apply (IHT Tstr LEAF).
+
 
 1 : apply ptree_imp_l.
     rewrite <- T1G, <- T1D, <- T1OC, <- T1Deg.
@@ -468,9 +510,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => left_ops T'
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => left_ops T'
+| @nu_l OC gamma delta phi x alpha T' => left_ops T'
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => left_ops T'
+| @nu_r OC gamma delta phi x lambda alpha T' => left_ops T'
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => left_ops T'
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => left_ops T'
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => max (left_ops T1) (left_ops T2)
@@ -504,9 +550,13 @@ match T with
 | @rst OC gamma delta kappa alpha T' => right_ops T'
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha T' => right_ops T'
+| @nu_l OC gamma delta phi x alpha T' => right_ops T'
 
-| @bnd_r OC gamma delta phi lambda kappa alpha T' => right_ops T'
+| @nu_r OC gamma delta phi x lambda alpha T' => right_ops T'
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha T' => right_ops T'
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha T' => right_ops T'
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 T1 T2 => max (right_ops T1) (right_ops T2)
@@ -534,11 +584,13 @@ intros Tstr.
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 all : repeat split;
       unfold cpl_tree_left, cpl_tree_right, flat_map, vars_in;
@@ -727,6 +779,119 @@ try assumption.
       apply incl_filter.
 Qed.
 
+Lemma cpl_tree_nu_l : 
+    forall {OC : constraint} {gamma delta : list formula} {phi : formula} {x : nat} {alpha : ordinal} {d l r : nat},
+        showable OC ((pvar_sub phi x (nu x phi)) :: gamma) delta alpha d l r ->
+                showable OC ((nu x phi) :: gamma) delta alpha (S d) l r.
+Proof.
+intros OC gamma delta phi x alpha d l r [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+subst.
+refine (existT _ (nu_l phi x T) _).
+repeat split;
+try assumption.
+1 : intros o IN.
+    apply (fst (structured_OC_semiapp _ Tstr)).
+    rewrite Tgam.
+    apply in_app_or in IN as [IN1 | IN2].
+    apply in_or_app, or_introl, vars_in_in_psub, IN1.
+    apply in_or_app, or_intror, IN2.
+1 : apply (snd (structured_OC_semiapp _ Tstr)).
+Qed.
+
+Lemma cpl_tree_nu_r :
+    forall {OC : constraint} {gamma delta : list formula} {phi : formula} {x : nat} {lambda : ovar} {alpha : ordinal} {d l r : nat} (NEW : ~ OC_elt OC lambda),
+        ~ In lambda (flat_map vars_used gamma) ->
+            ~ In lambda (flat_map vars_used (phi :: delta)) ->
+                showable (add_fresh OC lambda NEW) gamma ((nuk x lambda phi) :: delta) alpha d l r ->
+                    showable OC gamma ((nu x phi) :: delta) alpha (S d) l r.
+Proof.
+intros OC gamma delta phi x lambda alpha d l r NEW NING NIND [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+subst.
+refine (existT _ (nu_r phi x lambda T) _).
+repeat split;
+try assumption.
+3 : refine (existT _ NEW Tcon).
+1 : intros o IN.
+    pose proof ((fst (structured_OC_semiapp _ Tstr)) o IN) as TG_app.
+    rewrite Tcon in TG_app.
+    unfold OC_list, add_fresh_child, projT1 in TG_app.
+    destruct TG_app as [EQ | TG_app].
+    subst.
+    contradiction (NING (vars_in_list_is_used _ _ IN)).
+    apply TG_app.    
+1 : intros o IN.
+    pose proof ((snd (structured_OC_semiapp _ Tstr)) o) as TD_app;
+    rewrite Tdelt, Tcon in TD_app.
+    specialize (TD_app (or_intror IN)).
+    unfold OC_list, add_fresh, projT1 in TD_app.
+    destruct TD_app as [EQ | TD_app];
+    subst.
+    apply in_app_or in IN as [IN1 | IN2].
+    contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
+    contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
+    apply TD_app.
+Qed.
+
+Lemma cpl_tree_nuk_l : 
+    forall {OC : constraint} {gamma delta : list formula} {phi : formula} {x : nat} {lambda kappa : ovar} {alpha : ordinal} {d l r : nat},
+        OC_rel OC lambda kappa = true ->
+            showable OC ((pvar_sub phi x (nuk x lambda phi)) :: gamma) delta alpha d l r ->
+                showable OC ((nuk x kappa phi) :: gamma) delta alpha (S d) l r.
+Proof.
+intros OC gamma delta phi x lambda kappa alpha d l r rel [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+subst.
+refine (existT _ (nuk_l phi x lambda kappa T) _).
+repeat split;
+try assumption.
+1 : intros o IN.
+    apply in_app_or in IN as [[EQ | IN1] | IN2].
+    subst.
+    apply (OC_null _ _ _ rel).
+    1,2 : apply (fst (structured_OC_semiapp _ Tstr));
+          rewrite Tgam.
+    apply in_or_app, or_introl, vars_in_in_psub, IN1.
+    apply in_or_app, or_intror, IN2.
+1 : apply (snd (structured_OC_semiapp _ Tstr)).
+Qed.
+
+Lemma cpl_tree_nuk_r : 
+    forall {OC : constraint} {gamma delta : list formula} {phi : formula} {x : nat} {lambda kappa : ovar} {alpha : ordinal} {d l r : nat} (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa),
+        ~ In lambda (flat_map vars_used gamma) ->
+            ~ In lambda (flat_map vars_used (phi :: delta)) ->
+                showable (add_fresh_child OC lambda kappa NEW KIN) gamma ((pvar_sub phi x (nuk x lambda phi)) :: delta) alpha d l r ->
+                    showable OC gamma ((nuk x kappa phi) :: delta) alpha (S d) l r.
+Proof.
+intros OC gamma delta phi x lambda kappa alpha d l r NEW KIN NING NIND [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+subst.
+refine (existT _ (nuk_r phi x lambda kappa T) _).
+repeat split;
+try assumption.
+3 : refine (existT _ NEW (existT _ KIN Tcon)).
+1 : intros o IN.
+    pose proof ((fst (structured_OC_semiapp _ Tstr)) o IN) as TG_app.
+    rewrite Tcon in TG_app.
+    unfold OC_list, add_fresh_child, projT1 in TG_app.
+    destruct TG_app as [EQ | TG_app].
+    subst.
+    contradiction (NING (vars_in_list_is_used _ _ IN)).
+    apply TG_app.    
+1 : intros o [EQ | IN].
+    subst.
+    apply KIN.
+    pose proof ((snd (structured_OC_semiapp _ Tstr)) o) as TD_app.
+    rewrite Tdelt, Tcon in TD_app.
+    apply in_app_or in IN as [IN1 | IN2];
+    try specialize (TD_app (in_or_app _ _ _ (or_introl (vars_in_in_psub IN1))));
+    try specialize (TD_app (in_or_app _ _ _ (or_intror IN2)));
+    unfold OC_list, add_fresh_child, projT1 in TD_app;
+    destruct TD_app as [EQ | TD_app];
+    subst.
+    2,4 : apply TD_app.
+    1 : contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
+    1 : contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
+Qed.
+
+(*
 Lemma cpl_tree_bnd_l : 
   forall {OC : constraint} {gamma delta : list formula} {phi : formula} {lambda kappa : ovar} {alpha : ordinal} {d l r : nat},
       OC_rel OC lambda kappa = true ->
@@ -790,6 +955,7 @@ try assumption.
     1 : contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
     1 : apply PD_app. }
 Qed.
+*)
 
 Lemma cpl_tree_imp_l : 
   forall {OC : constraint} {gamma delta : list formula} {phi psi : formula} {alpha1 alpha2 : ordinal} {d1 d2 l1 l2 r1 r2 : nat},
@@ -1109,11 +1275,13 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 all : unfold cpl_tree_left in Tgam;
       subst.
@@ -1267,6 +1435,75 @@ all : unfold cpl_tree_left in Tgam;
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_l Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_r _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply NIND, FAL.
+
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+    intros FAL.
+    apply NIND, FAL.
+
+(*
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
 
 1 : pose proof (struct_show_self Tstr) as Tshow'.
@@ -1288,6 +1525,7 @@ all : unfold cpl_tree_left in Tgam;
     apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
     intros FAL.
     apply NIND, FAL.
+*)
 
 1 : { destruct gamma1'.
       - rewrite app_nil_l in *.
@@ -1349,11 +1587,13 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 all : unfold cpl_tree_left in Tgam;
       subst.
@@ -1517,6 +1757,87 @@ all : unfold cpl_tree_left in Tgam;
     unfold cpl_tree_depth.
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_l Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_r _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL2.
+    intros FAL.
+    fold (@app formula) (flat_map vars_used) in FAL.
+    rewrite app_comm_cons, flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NIND, FAL1.
+    apply NING.
+    rewrite Tgam, flat_map_app.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tgam in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC, TD in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    apply NING.
+    rewrite Tgam.
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL2.
+    intros FAL.
+    fold (@app formula) (flat_map vars_used) in FAL.
+    rewrite app_comm_cons, flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NIND, FAL1.
+    apply NING.
+    rewrite Tgam, flat_map_app.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+
+(*
+1 : destruct gamma1'.
+    rewrite app_nil_l in *.
+    inversion Tgam.
+    rewrite <- app_comm_cons in *.
+    inversion Tgam as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TG, app_comm_cons in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
 
 1 : pose proof (struct_show_self Tstr) as Tshow'.
@@ -1544,6 +1865,7 @@ all : unfold cpl_tree_left in Tgam;
     unfold flat_map in FAL2.
     rewrite app_nil_r in FAL2.
     apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+*)
 
 1 : { destruct gamma1'.
       - rewrite app_nil_l in *.
@@ -1608,11 +1930,13 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 all : unfold cpl_tree_right in Tdelt;
       subst.
@@ -1782,6 +2106,101 @@ all : unfold cpl_tree_right in Tdelt;
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_l Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_r _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+
+(*
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
     refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
 
 1 : destruct delta1'.
@@ -1821,6 +2240,7 @@ all : unfold cpl_tree_right in Tdelt;
     apply in_app_or in FAL3 as [FAL3 | FAL4].
     apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
     apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+*)
 
 1 : pose proof (struct_show_self T1str) as T1show.
     rewrite Tdelt, T1G in T1show.
@@ -1873,6 +2293,386 @@ all : unfold cpl_tree_right in Tdelt;
     lia.
 Qed.
 
+
+Lemma cpl_tree_nu_r_inv :
+forall {r : nat} {T : cpl_tree} {gamma delta1 delta2 : list formula} {phi : formula} {x : nat} {OC : constraint} {d l : nat} {alpha : ordinal},
+    right_ops T <= r ->
+        T_shows T OC gamma (delta1 ++ nu x phi :: delta2) alpha d l (right_ops T) ->
+            forall (lambda : ovar) (NEW : ~ OC_elt OC lambda),
+                {d' : nat & {l' : nat & {r' : nat & ((showable (add_fresh OC lambda NEW) gamma (delta1 ++ (nuk x lambda phi) :: delta2) alpha d' l' r') * (d' <= cpl_tree_depth T) * (r' <= right_ops T))%type}}}.
+Proof.
+induction r as [r IND] using strong_ind_type.
+induction T;
+intros gamma' delta1' delta2' phi' x' OC' d l alpha' LT Tshow lambda' NEW';
+inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
+
+1 : destruct Tstr as [TG_app TD_app].
+2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
+14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+
+all : unfold cpl_tree_right in Tdelt;
+      subst.
+
+1 : refine (existT _ 0 (existT _ 0 (existT _ 0 (pair (pair (existT _ (leaf (add_fresh OC _ NEW') gamma (delta1' ++ (nuk x' lambda' phi') :: delta2') alpha) _) (Nat.le_refl _)) (Nat.le_refl _))))).
+    repeat split;
+    intros o IN.
+    apply or_intror, TG_app, IN.
+    unfold cpl_tree_left in *;
+    unfold cpl_tree_right in *;
+    rewrite flat_map_app in *.
+    apply in_app_or in IN as [IN1 | IN2].
+    refine (or_intror (TD_app o (in_or_app _ _ _ (or_introl IN1)))).
+    apply in_app_or in IN2 as [[EQ | IN2] | IN3].
+    refine (or_introl EQ).
+    refine (or_intror (TD_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_introl IN2)))))).
+    refine (or_intror (TD_app o (in_or_app _ _ _ (or_intror (in_or_app _ _ _ (or_intror IN3)))))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    subst.
+    destruct b.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_1 _ Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_deg_up_2 _ Tshow'') LTD) LT')))).
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt,TG in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ (S l') (existT _ r' (pair (pair (cpl_tree_con_l Tshow'') LTD) LT')))).
+
+1 : { destruct delta1' as [ | f delta1'].
+      - rewrite app_nil_l in *.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        rewrite TD in Tshow'.
+        rewrite <- (app_nil_l (_ :: delta2')), app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[[T' Tshow''] LTD] LT']]]].
+        rewrite <- app_comm_cons, app_nil_l, <- (app_nil_l (nu _ _ :: _)) in Tshow''.
+        inversion Tshow'' as [[[[[[[Tstr' Tgam'] Tdelt'] Tcon'] Tdeg'] Tdepth'] Tleft'] Tright'].
+        subst.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ LT' Tshow'' _ NEW') as [d'' [l'' [r'' [[Tshow''' LTD'] LT'']]]].
+        rewrite <- app_assoc in Tshow'''.
+        unfold app at 2 3 in Tshow'''.
+        refine (existT _ d'' (existT _ (S l'') (existT _ (S r'') (pair (pair _ (Nat.le_trans _ _ _ LTD' LTD)) (le_n_S _ _ (Nat.le_trans _ _ _ LT'' LT')))))).
+        pose proof (@perm_head _ (cpl_tree_left T) [] phi') as PERM.
+        rewrite app_nil_r in PERM.
+        pose proof (@perm_head _ (phi' :: (cpl_tree_left T)) [] phi') as PERM1.
+        rewrite app_nil_r in PERM1.
+        pose proof (@perm_head _ (cpl_tree_left T) [phi'] phi') as PERM2.
+        apply (cpl_tree_comm_left (perm_sym PERM)), cpl_tree_con_l, (cpl_tree_comm_left PERM1), (cpl_tree_comm_left PERM2), cpl_tree_con_r, Tshow'''.
+      - rewrite <- app_comm_cons in Tdelt.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TD in Tshow'.
+        rewrite !app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1, cpl_tree_deg at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IND _ LT _ _ _ _ _ _ _ _ _ _ (Nat.le_refl _) Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        rewrite <- app_comm_cons.
+        refine (existT _ d' (existT _ l' (existT _ (S r') (pair (pair (cpl_tree_con_r Tshow'') LTD) (le_n_S _ _ LT'))))). }
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_left (perm_app (bury_is_perm) perm_refl) Tshow'') LTD) LT')))).
+
+1 : destruct (perm_split (perm_sym bury_is_perm) Tdelt) as [delta1 [delta2 [EQ perm]]].
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite EQ in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth, cpl_tree_deg.
+    fold cpl_tree_depth (cpl_tree_deg T).
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_comm_right _ Tshow'') LTD) LT')))).
+    apply perm_trans with (psi' :: delta1 ++ delta2).
+    apply perm_head.
+    apply perm_trans with (psi' :: delta1' ++ delta2').
+    apply perm_skip, perm_sym, perm.
+    apply perm_sym, perm_head.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_l _ Tshow'') LTD) LT')))).
+    intros o IN.
+    apply TG_app, in_or_app, or_introl, IN.
+
+1 : { destruct delta1'.
+      - rewrite app_nil_l in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_weaken_left _ (cpl_tree_wkn_r _ (existT _ T _))) (Nat.le_refl _)) (Nat.le_refl _))))).
+        intros o IN.
+        unfold flat_map in IN.
+        rewrite app_nil_r in IN.
+        apply TD_app, in_or_app, or_introl, in_or_app, or_introl, IN.
+        intros o IN.
+        unfold flat_map in IN.
+        apply TD_app, in_or_app, or_introl, in_or_app, or_intror, IN.
+        repeat split.
+        apply Tstr.
+      - rewrite <- app_comm_cons in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite EQ2 in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_wkn_r _ Tshow'') LTD) LT')))).
+        intros o IN.
+        apply TD_app, in_or_app, or_introl, IN. }    
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TOC in Tshow''.
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply KNING, FAL1.
+    apply KNIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    rewrite Tdelt.
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply KNIND.
+    rewrite Tdelt, flat_map_app in *.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL2.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL3.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_l Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nu_r _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_nuk_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+
+(*
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite Tdelt in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    rewrite TG in Tshow''.
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_l TOC_rel Tshow'') (le_n_S _ _ LTD)) LT')))).
+
+1 : destruct delta1'.
+    rewrite app_nil_l in *.
+    inversion Tdelt.
+    rewrite <- app_comm_cons in *.
+    inversion Tdelt as [[EQ1 EQ2]].
+    subst.
+    pose proof (struct_show_self Tstr) as Tshow'.
+    rewrite TD, app_comm_cons, TOC in Tshow'.
+    unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+    unfold cpl_tree_depth.
+    fold cpl_tree_depth.
+    pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+    refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_bnd_r _ _ _ _ Tshow'') (le_n_S _ _ LTD)) LT')))).
+    intros FAL.
+    rewrite flat_map_app in FAL.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply NING, FAL1.
+    apply NIND.
+    unfold flat_map in FAL2.
+    rewrite app_nil_r in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app.
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_introl, FAL2.
+    intros FAL.
+    apply NIND.
+    apply in_app_or in FAL as [FAL1 | FAL2].
+    apply in_or_app, or_introl, FAL1.
+    fold (flat_map vars_used) (@app formula) in FAL2.
+    apply in_or_app, or_intror.
+    fold (flat_map vars_used).
+    rewrite flat_map_app in *.
+    apply in_app_or in FAL2 as [FAL2 | FAL3].
+    apply in_or_app, or_introl, FAL2.
+    apply in_app_or in FAL3 as [FAL3 | FAL4].
+    apply in_or_app, or_intror, in_or_app, or_introl, in_or_app, or_intror, FAL3.
+    apply in_or_app, or_intror, in_or_app, or_intror, FAL4.
+*)
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite Tdelt, T1G in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2D, Tdelt, T2OC, app_comm_cons in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, right_ops;
+    fold cpl_tree_depth right_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_imp_l T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+
+1 : { destruct delta1'.
+      - rewrite app_nil_l in *.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG, TD in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        refine (existT _ (cpl_tree_depth T) (existT _ (left_ops T) (existT _ (right_ops T) (pair (pair (cpl_tree_comm_left _ (existT _ T Tshow')) (le_S _ _ (Nat.le_refl _))) (Nat.le_refl _))))).
+        apply perm_sym.
+        rewrite <- app_nil_r.
+        apply perm_head.
+      - rewrite <- app_comm_cons in Tdelt.
+        inversion Tdelt as [[EQ1 EQ2]].
+        subst.
+        pose proof (struct_show_self Tstr) as Tshow'.
+        rewrite TG, TD, app_comm_cons in Tshow'.
+        unfold cpl_tree_constraint at 1, cpl_tree_left at 1.
+        unfold cpl_tree_depth.
+        fold cpl_tree_depth.
+        pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
+        refine (existT _ (S d') (existT _ l' (existT _ r' (pair (pair (cpl_tree_imp_r Tshow'') (le_n_S _ _ LTD)) LT')))). }
+
+1 : pose proof (struct_show_self T1str) as T1show.
+    rewrite T1D, Tdelt, app_comm_cons in T1show.
+    pose proof (struct_show_self T2str) as T2show.
+    rewrite T2G, Tdelt, T2OC in T2show.
+    unfold cpl_tree_constraint at 1, cpl_tree_right at 1.
+    unfold cpl_tree_depth, right_ops;
+    fold cpl_tree_depth right_ops.
+    pose proof (IHT1 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_l _ _)  LT) T1show) as [d1 [l1 [r1 [[T1show' LT1D] LT1]]]].
+    pose proof (IHT2 _ _ _ _ _ _ _ _ _ (Nat.le_trans _ _ _ (Nat.le_max_r _ _)  LT) T2show) as [d2 [l2 [r2 [[T2show' LT2D] LT2]]]].
+    refine (existT _ (S (Init.Nat.max d1 d2)) (existT _ (Init.Nat.max l1 l2) (existT _ (Init.Nat.max r1 r2) (pair (pair (cpl_tree_cut T1show' T2show') (le_n_S _ _ _)) _)))).
+    lia.
+    lia.
+Qed.
+
+
+
+(*
 Lemma cpl_tree_bnd_r_inv :
     forall {r : nat} {T : cpl_tree} {gamma delta1 delta2 : list formula} {phi : formula} {lambda kappa} {OC : constraint} {d l : nat} {alpha : ordinal},
         right_ops T <= r ->
@@ -2409,6 +3209,7 @@ all : unfold cpl_tree_left in Tgam;
     lia.
     lia.
 Qed.
+*)
 
 (*
 Master destruct tactic.
@@ -2416,10 +3217,12 @@ Master destruct tactic.
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
-10 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
-11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
-12 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
-13 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
+12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
+13 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW [KIN TOC]]] [NING NIND]] TDeg]].
 14 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
+15 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
+16 : destruct Tstr as [[T1str T2str] [[[[[[[[[TG_app TD_app] T1G] T1D] T1OC] T2G] T2D] T2OC] T1Deg] T2Deg]].
 
 *)

@@ -8,14 +8,16 @@ From Cyclic_PA.Logic Require Import substitute.
 Require Import Lia.
 Require Import List.
 Import ListNotations.
+(*
 Require Import Coq.Logic.ProofIrrelevance.
+*)
 Require Import Coq.Logic.Eqdep_dec.
 
 
 Inductive ptree : Type :=
 | bot : ptree
 
-| pred : forall (pn : predicate), pure_predicate pn = true -> ptree
+| pred : forall (pn : predicate), ptree
 
 
 | loop_head : forall (OC : constraint) (gamma delta : list (nat * ovar * formula)) (alpha : ordinal) (l : nat), ptree
@@ -39,10 +41,13 @@ Inductive ptree : Type :=
 | rst : forall {OC : constraint} {gamma delta : list formula} (kappa : ovar) {alpha : ordinal} (P' : ptree), ptree
 
 
-| bnd_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (lambda kappa : ovar) {alpha : ordinal} (P' : ptree), ptree
+| nu_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) {alpha : ordinal} (P' : ptree), ptree
 
-| bnd_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (lambda kappa : ovar) {alpha : ordinal} (P' : ptree), ptree
+| nu_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda : ovar) {alpha : ordinal} (P' : ptree), ptree
 
+| nuk_l : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda kappa : ovar) {alpha : ordinal} (P' : ptree), ptree
+
+| nuk_r : forall {OC : constraint} {gamma delta : list formula} (phi : formula) (x : nat) (lambda kappa : ovar) {alpha : ordinal} (P' : ptree), ptree
 
 | imp_l : forall {OC : constraint} {gamma delta : list formula} (phi psi : formula) {alpha1 alpha2 : ordinal} (P1 P2 : ptree), ptree
 
@@ -55,7 +60,7 @@ Definition ptree_left (P : ptree) : list formula :=
 match P with
 | bot => [fal]
 
-| pred pn pure => [prd pn pure]
+| pred pn => [prd pn]
 
 | loop_head OC gamma delta alpha l => fzip (uncurry nuk) gamma
 
@@ -78,9 +83,13 @@ match P with
 | @rst OC gamma delta kappa alpha P' => gamma
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => (bnd lambda kappa phi) :: gamma
+| @nu_l OC gamma delta phi x alpha P' => (nu x phi) :: gamma
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => gamma
+| @nu_r OC gamma delta phi x lambda alpha P' => gamma
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => (nuk x kappa phi) :: gamma
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => gamma
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => (imp phi psi) :: gamma
@@ -95,7 +104,7 @@ Definition ptree_right (P : ptree) : list formula :=
 match P with
 | bot => []
 
-| pred pn pure => [prd pn pure]
+| pred pn => [prd pn]
 
 | loop_head OC gamma delta alpha l => fzip (uncurry nuk) delta
 
@@ -118,9 +127,13 @@ match P with
 | @rst OC gamma delta kappa alpha P' => delta
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => delta
+| @nu_l OC gamma delta phi x alpha P' => delta
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => (bnd lambda kappa phi) :: delta
+| @nu_r OC gamma delta phi x lambda alpha P' => (nu x phi) :: delta
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => delta
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => (nuk x kappa phi) :: delta
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => delta
@@ -135,7 +148,7 @@ Definition ptree_constraint (P : ptree) : constraint :=
 match P with
 | bot => empty
 
-| pred pn pure => empty
+| pred pn => empty
 
 | loop_head OC gamma delta alpha l => OC
 
@@ -158,9 +171,13 @@ match P with
 | @rst OC gamma delta kappa alpha P' => OC
 
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => OC
+| @nu_l OC gamma delta phi x alpha P' => OC
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => OC
+| @nu_r OC gamma delta phi x lambda alpha P' => OC
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => OC
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => OC
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => OC
@@ -175,7 +192,7 @@ Definition ptree_deg (P : ptree) : ordinal :=
 match P with
 | bot => cast Zero
 
-| pred pn pure => cast Zero
+| pred pn => cast Zero
 
 | loop_head OC gamma delta alpha l => cast Zero
 
@@ -199,9 +216,13 @@ match P with
 
 | @rst OC gamma delta L alpha P' => alpha
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => alpha
+| @nu_l OC gamma delta phi x alpha P' => alpha
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => alpha
+| @nu_r OC gamma delta phi x lambda alpha P' => alpha
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => alpha
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => alpha
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => omax alpha1 alpha2
@@ -216,7 +237,7 @@ Fixpoint ptree_height (P : ptree) : nat :=
 match P with
 | bot => 1
 
-| pred pn pure => 1
+| pred pn => 1
 
 | loop_head OC gamma delta alpha l => 1
 
@@ -238,9 +259,13 @@ match P with
 
 | @rst OC gamma delta kappa alpha P' => S (ptree_height P')
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => S (ptree_height P')
+| @nu_l OC gamma delta phi x alpha P' => S (ptree_height P')
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => S (ptree_height P')
+| @nu_r OC gamma delta phi x lambda alpha P' => S (ptree_height P')
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => S (ptree_height P')
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => S (ptree_height P')
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => S (max (ptree_height P1) (ptree_height P2))
@@ -267,23 +292,24 @@ Proof.
 induction P1;
 destruct P2.
 
-2-17 : right; discriminate.
-3-18 : right; discriminate.
-4-19 : right; discriminate.
-5-20 : right; discriminate.
-6-21 : right; discriminate.
-7-22 : right; discriminate.
-8-23 : right; discriminate.
-9-24 : right; discriminate.
-10-25 : right; discriminate.
-11-26 : right; discriminate.
-12-27 : right; discriminate.
-13-28 : right; discriminate.
-14-29 : right; discriminate.
-15-30 : right; discriminate.
-16-31 : right; discriminate.
+2-19 : right; discriminate.
+3-20 : right; discriminate.
+4-21 : right; discriminate.
+5-22 : right; discriminate.
+6-23 : right; discriminate.
+7-24 : right; discriminate.
+8-25 : right; discriminate.
+9-26 : right; discriminate.
+10-27 : right; discriminate.
+11-28 : right; discriminate.
+12-29 : right; discriminate.
+13-30 : right; discriminate.
+14-31 : right; discriminate.
+15-32 : right; discriminate.
+16-33 : right; discriminate.
 
 all : try destruct (nat_eq_dec n n0) as [EQN | NE];
+      try destruct (nat_eq_dec x x0) as [EQX | NE];
       try destruct (IHP1 P2) as [EQ | NE];
 			try destruct (IHP1_1 P2_1) as [EQ1 | NE];
       try destruct (IHP1_2 P2_2) as [EQ2 | NE];
@@ -309,7 +335,6 @@ all : try destruct (nat_eq_dec n n0) as [EQN | NE];
       try destruct (nat_eq_dec lambda lambda0) as [EQL | NE];
       try destruct (Bool.bool_dec b b0) as [EQBL | NE];
       subst;
-      try rewrite (proof_irrelevance _ e e0);
 			try apply (left (eq_refl));
       right;
       intros FAL;
@@ -495,7 +520,7 @@ Fixpoint loop_traces (P : ptree) : list (option nat) :=
 match P with
 | bot => []
 
-| pred pn pure => []
+| pred pn => []
 
 | loop_head OC gamma delta alpha l => [Some (S l)]
 
@@ -515,9 +540,14 @@ match P with
 
 | rst kappa P' => map option_decr (loop_traces P')
 
-| bnd_l phi lambda kappa P' => map option_decr (loop_traces P')
+| @nu_l OC gamma delta phi x alpha P' => map option_decr (loop_traces P')
 
-| bnd_r phi lambda kappa P' => map option_decr (loop_traces P')
+| @nu_r OC gamma delta phi x lambda alpha P' => map option_decr (loop_traces P')
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => map option_decr (loop_traces P')
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => map option_decr (loop_traces P')
+
 
 | imp_l phi psi P1 P2 => map option_decr (loop_traces P1 ++ loop_traces P2)
 
@@ -537,7 +567,7 @@ Fixpoint loops (P : ptree) : list (list ptree) :=
 match P with
 | bot => []
 
-| pred pn pure => []
+| pred pn => []
 
 | loop_head OC gamma delta alpha l => [[P]]
 
@@ -557,9 +587,14 @@ match P with
 
 | rst kappa P' => option_fill P (loop_traces P) (loops P')
 
-| bnd_l phi lambda kappa P' => option_fill P (loop_traces P) (loops P')
+| @nu_l OC gamma delta phi x alpha P' => option_fill P (loop_traces P) (loops P')
 
-| bnd_r phi lambda kappa P' => option_fill P (loop_traces P) (loops P')
+| @nu_r OC gamma delta phi x lambda alpha P' => option_fill P (loop_traces P) (loops P')
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => option_fill P (loop_traces P) (loops P')
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => option_fill P (loop_traces P) (loops P')
+
 
 | imp_l phi psi P1 P2 => option_fill P (loop_traces P) (loops P1 ++ loops P2)
 
@@ -607,7 +642,7 @@ Fixpoint loop_lengths (P : ptree) : list nat :=
 match P with
 | bot => [0]
 
-| pred pn pure => [0]
+| pred pn => [0]
 
 | loop_head OC gamma delta alpha l => [S l]
 
@@ -627,9 +662,13 @@ match P with
 
 | rst kappa P' => loop_lengths P'
 
-| bnd_l phi lambda kappa P' => loop_lengths P'
+| @nu_l OC gamma delta phi x alpha P' => loop_lengths P'
 
-| bnd_r phi lambda kappa P' => loop_lengths P'
+| @nu_r OC gamma delta phi x lambda alpha P' => loop_lengths P'
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => loop_lengths P'
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => loop_lengths P'
 
 | imp_l phi psi P1 P2 => loop_lengths P1 ++ loop_lengths P2
 
@@ -648,7 +687,7 @@ Fixpoint well_struct (P : ptree) : Type :=
 match P with
 | bot => true = true
 
-| pred P pure => true = true
+| pred pn => pure_predicate pn = true
 
 | loop_head OC gamma delta alpha l => applicable OC P
 
@@ -670,9 +709,13 @@ match P with
 
 | @rst OC gamma delta kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
 
-| @bnd_l OC gamma delta phi lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = phi :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha))
+| @nu_l OC gamma delta phi x alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = (pvar_sub phi x (nu x phi)) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @bnd_r OC gamma delta phi lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = phi :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
+| @nu_r OC gamma delta phi x lambda alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = (nuk x lambda phi) :: delta) * {NEW : ~ OC_elt OC lambda & ptree_constraint P' = (add_fresh OC lambda NEW)} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
+
+| @nuk_l OC gamma delta phi x lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = (pvar_sub phi x (nuk x lambda phi)) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (OC_rel OC lambda kappa = true) * (ptree_deg P' = alpha))
+
+| @nuk_r OC gamma delta phi x lambda kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = (pvar_sub phi x (nuk x lambda phi)) :: delta) * {NEW : ~ OC_elt OC lambda & {KIN : OC_elt OC kappa & ptree_constraint P' = add_fresh_child OC lambda kappa NEW KIN}} * (~ In lambda (flat_map vars_used gamma) /\ ~ In lambda (flat_map vars_used (phi :: delta))) * (ptree_deg P' = alpha))
 
 
 | @imp_l OC gamma delta phi psi alpha1 alpha2 P1 P2 => (well_struct P1 * well_struct P2) * (applicable OC P * (ptree_left P1 = psi :: gamma) * (ptree_right P1 = delta) * (ptree_constraint P1 = OC) * (ptree_left P2 = gamma) * (ptree_right P2 = phi :: delta) * (ptree_constraint P2 = OC) * (ptree_deg P1 = alpha1) * (ptree_deg P2 = alpha2))
@@ -899,11 +942,13 @@ intros PSV.
 3 : destruct PSV as [PG_app PD_app].
 4-10 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
 11 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
-12 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
-13 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
-14 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
-15 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+12 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+13 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW POC]] [NING NIND]] PDeg]].
+14 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
+15 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
 16 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+17 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+18 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
 
 all : repeat split;
       unfold ptree_left, ptree_right, flat_map, vars_in;
@@ -1352,6 +1397,165 @@ try assumption.
 1 : apply RST.
 Qed.
 
+Lemma ptree_nu_l : 
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (x : nat) (alpha : ordinal),
+        provable OC ((pvar_sub phi x (nu x phi)) :: gamma) delta alpha ->
+                provable OC ((nu x phi) :: gamma) delta alpha.
+Proof.
+intros OC gamma delta phi x alpha [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+subst.
+refine (existT _ (nu_l phi x P) _).
+repeat split;
+try assumption.
+1 : { intros o IN.
+      apply in_app_or in IN as [IN1 | IN2].
+      - apply (fst (struct_OC_app _ PSV)).
+        rewrite PG.
+        apply in_or_app, or_introl, vars_in_in_psub, IN1.
+      - apply (fst (struct_OC_app _ PSV)).
+        rewrite PG.
+        apply in_or_app, or_intror, IN2. }
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
+Qed.
+
+Lemma ptree_nu_r :
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (x : nat) (lambda : ovar) (alpha : ordinal) (NEW : ~ OC_elt OC lambda),
+        ~ In lambda (flat_map vars_used gamma) ->
+            ~ In lambda (flat_map vars_used (phi :: delta)) ->
+                provable (add_fresh OC lambda NEW) gamma ((nuk x lambda phi) :: delta) alpha ->
+                    provable OC gamma ((nu x phi) :: delta) alpha.
+Proof.
+intros OC gamma delta phi x lambda alpha NEW NING NIND [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+subst.
+refine (existT _ (nu_r phi x lambda P) _).
+repeat split;
+try assumption.
+3 : refine (existT _ NEW POC).
+1 : intros o IN.
+    pose proof ((fst (struct_OC_app _ PSV)) o IN) as PG_app.
+    rewrite POC in PG_app.
+    unfold OC_list, add_fresh_child, projT1 in PG_app.
+    destruct PG_app as [EQ | PG_app].
+    subst.
+    contradiction (NING (vars_in_list_is_used _ _ IN)).
+    apply PG_app.    
+1 : intros o IN.
+    pose proof ((snd (struct_OC_app _ PSV)) o) as PD_app;
+    rewrite PD, POC in PD_app.
+    specialize (PD_app (or_intror IN)).
+    unfold OC_list, add_fresh, projT1 in PD_app.
+    destruct PD_app as [EQ | PD_app];
+    subst.
+    apply in_app_or in IN as [IN1 | IN2].
+    contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
+    contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
+    apply PD_app.
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
+Qed.
+
+Lemma ptree_nuk_l : 
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (x : nat) (lambda kappa : ovar) (alpha : ordinal),
+        OC_rel OC lambda kappa = true ->
+            provable OC ((pvar_sub phi x (nuk x lambda phi)) :: gamma) delta alpha ->
+                provable OC ((nuk x kappa phi) :: gamma) delta alpha.
+Proof.
+intros OC gamma delta phi x lambda kappa alpha rel [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+subst.
+refine (existT _ (nuk_l phi x lambda kappa P) _).
+repeat split;
+try assumption.
+1 : intros o IN.
+    apply in_app_or in IN as [[EQ | IN1] | IN2].
+    subst.
+    apply (OC_null _ _ _ rel).
+    1,2 : apply (fst (struct_OC_app _ PSV));
+          rewrite PG.
+    apply in_or_app, or_introl, vars_in_in_psub, IN1.
+    apply in_or_app, or_intror, IN2.
+1 : apply (snd (struct_OC_app _ PSV)).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
+Qed.
+
+Lemma ptree_nuk_r : 
+    forall (OC : constraint) (gamma delta : list formula) (phi : formula) (x : nat) (lambda kappa : ovar) (alpha : ordinal) (NEW : ~ OC_elt OC lambda) (KIN : OC_elt OC kappa),
+        ~ In lambda (flat_map vars_used gamma) ->
+            ~ In lambda (flat_map vars_used (phi :: delta)) ->
+                provable (add_fresh_child OC lambda kappa NEW KIN) gamma ((pvar_sub phi x (nuk x lambda phi)) :: delta) alpha ->
+                    provable OC gamma ((nuk x kappa phi) :: delta) alpha.
+Proof.
+intros OC gamma delta phi x lambda kappa alpha NEW KIN NING NIND [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+subst.
+refine (existT _ (nuk_r phi x lambda kappa P) _).
+repeat split;
+try assumption.
+3 : refine (existT _ NEW (existT _ KIN POC)).
+1 : intros o IN.
+    pose proof ((fst (struct_OC_app _ PSV)) o IN) as PG_app.
+    rewrite POC in PG_app.
+    unfold OC_list, add_fresh_child, projT1 in PG_app.
+    destruct PG_app as [EQ | PG_app].
+    subst.
+    contradiction (NING (vars_in_list_is_used _ _ IN)).
+    apply PG_app.    
+1 : intros o [EQ | IN].
+    subst.
+    apply KIN.
+    pose proof ((snd (struct_OC_app _ PSV)) o) as PD_app.
+    rewrite PD, POC in PD_app.
+    apply in_app_or in IN as [IN1 | IN2];
+    try specialize (PD_app (in_or_app _ _ _ (or_introl (vars_in_in_psub IN1))));
+    try specialize (PD_app (in_or_app _ _ _ (or_intror IN2)));
+    unfold OC_list, add_fresh_child, projT1 in PD_app;
+    destruct PD_app as [EQ | PD_app];
+    subst.
+    2,4 : apply PD_app.
+    1 : contradiction (NIND (in_or_app _ _ _ (or_introl (vars_in_is_used _ _ IN1)))).
+    1 : contradiction (NIND (in_or_app _ _ _ (or_intror (vars_in_list_is_used _ _  IN2)))).
+1 : unfold loop_traces; fold loop_traces.
+    pose proof Forall_eq_repeat PEnd as EQ.
+    rewrite EQ, decr_none_is_none, <- EQ.
+    apply PEnd.
+1,2 : unfold loops, loop_traces in IN;
+      fold loop_traces loops in IN;
+      pose proof Forall_eq_repeat PEnd as EQ;
+      rewrite EQ, map_length, (loop_traces_loop_length _ PSV), fill_none_is_triv in IN;
+      destruct (PLoops _ IN) as [SPLIT RST].
+1 : apply SPLIT.
+1 : apply RST.
+Qed.
+
+(*
 Lemma ptree_bnd_l : 
     forall (OC : constraint) (gamma delta : list formula) (phi : formula) (lambda kappa : ovar) (alpha : ordinal),
         OC_rel OC lambda kappa = true ->
@@ -1437,6 +1641,7 @@ try assumption.
 1 : apply SPLIT.
 1 : apply RST.
 Qed.
+*)
 
 Lemma ptree_imp_l : 
     forall (OC : constraint) (gamma delta : list formula) (phi psi : formula) (alpha1 alpha2 : ordinal),
@@ -1768,12 +1973,14 @@ Master destruct tactic.
 
 1-2 : destruct PSV.
 3 : destruct PSV as [PG_app PD_app].
-4-9 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
-10 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
-11 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
-12 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
-13 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
-14 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
-15 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+4-10 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+11 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
+12 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+13 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW POC]] [NING NIND]] PDeg]].
+14 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].
+15 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW [KIN POC]]] [NING NIND]] PDeg]].
+16 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
+17 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
+18 : destruct PSV as [[P1SV P2SV] [[[[[[[[[PG_app PD_app] P1G] P1D] P1OC] P2G] P2D] P2OC] PDeg1] PDeg2]].
 
 *)

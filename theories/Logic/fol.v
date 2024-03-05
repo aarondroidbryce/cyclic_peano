@@ -11,8 +11,10 @@ Require Import Bool.
 Require Import Coq.Arith.Wf_nat.
 Require Import Coq.Program.Wf.
 Require Import Coq.Classes.RelationClasses.
+(*
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.ProofIrrelevance.
+*)
 Require Import Coq.Logic.EqdepFacts.
 
 Open Scope bool_scope.
@@ -36,7 +38,7 @@ Inductive formula : Type :=
 | fal : formula
 | imp : formula -> formula -> formula
 | bnd : ovar -> ovar -> formula -> formula
-| prd : forall (pn : predicate), pure_predicate pn = true -> formula
+| prd : forall (pn : predicate), formula
 | nu : forall (i : nat), formula -> formula
 | nuk : forall (i : nat), ovar -> formula -> formula.
 
@@ -45,7 +47,7 @@ match A with
 | fal => cast Zero
 | imp B C => oadd (oadd (num_conn B) (num_conn C)) (cast (nat_ord 1))
 | bnd o1 o2 B => oadd (num_conn B) (cast (nat_ord 1))
-| prd pn pure => cast Zero
+| prd pn => cast Zero
 | nu i phi => oadd olim (num_conn phi)
 | nuk i kappa phi => oadd (assn kappa) (num_conn phi)
 end.
@@ -55,7 +57,7 @@ match a with
 | fal => []
 | imp B C => (vars_in B) ++ (vars_in C)
 | bnd o1 o2 B => o2 :: remove nat_eq_dec o1 (vars_in B)
-| prd pn pure => []
+| prd pn => []
 | nu i phi => vars_in phi
 | nuk i kappa phi => kappa :: vars_in phi
 end.
@@ -65,7 +67,7 @@ match a with
 | fal => []
 | imp B C => (vars_used B) ++ (vars_used C)
 | bnd o1 o2 B => o2 :: vars_used B
-| prd pn pure => []
+| prd pn => []
 | nu i phi => vars_used phi
 | nuk i kappa phi => kappa :: vars_used phi
 end.
@@ -82,7 +84,7 @@ match A1, A2 with
 | fal, fal => true
 | imp B1 C1, imp B2 C2 => form_eqb B1 B2 && form_eqb C1 C2
 | bnd o1 o2 B1, bnd o3 o4 B2 => nat_eqb o1 o3 && nat_eqb o2 o4 && form_eqb B1 B2
-| prd pn1 _, prd pn2 _ => prd_eqb pn1 pn2
+| prd pn1, prd pn2 => prd_eqb pn1 pn2
 | nu i1 phi1, nu i2 phi2 => nat_eqb i1 i2 && form_eqb phi1 phi2
 | nuk i1 kappa1 phi1, nuk i2 kappa2 phi2 => nat_eqb i1 i2 && nat_eqb kappa1 kappa2 && form_eqb phi1 phi2
 | _, _ => false
@@ -98,11 +100,44 @@ match A with
     | false, true => bnd lambda rho (ovar_sub B eta rho)
     | false, false => bnd lambda kappa (ovar_sub B eta rho)
     end
-| prd pn _ => A
+| prd pn => A
 | nu x phi => nu x (ovar_sub phi eta rho)
 | nuk x kappa phi => match nat_eqb eta kappa with
     | true => nuk x rho (ovar_sub phi eta rho)
     | false => nuk x kappa (ovar_sub phi eta rho)
+    end
+end.
+
+Fixpoint pvar_sub (A : formula) (i : nat) (psi : formula) : formula :=
+match A with
+| fal => fal
+| imp B C => imp (pvar_sub B i psi) (pvar_sub C i psi)
+| bnd lambda kappa B => bnd lambda kappa (pvar_sub B i psi)
+| prd (Nullary n) => prd (Nullary n)
+| prd (Var n) => match nat_eqb n i with
+    | true => psi
+    | false => prd (Var n)
+    end
+| nu x phi => match nat_eqb x i with
+    | true => nu x phi
+    | false => nu x (pvar_sub phi i psi)
+    end
+| nuk x kappa phi => match nat_eqb x i with
+    | true => nuk x kappa phi
+    | false => nuk x kappa (pvar_sub phi i psi)
+    end
+end.
+
+Fixpoint form_sub (A psi rho : formula) : formula :=
+match form_eqb A psi with
+| true => rho
+| false => match A with
+    | fal => fal
+    | imp B C => imp (form_sub B psi rho) (form_sub C psi rho)
+    | bnd lambda kappa B => bnd lambda kappa (form_sub B psi rho)
+    | prd pn => prd pn
+    | nu x phi => nu x (form_sub phi psi rho)
+    | nuk x kappa phi => nuk x kappa (form_sub phi psi rho)
     end
 end.
 
@@ -206,7 +241,7 @@ intros lambda' kappa' o' IN.
       apply IN'.
 Qed.
 
-Lemma vars_in_sub :
+Lemma vars_in_osub :
     forall {phi : formula} {lambda kappa eta : ovar},
         In eta (vars_in (ovar_sub phi lambda kappa)) ->
             eta = kappa \/ (eta <> lambda /\ In eta (vars_in phi)).
@@ -271,7 +306,7 @@ intros lambda' kappa' eta' IN.
       apply or_intror, (conj NE), or_intror, IN'. 
 Qed.
 
-Lemma vars_used_sub :
+Lemma vars_used_osub :
     forall {phi : formula} {lambda kappa eta : ovar},
         In eta (vars_used (ovar_sub phi lambda kappa)) ->
             eta = kappa \/ In eta (vars_used phi).
@@ -324,7 +359,7 @@ intros lambda' kappa' eta' IN.
       apply or_intror, or_intror, IN'. 
 Qed.
 
-Lemma not_in_sub :
+Lemma not_in_osub :
     forall {phi : formula} {lambda kappa : ovar},
         lambda <> kappa ->
             ~ In lambda (vars_in (ovar_sub phi lambda kappa)).
@@ -365,6 +400,78 @@ intros lambda' kappa' NE FAL.
     rewrite nat_eqb_refl in EQ.
     inversion EQ.
     apply (IHphi _ _ NE FAL).
+Qed.
+
+Lemma vars_in_psub_type :
+    forall {phi psi : formula} {x : nat} {eta : ovar},
+        In eta (vars_in (pvar_sub phi x psi)) ->
+            In eta (vars_in phi) \/ In eta (vars_in psi).
+Proof.
+induction phi;
+intros psi x eta IN.
+- inversion IN.
+- apply in_app_or in IN as [IN1 | IN2].
+  destruct (IHphi1 _ _ _ IN1) as [IN1_1 | IN1_2].
+  apply or_introl, in_or_app, or_introl, IN1_1.
+  apply or_intror, IN1_2.
+  destruct (IHphi2 _ _ _ IN2) as [IN2_1 | IN2_2].
+  apply or_introl, in_or_app, or_intror, IN2_1.
+  apply or_intror, IN2_2.
+- destruct IN as [EQ | IN].
+  apply or_introl, or_introl, EQ.
+  apply in_remove in IN as [IN NE].
+  destruct (IHphi _ _ _ IN) as [IN1 | IN2].
+  apply or_introl, or_intror, in_in_remove, IN1.
+  apply NE.
+  apply or_intror, IN2.
+- unfold pvar_sub in IN.
+  destruct pn.
+  2 : case (nat_eqb i x) eqn:EQ.
+  1,3 : inversion IN.
+  apply or_intror, IN.
+- unfold pvar_sub in IN;
+  fold pvar_sub in IN.
+  case (nat_eqb i x) eqn:EQ.
+  apply or_introl, IN.
+  apply (IHphi _ _ _ IN).
+- unfold pvar_sub in IN;
+  fold pvar_sub in IN.
+  case (nat_eqb i x) eqn:EQ.
+  apply or_introl, IN.
+  destruct IN as [EQ' | IN].
+  apply or_introl, or_introl, EQ'.
+  destruct (IHphi _ _ _ IN) as [IN1 | IN2].
+  apply or_introl, or_intror, IN1.
+  apply or_intror, IN2.
+Qed.
+
+Lemma vars_in_in_psub :
+    forall {phi psi : formula} {x : nat} {eta : ovar},
+        In eta (vars_in phi) ->
+        In eta (vars_in (pvar_sub phi x psi)).
+Proof.
+induction phi;
+intros psi x eta IN;
+unfold pvar_sub;
+fold pvar_sub.
+- inversion IN.
+- apply in_app_or in IN as [IN1 | IN2].
+  apply in_or_app, or_introl, IHphi1, IN1.
+  apply in_or_app, or_intror, IHphi2, IN2.
+- destruct IN as [EQ | IN].
+  apply or_introl, EQ.
+  apply in_remove in IN as [IN NE].
+  apply or_intror, in_in_remove, IHphi, IN.
+  apply NE.
+- inversion IN.
+- case (nat_eqb i x) eqn:EQ.
+  apply IN.
+  apply (IHphi _ _ _ IN).
+- case (nat_eqb i x) eqn:EQ.
+  apply IN.
+  destruct IN as [EQ' | IN].
+  apply or_introl, EQ'.
+  apply or_intror, IHphi, IN.
 Qed.
 
 Lemma sub_self_triv :
@@ -455,7 +562,6 @@ try apply nat_eqb_eq in EQ1 as [].
   reflexivity.
 - apply prd_eqb_eq in EQ'.
   subst.
-  rewrite (UIP  _ _ _ e e0).
   reflexivity.
 - rewrite (IHA _ EQ0).
   reflexivity.
