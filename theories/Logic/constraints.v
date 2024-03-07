@@ -303,6 +303,37 @@ all : unfold restriction, OC_list, projT1 in SUB2;
   inversion SUB2.
 Qed.
 
+Lemma constraint_eq_case :
+    forall {OC1 OC2 : constraint},
+        OC_list OC1 = OC_list OC2 ->
+            OC_rel OC1 = OC_rel OC2 ->
+                OC1 = OC2.
+Proof.
+intros [L1 [R1 [NDL1 [NULL1 ORD1]]]] [L2 [R2 [NDL2 [NULL2 ORD2]]]] EQ1 EQ2.
+unfold OC_list, OC_rel, projT1, projT2 in *.
+subst.
+rewrite (proof_irrelevance _ NULL1 NULL2).
+rewrite (proof_irrelevance _ NDL1 NDL2).
+rewrite (proof_irrelevance _ ORD1 ORD2).
+reflexivity.
+Qed.
+
+Lemma restriction_add_fresh_comm :
+    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o : ovar) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o),
+        ~ In o L ->
+            add_fresh (restriction OC L SUB) o NEW' = restriction (add_fresh OC o NEW) L (fun o' IN' => or_intror (SUB o' IN')).
+Proof.
+intros OC L SUB o NEW NEW' NIN.
+destruct OC as [L1 [R [NDL [NULL ORD]]]].
+apply constraint_eq_case;
+unfold add_fresh, restriction, OC_list, OC_rel, projT1, projT2.
+- unfold filter.
+  case (in_dec nat_eq_dec o L) as [IN | NIN'].
+  contradiction (NIN IN).
+  reflexivity.
+- reflexivity.
+Qed.
+
 (*
 Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
 
