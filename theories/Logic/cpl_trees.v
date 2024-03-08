@@ -2418,14 +2418,53 @@ all : unfold cpl_tree_left in Tgam;
     contradiction (NIND' (in_or_app _ _ _ (or_introl IN))).
     reflexivity.
 
-1 : admit.
+1 : pose proof (struct_show_self Tstr) as Tshow'.
+    assert (incl [lambda'] (OC_list (cpl_tree_constraint T))) as ELT'.
+    { intros o IN.
+      apply in_single in IN.
+      subst.
+      rewrite TOC.
+      unfold restriction.
+      unfold OC_list, projT1, projT2 in *.
+      apply filter_In, (conj (ELT _ (or_introl eq_refl))).
+      case (in_dec nat_eq_dec lambda' (children OC' kappa)) as [IN | NIN].
+      apply children_are_child in IN as [FAL _].
+      specialize (NOREL kappa).
+      rewrite FAL in NOREL.
+      inversion NOREL.
+      reflexivity. }
+    assert (forall eta : ovar, OC_rel (cpl_tree_constraint T) lambda' eta = false) as NOREL'.
+    { intros eta.
+      specialize (NOREL eta).
+      rewrite TOC.
+      unfold restriction.
+      unfold OC_rel, projT1, projT2 in *.
+      rewrite NOREL, Bool.andb_false_l.
+      reflexivity. }
+    rewrite TOC in *.
+    pose proof (IHT _ _ _ _ _ _ _ _ ELT' NING' NIND' NOREL' Tshow') as Tshow''.
+    assert ((restriction (restriction OC' (children OC' kappa) (children_subset OC' kappa)) [lambda'] ELT') = (restriction (restriction OC' [lambda'] ELT)) (children (restriction OC' [lambda'] ELT) kappa) (children_subset (restriction OC' [lambda'] ELT) kappa)) as EQ.
+    { admit. }
+    rewrite EQ in Tshow''.
+    refine (cpl_tree_reset KNING KNIND _ Tshow'').
+    unfold restriction.
+    unfold OC_elt, OC_list, projT1, projT2.
+    apply filter_In, (conj KIN).
+    case (in_dec nat_eq_dec kappa [lambda']) as [IN | NIN].
+    apply in_single in IN.
+    subst.
+    admit.
+    reflexivity.
 
 1 : pose proof (struct_show_self Tstr) as Tshow'.
     assert (~ In lambda' (flat_map vars_in (cpl_tree_left T))) as NING''.
     { intros FAL.
-      apply NING'.
       rewrite TG in FAL.
-      admit. }
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply vars_in_psub_type in FAL1 as [FAL1_1 | FAL1_2].
+      apply NING', in_or_app, or_introl, FAL1_1.
+      apply NING', in_or_app, or_introl, FAL1_2.
+      apply NING', in_or_app, or_intror, FAL2. }
     pose proof (IHT _ _ _ _ _ _ _ _ ELT NING'' NIND' NOREL Tshow') as Tshow''.
     rewrite TG in Tshow''.
     refine (cpl_tree_nu_l Tshow'').
@@ -2465,38 +2504,85 @@ all : unfold cpl_tree_left in Tgam;
 1 : pose proof (struct_show_self Tstr) as Tshow'.
     assert (~ In lambda' (flat_map vars_in (cpl_tree_left T))) as NING''.
     { intros FAL.
-      apply NING'.
-      admit. }
+      rewrite TG in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply vars_in_psub_type in FAL1 as [FAL1_1 | [EQ | FAL1_2]].
+      apply NING', in_or_app, or_introl, or_intror, FAL1_1.
+      subst.
+      pose proof (NOREL kappa) as FAL.
+      rewrite TOC_rel in FAL.
+      inversion FAL.
+      apply NING', in_or_app, or_introl, or_intror, FAL1_2.
+      apply NING', in_or_app, or_intror, FAL2. }
     pose proof (IHT _ _ _ _ _ _ _ _ ELT NING'' NIND' NOREL Tshow') as Tshow''.
     rewrite TG in Tshow''.
     refine (cpl_tree_nuk_l _ Tshow'').
-    unfold restriction, OC_rel, projT1, projT2.
+    unfold restriction.
+    unfold OC_rel, projT1, projT2 in *.
+    rewrite TOC_rel, Bool.andb_true_l.
     case (in_dec nat_eq_dec lambda [lambda']) as [IN1 | NIN1].
     apply in_single in IN1.
     subst.
-    contradiction NING''.
-    rewrite TG.
-    apply in_or_app, or_introl, vars_in_in_psub.
-    rewrite Bool.andb_false_r, Bool.andb_false_l. 
-    contradiction (NEW' (ELT _ (or_introl eq_refl))).
-    admit.
+    pose proof (NOREL kappa) as FAL.
+    rewrite TOC_rel in FAL.
+    inversion FAL.
+    rewrite Bool.andb_true_l.
+    case (in_dec nat_eq_dec kappa [lambda']) as [IN2 | NIN2].
+    apply in_single in IN2.
+    subst.
+    contradiction NING'.
+    apply in_or_app, or_introl, or_introl, eq_refl.
+    reflexivity.
 
 1 : pose proof (struct_show_self Tstr) as Tshow'.
     assert (~ In lambda' (flat_map vars_in (cpl_tree_right T))) as NIND''.
     { intros FAL.
-      apply NIND'.
-      admit. }
+      rewrite TD in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply vars_in_psub_type in FAL1 as [FAL1_1 | [EQ | FAL1_2]].
+      apply NIND', in_or_app, or_introl, or_intror, FAL1_1.
+      subst.
+      contradiction (NEW (ELT _ (or_introl eq_refl))).
+      apply NIND', in_or_app, or_introl, or_intror, FAL1_2.
+      apply NIND', in_or_app, or_intror, FAL2. }
     rewrite TD in *.
     assert (incl [lambda'] (OC_list (add_fresh_child OC' lambda kappa NEW KIN))) as ELT'.
-    { admit. }
+    { intros o IN.
+      apply in_single in IN.
+      subst.
+      unfold add_fresh_child, OC_list, projT1, projT2.
+      apply or_intror, ELT, or_introl, eq_refl. }
     assert (forall eta : ovar, OC_rel (add_fresh_child OC' lambda kappa NEW KIN) lambda' eta = false) as NOREL'.
-    { admit. }
+    { intros eta.
+      specialize (NOREL eta).
+      unfold add_fresh_child.
+      unfold OC_rel, projT1, projT2 in *.
+      rewrite NOREL, Bool.orb_false_l.
+      case (nat_eqb lambda' lambda) eqn:EQ1.
+      apply nat_eqb_eq in EQ1.
+      subst.
+      contradiction (NEW (ELT _ (or_introl eq_refl))).
+      rewrite !Bool.andb_false_l, Bool.orb_false_l.
+      reflexivity. }
     rewrite TOC in *.
     pose proof (IHT _ _ _ _ _ _ _ _ ELT' NING' NIND'' NOREL' Tshow') as Tshow''.
     assert (~ OC_elt (restriction OC' [lambda'] ELT) lambda) as NEW'.
-    { admit. }
+    { intros FAL.
+      apply NEW.
+      unfold restriction in FAL.
+      unfold OC_elt, OC_list, projT1, projT2 in *.
+      apply filter_In in FAL as [IN _].
+      apply IN. }
     assert (OC_elt (restriction OC' [lambda'] ELT) kappa) as KIN'.
-    { admit. }
+    { unfold restriction.
+      unfold OC_elt, OC_list, projT1, projT2 in *.
+      apply filter_In, (conj KIN).
+      case (in_dec nat_eq_dec kappa [lambda']) as [IN | NIN].
+      apply in_single in IN.
+      subst.
+      contradiction NIND'.
+      apply in_or_app, or_introl, or_introl, eq_refl.
+      reflexivity. }
     assert ((restriction (add_fresh_child OC' lambda kappa NEW KIN) [lambda'] ELT') = (add_fresh_child (restriction OC' [lambda'] ELT) lambda kappa NEW' KIN')) as EQ.
     { admit. }
     rewrite EQ in Tshow''.
@@ -2506,16 +2592,20 @@ all : unfold cpl_tree_left in Tgam;
     pose proof (struct_show_self T2str) as T2show.
     assert (~ In lambda' (flat_map vars_in (cpl_tree_left T1))) as NING1.
     { intros FAL.
-      apply NIND'.
-      admit. }
+      apply NING'.
+      rewrite T1G in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply in_or_app, or_introl, in_or_app, or_intror, FAL1.
+      apply in_or_app, or_intror, FAL2. }
     assert (~ In lambda' (flat_map vars_in (cpl_tree_left T2))) as NING2.
     { intros FAL.
-      apply NIND'.
-      admit. }
+      apply NING', in_or_app, or_intror, FAL. }
     assert (~ In lambda' (flat_map vars_in (cpl_tree_right T2))) as NIND''.
     { intros FAL.
-      apply NIND'.
-      admit. }
+      rewrite T2D in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply NING', in_or_app, or_introl, in_or_app, or_introl, FAL1.
+      apply NIND', FAL2. }
     pose proof (IHT1 _ _ _ _ _ _ _ _ ELT NING1 NIND' NOREL T1show) as T1show'.
     rewrite T2OC in *.
     pose proof (IHT2 _ _ _ _ _ _ _ _ ELT NING2 NIND'' NOREL T2show) as T2show'.
@@ -2526,41 +2616,41 @@ all : unfold cpl_tree_left in Tgam;
 1 : pose proof (struct_show_self Tstr) as Tshow'.
     assert (~ In lambda' (flat_map vars_in (cpl_tree_left T))) as NING''.
     { intros FAL.
-      apply NING'.
-      admit. }
+      rewrite TG in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply NIND', in_or_app, or_introl, in_or_app, or_introl, FAL1.
+      apply NING', FAL2. }
     assert (~ In lambda' (flat_map vars_in (cpl_tree_right T))) as NIND''.
     { intros FAL.
-      apply NIND'.
-      admit. }
+      rewrite TD in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      apply NIND', in_or_app, or_introl, in_or_app, or_intror, FAL1.
+      apply NIND', in_or_app, or_intror, FAL2. }
     pose proof (IHT _ _ _ _ _ _ _ _ ELT NING'' NIND'' NOREL Tshow') as Tshow''.
     rewrite TG,TD in Tshow''.
     refine (cpl_tree_imp_r Tshow'').
 
 1 : pose proof (struct_show_self T1str) as T1show.
     pose proof (struct_show_self T2str) as T2show.
-    assert (~ In lambda' (flat_map vars_in (cpl_tree_left T1))) as NING1.
+    assert (~ In lambda' (flat_map vars_in (cpl_tree_left T2))) as NING''.
     { intros FAL.
-      apply NIND'.
-      admit. }
-    assert (~ In lambda' (flat_map vars_in (cpl_tree_left T2))) as NING2.
-    { intros FAL.
-      apply NIND'.
-      admit. }
+      rewrite T2G in FAL.
+      apply in_app_or in FAL as [FAL1 | FAL2].
+      admit.
+      apply NING', FAL2. }
     assert (~ In lambda' (flat_map vars_in (cpl_tree_right T1))) as NIND''.
     { intros FAL.
       rewrite T1D in FAL.
       apply in_app_or in FAL as [FAL1 | FAL2].
-      
-      apply NIND'.
-      
-      admit. }
-    pose proof (IHT1 _ _ _ _ _ _ _ _ ELT NING1 NIND'' NOREL T1show) as T1show'.
+      admit.
+      apply NIND', FAL2. }
+    pose proof (IHT1 _ _ _ _ _ _ _ _ ELT NING' NIND'' NOREL T1show) as T1show'.
     rewrite T2OC in *.
-    pose proof (IHT2 _ _ _ _ _ _ _ _ ELT NING2 NIND' NOREL T2show) as T2show'.
+    pose proof (IHT2 _ _ _ _ _ _ _ _ ELT NING'' NIND' NOREL T2show) as T2show'.
     rewrite T1D in T1show'.
     rewrite T2G in T2show'.
     refine (cpl_tree_cut T1show' T2show').
-Qed.
+Admitted.
 
 Lemma cpl_tree_ovar_con_l :
     forall {l : nat} {T : cpl_tree} {gamma1 gamma2 gamma3 delta : list formula} {phi : formula} {OC : constraint} {d r : nat} {alpha : ordinal},
