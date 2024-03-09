@@ -198,6 +198,47 @@ intros IN.
     apply (NIN FAL).
 Qed.
 
+Lemma filter_false {A : Type} :
+    forall {L : list A},
+        filter (fun a : A => false) L = [].
+Proof.
+induction L.
+reflexivity.
+apply IHL.
+Qed.
+
+Lemma double_filter {A : Type} :
+    forall {L : list A} {f g : A -> bool},
+        filter f (filter g L) = filter (fun a => andb (f a) (g a)) L.
+Proof.
+induction L;
+intros f g.
+reflexivity.
+unfold filter at 2 3.
+fold (filter g) (filter (fun (x : A) => (f x && g x))).
+rewrite <- IHL.
+destruct (g a).
+rewrite Bool.andb_true_r.
+reflexivity.
+rewrite Bool.andb_false_r.
+reflexivity.
+Qed.
+
+Lemma filter_non_empty_extract {A : Type} :
+    forall (L : list A) {f : A -> bool},
+        filter f L <> [] ->
+            {a : A & f a = true}.
+Proof.
+induction L;
+intros f NE.
+contradiction (NE eq_refl).
+unfold filter in NE;
+fold (filter f) in NE.
+case (f a) eqn:F.
+refine (existT _ a F).
+apply IHL, NE.
+Qed.
+
 Lemma combine_eq_len :
     forall {A B : Type} {L1 L3 : list A} {L2 L4 : list B},
         length L1 = length L2 ->

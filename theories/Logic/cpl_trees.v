@@ -367,7 +367,7 @@ match T with
 
 | @wkn_r OC gamma delta phi alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = delta) * (cpl_tree_constraint T' = OC) * (cpl_tree_deg T' = alpha))
 
-| @rst OC gamma delta kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & cpl_tree_constraint T' = restriction OC (children OC kappa) (children_subset OC kappa)} * (cpl_tree_deg T' = alpha))
+| @rst OC gamma delta kappa alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = gamma) * (cpl_tree_right T' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * (children OC kappa <> []) * {SUB : (OC_elt OC kappa) & cpl_tree_constraint T' = restriction OC (children OC kappa) (children_subset OC kappa)} * (cpl_tree_deg T' = alpha))
 
 
 | @nu_l OC gamma delta phi x alpha T' => structured T' * (semi_applicable OC T * (cpl_tree_left T' = (pvar_sub phi x (nu x phi)) :: gamma) * (cpl_tree_right T' = delta) * (cpl_tree_constraint T' = OC) * (cpl_tree_deg T' = alpha))
@@ -400,7 +400,7 @@ intros Tstr LEAF.
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -449,7 +449,7 @@ all : unfold provable in *;
     rewrite <- TG, <- TD, <- TOC, <- TDeg.
     apply (IHT Tstr LEAF).
 
-1 : apply (ptree_reset _ _ _ kappa _ KNING KNIND KIN).
+1 : apply (ptree_reset _ _ _ kappa _ KNING KNIND KCLD KIN).
     rewrite <- TG, <- TD, <- TOC, <- TDeg.
     apply (IHT Tstr LEAF).
 
@@ -583,7 +583,7 @@ intros Tstr.
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -764,11 +764,12 @@ Lemma cpl_tree_reset :
   forall {gamma delta : list formula} {OC : constraint} {kappa : ovar} {alpha: ordinal} {d l r : nat},
       ~ In kappa (flat_map vars_used gamma) ->
           ~ In kappa (flat_map vars_used delta) ->
-              OC_elt OC kappa ->
-                  showable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha d l r ->
-                      showable OC gamma delta alpha d l r.
+              children OC kappa <> [] ->
+                  OC_elt OC kappa ->
+                      showable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha d l r ->
+                          showable OC gamma delta alpha d l r.
 Proof.
-intros gamma delta OC kappa alpha d l r NING NIND ELT [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
+intros gamma delta OC kappa alpha d l r NING NIND CLD ELT [T [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdep] Tleft] Tright]].
 subst.
 refine (existT _ (rst kappa T) _).
 repeat split;
@@ -1274,7 +1275,7 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -1410,7 +1411,7 @@ all : unfold cpl_tree_left in Tgam;
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TOC in Tshow''.
-    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KCLD KIN Tshow'') LTD) LT')))).
     intros FAL.
     apply KNING.
     rewrite Tgam.
@@ -1586,7 +1587,7 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -1727,7 +1728,7 @@ all : unfold cpl_tree_left in Tgam;
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TOC in Tshow''.
-    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KCLD KIN Tshow'') LTD) LT')))).
     intros FAL.
     apply KNING.
     rewrite Tgam.
@@ -1929,7 +1930,7 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -2079,7 +2080,7 @@ all : unfold cpl_tree_right in Tdelt;
     fold cpl_tree_depth.
     pose proof (IHT _ _ _ _ _ _ _ _ _ LT Tshow') as [d' [l' [r' [[Tshow'' LTD] LT']]]].
     rewrite TOC in Tshow''.
-    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KIN Tshow'') LTD) LT')))).
+    refine (existT _ d' (existT _ l' (existT _ r' (pair (pair (cpl_tree_reset _ _ KCLD KIN Tshow'') LTD) LT')))).
     intros FAL.
     rewrite flat_map_app in FAL.
     apply in_app_or in FAL as [FAL1 | FAL2].
@@ -2298,7 +2299,7 @@ forall {T : cpl_tree} {gamma delta : list formula} {OC : constraint} {d l r : na
     forall (lambda : ovar) (ELT : incl [lambda] (OC_list OC)),
         ~ In lambda (flat_map vars_in gamma) ->
             ~ In lambda (flat_map vars_in delta) ->
-                (forall (eta : ovar), OC_rel OC lambda eta = false) ->
+                (forall (eta : ovar), OC_rel OC lambda eta = false /\ OC_rel OC eta lambda = false) ->
                     T_shows T OC gamma delta alpha d l r ->
                         showable (restriction OC [lambda] ELT) gamma delta alpha d l r.
 Proof.
@@ -2308,7 +2309,7 @@ inversion Tshow as [[[[[[[Tstr Tgam] Tdelt] Tcon] Tdeg] Tdepth] Tleft] Tright].
 
 1 : destruct Tstr as [TG_app TD_app].
 2-8 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
-9 : destruct Tstr as [Tstr [[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] [KIN TOC]] TDeg]].
+9 : destruct Tstr as [Tstr [[[[[[[[TG_app TD_app] TG] TD] KNING] KNIND] KCLD] [KIN TOC]] TDeg]].
 10 : destruct Tstr as [Tstr [[[[[TG_app TD_app] TG] TD] TOC] TDeg]].
 11 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] [NEW TOC]] [NING NIND]] TDeg]].
 12 : destruct Tstr as [Tstr [[[[[[TG_app TD_app] TG] TD] TOC] TOC_rel] TDeg]].
@@ -2429,31 +2430,77 @@ all : unfold cpl_tree_left in Tgam;
       apply filter_In, (conj (ELT _ (or_introl eq_refl))).
       case (in_dec nat_eq_dec lambda' (children OC' kappa)) as [IN | NIN].
       apply children_are_child in IN as [FAL _].
-      specialize (NOREL kappa).
-      rewrite FAL in NOREL.
-      inversion NOREL.
+      specialize (NOREL kappa) as [NOREL1 NOREL2].
+      rewrite FAL in NOREL1.
+      inversion NOREL1.
       reflexivity. }
-    assert (forall eta : ovar, OC_rel (cpl_tree_constraint T) lambda' eta = false) as NOREL'.
+    assert (forall eta : ovar, OC_rel (cpl_tree_constraint T) lambda' eta = false /\ OC_rel (cpl_tree_constraint T) eta lambda' = false) as NOREL'.
     { intros eta.
-      specialize (NOREL eta).
+      specialize (NOREL eta) as [NOREL1 NOREL2].
       rewrite TOC.
       unfold restriction.
       unfold OC_rel, projT1, projT2 in *.
-      rewrite NOREL, Bool.andb_false_l.
+      rewrite NOREL1, NOREL2, !Bool.andb_false_l.
+      apply conj;
       reflexivity. }
     rewrite TOC in *.
     pose proof (IHT _ _ _ _ _ _ _ _ ELT' NING' NIND' NOREL' Tshow') as Tshow''.
     assert ((restriction (restriction OC' (children OC' kappa) (children_subset OC' kappa)) [lambda'] ELT') = (restriction (restriction OC' [lambda'] ELT)) (children (restriction OC' [lambda'] ELT) kappa) (children_subset (restriction OC' [lambda'] ELT) kappa)) as EQ.
     { admit. }
     rewrite EQ in Tshow''.
-    refine (cpl_tree_reset KNING KNIND _ Tshow'').
-    unfold restriction.
+    refine (cpl_tree_reset KNING KNIND _ _ Tshow'').
+    assert {eta : ovar & child OC' eta kappa} as [eta CHILD].
+    { unfold children, progeny in KCLD.
+      rewrite double_filter in KCLD.
+      destruct (filter_non_empty_extract _ KCLD) as [eta REL].
+      apply and_bool_prop in REL as [CLD REL].
+      unfold child.
+      refine (existT _ eta (conj REL _)).
+      intros rho REL1.
+      case (in_dec nat_eq_dec eta (flat_map (fun eta : ovar => filter (fun lambda : ovar => OC_rel OC' lambda eta) (OC_list OC')) (filter (fun lambda : ovar => OC_rel OC' lambda kappa) (OC_list OC')))) as [IN | NIN].
+      inversion CLD.
+      case (OC_rel OC' eta rho) eqn:REL2.
+      contradiction NIN.
+      apply in_flat_map.
+      exists rho.
+      refine (conj (proj2 (filter_In _ _ _) (conj (proj1 (OC_null _ _ _ REL1)) REL1)) (proj2 (filter_In _ _ _ ) (conj (proj1 (OC_null _ _ _ REL2)) REL2))).
+      reflexivity. }
+    assert (child (restriction OC' [lambda'] ELT) eta kappa) as CHILD'.
+    { unfold restriction.
+      unfold child, OC_rel, OC_list, projT1, projT2 in *.
+      destruct OC' as [LIST [REL [NDL [APP ORDER]]]].
+      destruct CHILD as [REL' MAX].
+      rewrite REL', Bool.andb_true_l.
+      case (in_dec nat_eq_dec eta [lambda']) as [IN1 | NIN1].
+      apply in_single in IN1.
+      subst.
+      rewrite (proj1 (NOREL kappa)) in REL'.
+      inversion REL'.
+      case (in_dec nat_eq_dec kappa [lambda']) as [IN2 | NIN2].
+      apply in_single in IN2.
+      subst.
+      rewrite (proj2 (NOREL eta)) in REL'.
+      inversion REL'.
+      apply (conj eq_refl).
+      intros rho REL1.
+      rewrite !Bool.andb_true_r in *.
+      apply and_bool_prop in REL1 as [REL1 MAX'].
+      rewrite (MAX _ REL1).
+      reflexivity. }
+    intros FAL.
+    apply all_child_are_children in CHILD'.
+    rewrite FAL in CHILD'.
+    inversion CHILD'.
     unfold OC_elt, OC_list, projT1, projT2.
     apply filter_In, (conj KIN).
     case (in_dec nat_eq_dec kappa [lambda']) as [IN | NIN].
     apply in_single in IN.
     subst.
-    admit.
+    contradiction KCLD.
+    unfold children, progeny.
+    rewrite (filter_ext (fun lambda => OC_rel OC' lambda lambda') (fun lambda => false) (fun eta => (proj2 (NOREL eta)))).
+    rewrite filter_false.
+    reflexivity.
     reflexivity.
 
 1 : pose proof (struct_show_self Tstr) as Tshow'.
@@ -2509,9 +2556,9 @@ all : unfold cpl_tree_left in Tgam;
       apply vars_in_psub_type in FAL1 as [FAL1_1 | [EQ | FAL1_2]].
       apply NING', in_or_app, or_introl, or_intror, FAL1_1.
       subst.
-      pose proof (NOREL kappa) as FAL.
-      rewrite TOC_rel in FAL.
-      inversion FAL.
+      pose proof (NOREL kappa) as [FAL1 FAL2].
+      rewrite TOC_rel in FAL1.
+      inversion FAL1.
       apply NING', in_or_app, or_introl, or_intror, FAL1_2.
       apply NING', in_or_app, or_intror, FAL2. }
     pose proof (IHT _ _ _ _ _ _ _ _ ELT NING'' NIND' NOREL Tshow') as Tshow''.
@@ -2523,9 +2570,9 @@ all : unfold cpl_tree_left in Tgam;
     case (in_dec nat_eq_dec lambda [lambda']) as [IN1 | NIN1].
     apply in_single in IN1.
     subst.
-    pose proof (NOREL kappa) as FAL.
-    rewrite TOC_rel in FAL.
-    inversion FAL.
+    pose proof (NOREL kappa) as [FAL1 FAL2].
+    rewrite TOC_rel in FAL1.
+    inversion FAL1.
     rewrite Bool.andb_true_l.
     case (in_dec nat_eq_dec kappa [lambda']) as [IN2 | NIN2].
     apply in_single in IN2.
@@ -2552,16 +2599,30 @@ all : unfold cpl_tree_left in Tgam;
       subst.
       unfold add_fresh_child, OC_list, projT1, projT2.
       apply or_intror, ELT, or_introl, eq_refl. }
-    assert (forall eta : ovar, OC_rel (add_fresh_child OC' lambda kappa NEW KIN) lambda' eta = false) as NOREL'.
+    assert (forall eta : ovar, OC_rel (add_fresh_child OC' lambda kappa NEW KIN) lambda' eta = false /\ OC_rel (add_fresh_child OC' lambda kappa NEW KIN) eta lambda' = false) as NOREL'.
     { intros eta.
-      specialize (NOREL eta).
+      pose proof (NOREL eta) as [NOREL1 NOREL2].
       unfold add_fresh_child.
       unfold OC_rel, projT1, projT2 in *.
-      rewrite NOREL, Bool.orb_false_l.
+      rewrite NOREL1, NOREL2, Bool.orb_false_l.
       case (nat_eqb lambda' lambda) eqn:EQ1.
       apply nat_eqb_eq in EQ1.
       subst.
       contradiction (NEW (ELT _ (or_introl eq_refl))).
+      rewrite !Bool.andb_false_l, !Bool.orb_false_l.
+      apply (conj eq_refl).
+      case (nat_eqb eta lambda) eqn:EQ2.
+      apply nat_eqb_eq in EQ2.
+      subst.
+      rewrite !Bool.andb_true_l.
+      case (nat_eqb kappa lambda') eqn:EQ2.
+      apply nat_eqb_eq in EQ2.
+      subst.
+      contradiction NIND'.
+      apply in_or_app, or_introl, or_introl, eq_refl.
+      rewrite Bool.orb_false_l.
+      rewrite (proj2 (NOREL kappa)).
+      reflexivity.
       rewrite !Bool.andb_false_l, Bool.orb_false_l.
       reflexivity. }
     rewrite TOC in *.

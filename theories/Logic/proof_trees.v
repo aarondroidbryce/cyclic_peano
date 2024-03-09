@@ -707,7 +707,7 @@ match P with
 
 | @wkn_r OC gamma delta phi alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
-| @rst OC gamma delta kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
+| @rst OC gamma delta kappa alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = gamma) * (ptree_right P' = delta) * (~ In kappa (flat_map vars_used gamma)) * (~ In kappa (flat_map vars_used delta)) * (children OC kappa <> []) * {SUB : (OC_elt OC kappa) & ptree_constraint P' = restriction OC (children OC kappa) (children_subset OC kappa)} * (ptree_deg P' = alpha))
 
 | @nu_l OC gamma delta phi x alpha P' => well_struct P' * (applicable OC P * (ptree_left P' = (pvar_sub phi x (nu x phi)) :: gamma) * (ptree_right P' = delta) * (ptree_constraint P' = OC) * (ptree_deg P' = alpha))
 
@@ -1371,11 +1371,12 @@ Lemma ptree_reset :
     forall (gamma delta : list formula) (OC : constraint) (kappa : ovar) (alpha: ordinal),
         ~ In kappa (flat_map vars_used gamma) ->
             ~ In kappa (flat_map vars_used delta) ->
-                OC_elt OC kappa ->
-                    provable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha ->
-                        provable OC gamma delta alpha.
+                children OC kappa <> [] ->
+                    OC_elt OC kappa ->
+                        provable (restriction OC (children OC kappa) (children_subset OC kappa)) gamma delta alpha ->
+                            provable OC gamma delta alpha.
 Proof.
-intros gamma delta OC kappa alpha NING NIND ELT [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
+intros gamma delta OC kappa alpha NING NIND CLD ELT [P [[[[[PSV [PEnd PLoops]] PG] PD] POC] PDeg]].
 subst.
 refine (existT _ (rst kappa P) _).
 repeat split;
@@ -1974,7 +1975,7 @@ Master destruct tactic.
 1-2 : destruct PSV.
 3 : destruct PSV as [PG_app PD_app].
 4-10 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
-11 : destruct PSV as [PSV [[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] [KIN POC]] PDeg]].
+11 : destruct PSV as [PSV [[[[[[[[PG_app PD_app] PG] PD] KNING] KNIND] KCLD] [KIN POC]] PDeg]].
 12 : destruct PSV as [PSV [[[[[PG_app PD_app] PG] PD] POC] PDeg]].
 13 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] [NEW POC]] [NING NIND]] PDeg]].
 14 : destruct PSV as [PSV [[[[[[PG_app PD_app] PG] PD] POC] POC_rel] PDeg]].

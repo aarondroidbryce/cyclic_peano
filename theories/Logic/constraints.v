@@ -334,6 +334,56 @@ unfold add_fresh, restriction, OC_list, OC_rel, projT1, projT2.
 - reflexivity.
 Qed.
 
+Lemma restriction_add_fresh_child_comm :
+    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o kappa : ovar) (KIN : OC_elt OC kappa) (KIN' : OC_elt (restriction OC L SUB) kappa) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o),
+        ~ In o L ->
+        (add_fresh_child (restriction OC L SUB) o kappa NEW' KIN') = (restriction (add_fresh_child OC o kappa NEW KIN) L (fun o' IN' => or_intror (SUB o' IN'))).
+Proof.
+intros OC L SUB o kappa KIN KIN' NEW NEW' NIN.
+destruct OC as [L1 [R [NDL [NULL ORD]]]].
+apply constraint_eq_case;
+unfold add_fresh_child, restriction, OC_list, OC_rel, projT1, projT2.
+- unfold filter.
+  case (in_dec nat_eq_dec o L) as [IN | NIN'].
+  contradiction (NIN IN).
+  reflexivity.
+- apply functional_extensionality.
+  intros eta.
+  apply functional_extensionality.
+  intros rho.
+  unfold OC_elt, OC_list, OC_rel, projT1, projT2 in *.
+  case (in_dec nat_eq_dec rho L) as [IN1 | NIN1].
+  + rewrite !Bool.andb_false_r, Bool.orb_false_l, Bool.orb_false_r.
+    case (nat_eqb eta o) eqn:EQ.
+    apply nat_eqb_eq in EQ.
+    subst.
+    case (nat_eqb kappa rho) eqn:EQ.
+    apply nat_eqb_eq in EQ.
+    subst.
+    unfold restriction, OC_list, projT1 in KIN'.
+    apply filter_In in KIN' as [KIN' COND].
+    case (in_dec nat_eq_dec rho L) as [IN' | NIN'].
+    inversion COND.
+    contradiction (NIN' IN1).
+    reflexivity.
+    reflexivity.
+  + rewrite !Bool.andb_true_r.
+    case (in_dec nat_eq_dec eta L) as [IN2 | NIN2].
+    * rewrite !Bool.andb_false_r, Bool.orb_false_l.
+      case (nat_eqb eta o) eqn:EQ1.
+      apply nat_eqb_eq in EQ1.
+      subst.
+      contradiction (NIN IN2).
+      reflexivity.
+    * rewrite !Bool.andb_true_r.
+      unfold restriction, OC_list, projT1 in KIN'.
+      apply filter_In in KIN' as [KIN' COND].
+      case (in_dec nat_eq_dec kappa L) as [IN3 | NIN3].
+      inversion COND.
+      rewrite !Bool.andb_true_r.
+      reflexivity.
+Qed.
+
 (*
 Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.
 
