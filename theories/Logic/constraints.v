@@ -38,7 +38,7 @@ Definition progeny (OC : constraint) (kappa : ovar) : list ovar := filter (fun (
 
 Definition child (OC : constraint) (lambda kappa : ovar) : Prop := OC_rel OC lambda kappa = true /\ (forall eta, OC_rel OC eta kappa = true -> OC_rel OC lambda eta = false).
 
-Definition children (OC : constraint) (kappa : ovar) : list ovar := filter (fun (lambda : ovar) => if in_dec nat_eq_dec lambda (flat_map (fun eta => progeny OC eta) (progeny OC kappa)) then false else true) (progeny OC kappa).
+Definition children (OC : constraint) (kappa : ovar) : list ovar := filter (fun (lambda : ovar) => forallb (fun eta => negb (OC_rel OC lambda eta)) (progeny OC kappa)) (progeny OC kappa).
 
 Definition add_fresh (OC : constraint) (lambda : ovar) (NEW : ~ OC_elt OC lambda) : constraint := (existT _ (lambda :: OC_list OC) (existT _ (OC_rel OC) (conj ((proj2 (NoDup_cons_iff _ _)) (conj NEW (OC_unique OC))) (conj (fun (eta iota : ovar) (REL : OC_rel OC iota eta = true) => conj (or_intror (proj1 (OC_null OC eta iota REL))) (or_intror (proj2 (OC_null OC eta iota REL)))) (OC_order OC))))).
 
@@ -48,8 +48,7 @@ refine (existT _ (lambda :: OC_list OC) (existT _ (fun (eta iota : ovar) => OC_r
 intros eta iota COND.
 case (OC_rel OC iota eta) eqn:REL1.
 - apply (conj (or_intror (proj1 (OC_null OC eta iota REL1))) (or_intror (proj2 (OC_null OC eta iota REL1)))).
-- unfold "||" in COND.
-  case (nat_eqb iota lambda) eqn:EQ.
+- case (nat_eqb iota lambda) eqn:EQ.
   + apply nat_eqb_eq in EQ.
     destruct EQ.
     case (nat_eqb kappa eta) eqn:EQ.
@@ -63,8 +62,7 @@ case (OC_rel OC iota eta) eqn:REL1.
   + intros eta refl.
     case (OC_rel OC eta eta) eqn:FAL.
     * apply (IREF eta FAL).
-    * unfold "||" in refl.
-      case (nat_eqb eta lambda) eqn:EQ.
+    * case (nat_eqb eta lambda) eqn:EQ.
       --  apply nat_eqb_eq in EQ.
           destruct EQ.
           case (nat_eqb kappa eta) eqn:EQ.
@@ -80,8 +78,7 @@ case (OC_rel OC iota eta) eqn:REL1.
     try apply nat_eqb_eq in EQ2 as EQ4;
     try destruct EQ3;
     try destruct EQ4;
-    unfold "&&" in *;
-    try rewrite orb_false_r in *.
+    try rewrite Bool.orb_false_r in *.
     * apply LT2.
     * contradiction (proj2 (OC_null OC _ _ LT1)).
     * repeat apply or_bool_prop in LT1 as [LT1 | LT1].
@@ -104,8 +101,9 @@ refine (existT _ (filter (fun (eta : ovar) => if in_dec nat_eq_dec eta L then fa
 - intros lambda kappa COND.
   apply and_bool_prop in COND as [COND NIN2].
   apply and_bool_prop in COND as [REL NIN1].
-  repeat rewrite filter_In.
-  repeat split.
+  apply conj;
+  apply filter_In;
+  apply conj.
   + apply (proj1 (OC_null OC _ _ REL)).
   + apply NIN1.
   + apply (proj2 (OC_null OC _ _ REL)).
@@ -193,7 +191,7 @@ apply NoDup_incl_length.
 Defined.
 *)
 
-Lemma children_subset : forall (OC : constraint) (kappa : ovar), incl (children OC kappa) (OC_list OC). exact (fun OC kappa => incl_tran (incl_filter _ _) (incl_filter _ _)). Qed.
+Definition children_subset : forall (OC : constraint) (kappa : ovar), incl (children OC kappa) (OC_list OC) := (fun OC kappa => incl_tran (incl_filter _ _) (incl_filter _ _)).
 
 Lemma children_are_child : forall (OC : constraint) (lambda kappa : ovar), In lambda (children OC kappa) -> child OC lambda kappa.
 Proof.
@@ -202,27 +200,20 @@ repeat apply filter_In in IN as [IN ?COND].
 split.
 apply COND0.
 intros eta REL.
-case (in_dec nat_eq_dec lambda) as [_ | IN'].
-inversion COND.
-apply not_true_iff_false.
-intros FAL.
-apply IN', in_flat_map.
-exists eta.
-apply (conj (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ REL)) REL)) (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ FAL)) FAL))).
+rewrite forallb_forall in COND.
+specialize (COND eta (proj2 (filter_In _ _ _) (conj (proj1 (OC_null _ _ _ REL)) REL))).
+apply negb_true_iff, COND.
 Qed.
 
 Lemma all_child_are_children : forall (OC : constraint) (lambda kappa : ovar), child OC lambda kappa -> In lambda (children OC kappa).
 Proof.
 intros OC lambda kappa [REL COND].
 apply filter_In.
-refine (conj (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ REL)) REL)) _). 
-case (in_dec nat_eq_dec lambda) as [IN | _].
-apply in_flat_map in IN as [eta [IN1 IN2]].
-apply filter_In in IN1 as [_ REL1],IN2 as [_ REL2].
-specialize (COND eta REL1).
-rewrite REL2 in COND.
-inversion COND.
-reflexivity.
+refine (conj (proj2 (filter_In _ _ _) (conj (proj1 (OC_null OC _ _ REL)) REL)) _).
+apply forallb_forall.
+intros eta IN.
+apply filter_In in IN as [_ REL'].
+apply negb_true_iff, COND, REL'.
 Qed.
 
 Lemma rel_eq_dec : forall (OC1 OC2 : constraint), (OC_list OC1) = (OC_list OC2) -> {forall (lambda kappa : ovar), OC_rel OC1 lambda kappa = OC_rel OC2 lambda kappa} + {exists (lambda kappa : ovar), OC_rel OC1 lambda kappa <> OC_rel OC2 lambda kappa}.
@@ -319,15 +310,18 @@ reflexivity.
 Qed.
 
 Lemma restriction_add_fresh_comm :
-    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o : ovar) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o),
+    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o : ovar) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o) (SUB' : incl L (OC_list (add_fresh OC o NEW))),
         ~ In o L ->
-            add_fresh (restriction OC L SUB) o NEW' = restriction (add_fresh OC o NEW) L (fun o' IN' => or_intror (SUB o' IN')).
+            add_fresh (restriction OC L SUB) o NEW' = restriction (add_fresh OC o NEW) L SUB'.
 Proof.
-intros OC L SUB o NEW NEW' NIN.
+intros OC L SUB o NEW NEW' SUB' NIN.
 destruct OC as [L1 [R [NDL [NULL ORD]]]].
-apply constraint_eq_case;
-unfold add_fresh, restriction, OC_list, OC_rel, projT1, projT2.
-- unfold filter.
+apply constraint_eq_case.
+- unfold add_fresh at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold add_fresh at 1, OC_list, OC_rel, projT1, projT2.
+  unfold filter.
   case (in_dec nat_eq_dec o L) as [IN | NIN'].
   contradiction (NIN IN).
   reflexivity.
@@ -335,38 +329,44 @@ unfold add_fresh, restriction, OC_list, OC_rel, projT1, projT2.
 Qed.
 
 Lemma restriction_add_fresh_child_comm :
-    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o kappa : ovar) (KIN : OC_elt OC kappa) (KIN' : OC_elt (restriction OC L SUB) kappa) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o),
+    forall (OC : constraint) (L : list ovar) (SUB : incl L (OC_list OC)) (o kappa : ovar) (KIN : OC_elt OC kappa) (KIN' : OC_elt (restriction OC L SUB) kappa) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o) (SUB' : incl L (OC_list (add_fresh_child OC o kappa NEW KIN))),
         ~ In o L ->
-        (add_fresh_child (restriction OC L SUB) o kappa NEW' KIN') = (restriction (add_fresh_child OC o kappa NEW KIN) L (fun o' IN' => or_intror (SUB o' IN'))).
+        (add_fresh_child (restriction OC L SUB) o kappa NEW' KIN') = (restriction (add_fresh_child OC o kappa NEW KIN) L SUB').
 Proof.
-intros OC L SUB o kappa KIN KIN' NEW NEW' NIN.
+intros OC L SUB o kappa KIN KIN' NEW NEW' SUB' NIN.
 destruct OC as [L1 [R [NDL [NULL ORD]]]].
-apply constraint_eq_case;
-unfold add_fresh_child, restriction, OC_list, OC_rel, projT1, projT2.
-- unfold filter.
+apply constraint_eq_case.
+- unfold add_fresh_child at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold add_fresh_child at 1, OC_list, OC_rel, projT1, projT2.
+  unfold filter.
   case (in_dec nat_eq_dec o L) as [IN | NIN'].
   contradiction (NIN IN).
   reflexivity.
-- apply functional_extensionality.
+- unfold add_fresh_child at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold add_fresh_child at 1, OC_list, OC_rel, projT1, projT2.
+  apply functional_extensionality.
   intros eta.
   apply functional_extensionality.
   intros rho.
-  unfold OC_elt, OC_list, OC_rel, projT1, projT2 in *.
+  apply filter_In in KIN' as [KIN' COND].
+  case (in_dec nat_eq_dec kappa L) as [_ | NIN'].
+  inversion COND.
   case (in_dec nat_eq_dec rho L) as [IN1 | NIN1].
   + rewrite !Bool.andb_false_r, Bool.orb_false_l, Bool.orb_false_r.
     case (nat_eqb eta o) eqn:EQ.
+    2 : reflexivity.
     apply nat_eqb_eq in EQ.
     subst.
     case (nat_eqb kappa rho) eqn:EQ.
+    2 : reflexivity.
     apply nat_eqb_eq in EQ.
     subst.
-    unfold restriction, OC_list, projT1 in KIN'.
-    apply filter_In in KIN' as [KIN' COND].
-    case (in_dec nat_eq_dec rho L) as [IN' | NIN'].
-    inversion COND.
     contradiction (NIN' IN1).
-    reflexivity.
-    reflexivity.
   + rewrite !Bool.andb_true_r.
     case (in_dec nat_eq_dec eta L) as [IN2 | NIN2].
     * rewrite !Bool.andb_false_r, Bool.orb_false_l.
@@ -376,13 +376,460 @@ unfold add_fresh_child, restriction, OC_list, OC_rel, projT1, projT2.
       contradiction (NIN IN2).
       reflexivity.
     * rewrite !Bool.andb_true_r.
-      unfold restriction, OC_list, projT1 in KIN'.
-      apply filter_In in KIN' as [KIN' COND].
-      case (in_dec nat_eq_dec kappa L) as [IN3 | NIN3].
-      inversion COND.
-      rewrite !Bool.andb_true_r.
       reflexivity.
 Qed.
+
+Lemma restriction_comm :
+    forall (OC : constraint) (L : list ovar) {kappa : ovar} (SUB : incl L (OC_list OC)) (SUB' : incl L (OC_list (restriction OC (children OC kappa) (children_subset OC kappa)))) (o : ovar) (NEW : ~ OC_elt OC o) (NEW' : ~ OC_elt (restriction OC L SUB) o),
+        ~ In o L ->
+            ~ In kappa L ->
+                (forall (eta : ovar), In eta L -> forall (rho : ovar), OC_rel OC eta rho = false /\ OC_rel OC rho eta = false) ->
+                    restriction (restriction OC (children OC kappa) (children_subset OC kappa)) L SUB' = restriction (restriction OC L SUB) (children (restriction OC L SUB) kappa) (children_subset (restriction OC L SUB) kappa).
+Proof.
+intros OC L kappa SUB SUB' o NEW NEW' NIN NIN' NONE.
+destruct OC as [L1 [R [NDL [NULL ORD]]]].
+apply constraint_eq_case.
+- unfold OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1 3.
+  unfold OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1.
+  unfold OC_list, OC_rel, projT1, projT2.
+  unfold children at 4, progeny, OC_list, OC_rel, projT1, projT2.
+  unfold restriction.
+  unfold OC_list, OC_rel, projT1, projT2.
+  unfold children at 1, progeny, OC_list, OC_rel, projT1, projT2.
+  rewrite !double_filter.
+  unfold OC_rel, projT1, projT2 in NONE.
+  apply filter_ext.
+  intros eta.
+  case (in_dec nat_eq_dec eta L) as [IN1 | NIN1].
+  + rewrite Bool.andb_false_l, Bool.andb_false_r.
+    reflexivity.
+  + rewrite Bool.andb_true_l.
+    case (in_dec nat_eq_dec eta (filter (fun lambda : ovar => forallb (fun eta0 : ovar => negb (R lambda eta0)) (filter (fun lambda0 : ovar => R lambda0 kappa) L1)) (filter (fun lambda : ovar => R lambda kappa) L1))) as [IN2 | NIN2].
+    * apply filter_In in IN2 as [IN2 COND1].
+      apply filter_In in IN2 as [IN2 COND2].
+      rewrite forallb_forall in COND1.
+      case (in_dec nat_eq_dec eta (filter
+      (fun lambda : ovar =>
+       forallb
+         (fun eta0 : ovar =>
+          negb
+            (R lambda eta0 &&
+             (if in_dec nat_eq_dec lambda L then false else true) &&
+             (if in_dec nat_eq_dec eta0 L then false else true)))
+         (filter
+            (fun lambda0 : ovar =>
+             R lambda0 kappa &&
+             (if in_dec nat_eq_dec lambda0 L then false else true) &&
+             (if in_dec nat_eq_dec kappa L then false else true))
+            (filter
+               (fun eta0 : ovar =>
+                if in_dec nat_eq_dec eta0 L then false else true) L1)))
+      (filter
+         (fun lambda : ovar =>
+          R lambda kappa &&
+          (if in_dec nat_eq_dec lambda L then false else true) &&
+          (if in_dec nat_eq_dec kappa L then false else true))
+         (filter
+            (fun eta0 : ovar =>
+             if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN3 | NIN3].
+      reflexivity.
+      case (in_dec nat_eq_dec kappa L) as [FAL | _].
+      contradiction (NIN' FAL).
+      contradiction NIN3.
+      apply filter_In, conj.
+      apply filter_In, conj.
+      apply filter_In, conj.
+      apply IN2.
+      case (in_dec nat_eq_dec eta L) as [FAL | _].
+      contradiction (NIN1 FAL).
+      reflexivity.
+      rewrite COND2, Bool.andb_true_l, Bool.andb_true_r.
+      case (in_dec nat_eq_dec eta L) as [FAL | _].
+      contradiction (NIN1 FAL).
+      reflexivity.
+      apply forallb_forall.
+      intros rho IN'.
+      apply negb_true_iff.
+      apply filter_In in IN' as [IN' COND3].
+      apply filter_In in IN' as [IN' COND4].
+      case (in_dec nat_eq_dec eta L) as [FAL | _].
+      contradiction (NIN1 FAL).
+      case (in_dec nat_eq_dec rho L) as [_ | HELP].
+      inversion COND4.
+      rewrite !Bool.andb_true_r in *.
+      apply negb_true_iff.
+      apply COND1.
+      apply filter_In, (conj IN'), COND3.
+    * case (in_dec nat_eq_dec eta
+        (filter
+           (fun lambda : ovar =>
+            forallb
+              (fun eta0 : ovar =>
+               negb
+                 (R lambda eta0 &&
+                  (if in_dec nat_eq_dec lambda L then false else true) &&
+                  (if in_dec nat_eq_dec eta0 L then false else true)))
+              (filter
+                 (fun lambda0 : ovar =>
+                  R lambda0 kappa &&
+                  (if in_dec nat_eq_dec lambda0 L then false else true) &&
+                  (if in_dec nat_eq_dec kappa L then false else true))
+                 (filter
+                    (fun eta0 : ovar =>
+                     if in_dec nat_eq_dec eta0 L then false else true) L1)))
+           (filter
+              (fun lambda : ovar =>
+               R lambda kappa &&
+               (if in_dec nat_eq_dec lambda L then false else true) &&
+               (if in_dec nat_eq_dec kappa L then false else true))
+              (filter
+                 (fun eta0 : ovar =>
+                  if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN3 | NIN3].
+      2 : reflexivity.
+      apply filter_In in IN3 as [IN3 COND1].
+      apply filter_In in IN3 as [IN3 COND2].
+      apply filter_In in IN3 as [IN3 COND3].
+      rewrite forallb_forall in COND1.
+      case (in_dec nat_eq_dec eta L) as [FAL | _].
+      contradiction (NIN1 FAL).
+      case (in_dec nat_eq_dec kappa L) as [FAL | _].
+      contradiction (NIN' FAL).
+      rewrite !Bool.andb_true_r in *.
+      contradiction NIN2.
+      apply filter_In, conj.
+      apply filter_In, (conj IN3), COND2.
+      apply forallb_forall.
+      intros rho IN.
+      apply filter_In in IN as [IN REL].    
+      specialize (COND1 rho).
+      case (in_dec nat_eq_dec rho L) as [IN4 | NIN4].
+      rewrite (proj1 (NONE _ IN4 kappa)) in REL.
+      inversion REL.
+      rewrite !Bool.andb_true_r in *.
+      apply COND1.
+      apply filter_In, conj.
+      apply filter_In, (conj IN).
+      case (in_dec nat_eq_dec rho L) as [FAL | _].
+      contradiction (NIN4 FAL).
+      reflexivity.
+      rewrite REL.
+      case (in_dec nat_eq_dec rho L) as [FAL | _].
+      contradiction (NIN4 FAL).
+      reflexivity.
+
+- unfold OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1 3.
+  unfold OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold children at 4, progeny, OC_list, OC_rel, projT1, projT2.
+  unfold children at 1, progeny, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold children at 5, progeny, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold children at 7, progeny, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  unfold restriction at 1, OC_list, OC_rel, projT1, projT2.
+  apply functional_extensionality.
+  intros eta.
+  apply functional_extensionality.
+  intros rho.
+  unfold OC_elt, OC_list, OC_rel, projT1, projT2 in *.
+  case (in_dec nat_eq_dec rho L) as [INR | NINR].
+  rewrite !Bool.andb_false_r, !Bool.andb_false_l.
+  reflexivity.
+  case (in_dec nat_eq_dec eta L) as [INE | NINE].
+  rewrite !Bool.andb_false_r, !Bool.andb_false_l.
+  reflexivity.
+  case (R eta rho) eqn:REL.
+  2 : reflexivity.
+  rewrite !Bool.andb_true_l.
+  case (in_dec nat_eq_dec eta
+    (filter
+       (fun lambda : ovar =>
+        forallb (fun eta0 : ovar => negb (R lambda eta0))
+          (filter (fun lambda0 : ovar => R lambda0 kappa) L1))
+       (filter (fun lambda : ovar => R lambda kappa) L1))) as [IN1 | NIN1].
+  + rewrite Bool.andb_false_l.
+    apply filter_In in IN1 as [IN1 COND1].
+    apply filter_In in IN1 as [IN1 COND2].
+    rewrite forallb_forall in COND1.
+    case (in_dec nat_eq_dec eta
+    (filter
+       (fun lambda : ovar =>
+        forallb
+          (fun eta0 : ovar =>
+           negb
+             (R lambda eta0 &&
+              (if in_dec nat_eq_dec lambda L then false else true) &&
+              (if in_dec nat_eq_dec eta0 L then false else true)))
+          (filter
+             (fun lambda0 : ovar =>
+              R lambda0 kappa &&
+              (if in_dec nat_eq_dec lambda0 L then false else true) &&
+              (if in_dec nat_eq_dec kappa L then false else true))
+             (filter
+                (fun eta0 : ovar =>
+                 if in_dec nat_eq_dec eta0 L then false else true) L1)))
+       (filter
+          (fun lambda : ovar =>
+           R lambda kappa &&
+           (if in_dec nat_eq_dec lambda L then false else true) &&
+           (if in_dec nat_eq_dec kappa L then false else true))
+          (filter
+             (fun eta0 : ovar =>
+              if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN2 | NIN2].
+    reflexivity.
+    contradiction NIN2.
+    apply filter_In, conj.
+    apply filter_In, conj.
+    apply filter_In, conj.
+    apply IN1.
+    case (in_dec nat_eq_dec eta L) as [FAL | _].
+    contradict (NINE FAL).
+    reflexivity.
+    rewrite COND2.
+    case (in_dec nat_eq_dec eta L) as [FAL | _].
+    contradict (NINE FAL).
+    case (in_dec nat_eq_dec kappa L) as [FAL | _].
+    contradict (NIN' FAL).
+    reflexivity.
+    apply forallb_forall.
+    intros zeta IN.
+    apply negb_true_iff.
+    apply filter_In in IN as [IN COND3].
+    apply filter_In in IN as [IN COND4].
+    case (in_dec nat_eq_dec eta L) as [FAL | _].
+    contradict (NINE FAL).
+    case (in_dec nat_eq_dec kappa L) as [FAL | _].
+    contradict (NIN' FAL).
+    case (in_dec nat_eq_dec zeta L) as [_ | NIN3].
+    inversion COND4.
+    rewrite !Bool.andb_true_r in *.
+    apply negb_true_iff, COND1, filter_In, (conj IN), COND3.
+  + rewrite !Bool.andb_true_l.
+    case (in_dec nat_eq_dec rho
+    (filter
+       (fun lambda : ovar =>
+        forallb (fun eta0 : ovar => negb (R lambda eta0))
+          (filter (fun lambda0 : ovar => R lambda0 kappa) L1))
+       (filter (fun lambda : ovar => R lambda kappa) L1))) as [IN2 | NIN2].
+    * rewrite !Bool.andb_false_l.
+      apply filter_In in IN2 as [IN2 COND1].
+      apply filter_In in IN2 as [IN2 COND2].
+      rewrite forallb_forall in COND1.
+      case (in_dec nat_eq_dec eta
+          (filter
+             (fun lambda : ovar =>
+              forallb
+                (fun eta0 : ovar =>
+                 negb
+                   (R lambda eta0 &&
+                    (if in_dec nat_eq_dec lambda L then false else true) &&
+                    (if in_dec nat_eq_dec eta0 L then false else true)))
+                (filter
+                   (fun lambda0 : ovar =>
+                    R lambda0 kappa &&
+                    (if in_dec nat_eq_dec lambda0 L then false else true) &&
+                    (if in_dec nat_eq_dec kappa L then false else true))
+                   (filter
+                      (fun eta0 : ovar =>
+                       if in_dec nat_eq_dec eta0 L then false else true) L1)))
+             (filter
+                (fun lambda : ovar =>
+                 R lambda kappa &&
+                 (if in_dec nat_eq_dec lambda L then false else true) &&
+                 (if in_dec nat_eq_dec kappa L then false else true))
+                (filter
+                   (fun eta0 : ovar =>
+                    if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN3 | NIN3].
+      reflexivity.
+      case (in_dec nat_eq_dec rho
+          (filter
+             (fun lambda : ovar =>
+              forallb
+                (fun eta0 : ovar =>
+                 negb
+                   (R lambda eta0 &&
+                    (if in_dec nat_eq_dec lambda L then false else true) &&
+                    (if in_dec nat_eq_dec eta0 L then false else true)))
+                (filter
+                   (fun lambda0 : ovar =>
+                    R lambda0 kappa &&
+                    (if in_dec nat_eq_dec lambda0 L then false else true) &&
+                    (if in_dec nat_eq_dec kappa L then false else true))
+                   (filter
+                      (fun eta0 : ovar =>
+                       if in_dec nat_eq_dec eta0 L then false else true) L1)))
+             (filter
+                (fun lambda : ovar =>
+                 R lambda kappa &&
+                 (if in_dec nat_eq_dec lambda L then false else true) &&
+                 (if in_dec nat_eq_dec kappa L then false else true))
+                (filter
+                   (fun eta0 : ovar =>
+                    if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN4 | NIN4].
+      reflexivity.
+      case (in_dec nat_eq_dec kappa L) as [FAL | _].
+      contradiction (NIN' FAL).
+      contradiction NIN4.
+      apply filter_In, conj.
+      apply filter_In, conj.
+      apply filter_In, conj.
+      apply IN2.
+      case (in_dec nat_eq_dec rho L) as [FAL | _].
+      contradiction (NINR FAL).
+      reflexivity.
+      rewrite COND2.
+      case (in_dec nat_eq_dec rho L) as [FAL | _].
+      contradiction (NINR FAL).
+      reflexivity.
+      apply forallb_forall.
+      intros zeta IN.
+      apply filter_In in IN as [IN COND3].
+      apply filter_In in IN as [IN COND4].
+      case (in_dec nat_eq_dec rho L) as [FAL | _].
+      contradiction (NINR FAL).
+      case (in_dec nat_eq_dec zeta L) as [_ | NIN5].
+      inversion COND4.
+      rewrite !Bool.andb_true_r in *.
+      apply COND1, filter_In, (conj IN), COND3.
+    * rewrite Bool.andb_true_l.
+      case (in_dec nat_eq_dec eta
+      (filter
+         (fun lambda : ovar =>
+          forallb
+            (fun eta0 : ovar =>
+             negb
+               (R lambda eta0 &&
+                (if in_dec nat_eq_dec lambda L then false else true) &&
+                (if in_dec nat_eq_dec eta0 L then false else true)))
+            (filter
+               (fun lambda0 : ovar =>
+                R lambda0 kappa &&
+                (if in_dec nat_eq_dec lambda0 L then false else true) &&
+                (if in_dec nat_eq_dec kappa L then false else true))
+               (filter
+                  (fun eta0 : ovar =>
+                   if in_dec nat_eq_dec eta0 L then false else true) L1)))
+         (filter
+            (fun lambda : ovar =>
+             R lambda kappa &&
+             (if in_dec nat_eq_dec lambda L then false else true) &&
+             (if in_dec nat_eq_dec kappa L then false else true))
+            (filter
+               (fun eta0 : ovar =>
+                if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN3 | NIN3].
+      --  apply filter_In in IN3 as [IN3 COND1].
+          apply filter_In in IN3 as [IN3 COND2].
+          apply filter_In in IN3 as [IN3 COND3].
+          case (in_dec nat_eq_dec eta L) as [FAL | _].
+          contradiction (NINE FAL).
+          clear COND3.
+          rewrite forallb_forall in COND1.
+          contradiction NIN1.
+          case (in_dec nat_eq_dec kappa L) as [FAL | _].
+          contradiction (NIN' FAL).
+          rewrite !Bool.andb_true_r in *.
+          apply filter_In, conj.
+          apply filter_In, (conj IN3).
+          apply COND2.
+          apply forallb_forall.
+          intros zeta IN.
+          apply filter_In in IN as [IN COND3].
+          specialize (COND1 zeta).
+          case (in_dec nat_eq_dec zeta L) as [IN4 | NIN4].
+          rewrite (proj1 (NONE _ IN4 kappa)) in COND3.
+          inversion COND3.
+          rewrite !Bool.andb_true_r in *.
+          apply COND1.
+          apply filter_In, conj.
+          apply filter_In, (conj IN).
+          case (in_dec nat_eq_dec zeta L) as [FAL | _].
+          contradiction (NIN4 FAL).
+          reflexivity.
+          rewrite COND3.
+          case (in_dec nat_eq_dec zeta L) as [FAL | _].
+          contradiction (NIN4 FAL).
+          reflexivity.
+    --  case (in_dec nat_eq_dec rho
+          (filter
+             (fun lambda : ovar =>
+              forallb
+                (fun eta0 : ovar =>
+                 negb
+                   (R lambda eta0 &&
+                    (if in_dec nat_eq_dec lambda L then false else true) &&
+                    (if in_dec nat_eq_dec eta0 L then false else true)))
+                (filter
+                   (fun lambda0 : ovar =>
+                    R lambda0 kappa &&
+                    (if in_dec nat_eq_dec lambda0 L then false else true) &&
+                    (if in_dec nat_eq_dec kappa L then false else true))
+                   (filter
+                      (fun eta0 : ovar =>
+                       if in_dec nat_eq_dec eta0 L then false else true) L1)))
+             (filter
+                (fun lambda : ovar =>
+                 R lambda kappa &&
+                 (if in_dec nat_eq_dec lambda L then false else true) &&
+                 (if in_dec nat_eq_dec kappa L then false else true))
+                (filter
+                   (fun eta0 : ovar =>
+                    if in_dec nat_eq_dec eta0 L then false else true) L1)))) as [IN4 | NIN4].
+        2 : reflexivity.
+        apply filter_In in IN4 as [IN4 COND1].
+        apply filter_In in IN4 as [IN4 COND2].
+        apply filter_In in IN4 as [IN4 COND3].
+        case (in_dec nat_eq_dec rho L) as [FAL | _].
+        contradiction (NINR FAL).
+        clear COND3.
+        case (in_dec nat_eq_dec kappa L) as [FAL | _].
+        contradiction (NIN' FAL).
+        rewrite !Bool.andb_true_r in *.
+        rewrite forallb_forall in COND1.
+        contradiction NIN2.
+        apply filter_In, conj.
+        apply filter_In, (conj IN4), COND2.
+        apply forallb_forall.
+        intros zeta IN.
+        apply filter_In in IN as [IN COND3].
+        specialize (COND1 zeta).
+        case (in_dec nat_eq_dec zeta L) as [IN5 | NIN5].
+        rewrite (proj1 (NONE _ IN5 kappa)) in COND3.
+        inversion COND3.
+        rewrite !Bool.andb_true_r in *.
+        apply COND1.
+        apply filter_In, conj.
+        apply filter_In, (conj IN).
+        case (in_dec nat_eq_dec zeta L) as [FAL | _].
+        contradiction (NIN5 FAL).
+        reflexivity.
+        rewrite COND3.
+        case (in_dec nat_eq_dec zeta L) as [FAL | _].
+        contradiction (NIN5 FAL).
+        reflexivity.
+Qed.
+
+(*
+Lemma restriction_add_fresh_comm : 
+    restriction (add_fresh OC' lambda' NEW')
+        (children (add_fresh OC' lambda' NEW') kappa)
+            (children_subset (add_fresh OC' lambda' NEW') kappa)
+           =
+    (add_fresh (restriction OC' (children OC' kappa) (children_subset OC kappa) lambda NEW')
+*)
 
 (*
 Definition constraint_type (OC : constraint) : Type := {o : ovar & OC_elt OC o}.

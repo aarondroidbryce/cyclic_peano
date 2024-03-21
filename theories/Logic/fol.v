@@ -241,6 +241,112 @@ intros lambda' kappa' o' IN.
       apply IN'.
 Qed.
 
+Lemma vars_in_osub_conv :
+    forall {phi : formula} {lambda kappa eta : ovar},
+        In eta (vars_in phi) ->
+            eta = lambda \/ In eta (vars_in (ovar_sub phi lambda kappa)).
+Proof.
+induction phi;
+intros lambda' kappa' eta' IN.
+- inversion IN.
+- apply in_app_or in IN as [IN1 | IN2].
+  + destruct (IHphi1 lambda' kappa' _ IN1) as [EQ | IN].
+    apply or_introl, EQ.
+    apply or_intror, in_or_app, or_introl, IN.
+  + destruct (IHphi2 lambda' kappa' _ IN2) as [EQ | IN].
+    apply or_introl, EQ.
+    apply or_intror, in_or_app, or_intror, IN.
+- unfold ovar_sub;
+  fold ovar_sub.
+  case (nat_eqb lambda' o) eqn:EQ1;
+  case (nat_eqb lambda' o0) eqn:EQ2;
+  try apply nat_eqb_eq in EQ1;
+  try apply nat_eqb_eq in EQ2;
+  subst;
+  destruct IN as [EQ | IN];
+  subst.
+  1,5 : apply or_introl, eq_refl.
+  1,3 : apply in_remove in IN as [IN NE];
+        apply or_intror, or_intror, (in_in_remove nat_eq_dec _ NE IN).
+  1,3 : apply or_intror, or_introl, eq_refl.
+  1,2 : apply in_remove in IN as [IN NE].
+  1 : destruct (IHphi o0 kappa' _ IN) as [EQ | IN'].
+      apply or_introl, EQ.
+      apply or_intror, or_intror, (in_in_remove _ _ NE), IN'.
+      destruct (IHphi lambda' kappa' _ IN) as [EQ | IN'].
+      apply or_introl, EQ.
+      apply or_intror, or_intror, (in_in_remove _ _ NE), IN'.
+- inversion IN.
+- apply (IHphi _ _ _ IN).
+- unfold ovar_sub;
+  fold ovar_sub.
+  case (nat_eqb lambda' o) eqn:EQ.
+  + apply nat_eqb_eq in EQ.
+    subst.
+    destruct IN as [EQ | IN].
+    apply or_introl, eq_sym, EQ.
+    destruct (IHphi o kappa' _ IN) as [EQ | IN'].
+    apply or_introl, EQ.
+    apply or_intror, or_intror, IN'.
+  + destruct IN as [EQ' | IN].
+    apply or_intror, or_introl, EQ'.
+    destruct (IHphi lambda' kappa' _ IN) as [EQ' | IN'].
+    apply or_introl, EQ'.
+    apply or_intror, or_intror, IN'. 
+Qed.
+
+Lemma vars_used_osub_conv :
+    forall {phi : formula} {lambda kappa eta : ovar},
+        In eta (vars_used phi) ->
+            eta = lambda \/ In eta (vars_used (ovar_sub phi lambda kappa)).
+Proof.
+induction phi;
+intros lambda' kappa' eta' IN.
+- inversion IN.
+- apply in_app_or in IN as [IN1 | IN2].
+  + destruct (IHphi1 lambda' kappa' _ IN1) as [EQ | IN].
+    apply or_introl, EQ.
+    apply or_intror, in_or_app, or_introl, IN.
+  + destruct (IHphi2 lambda' kappa' _ IN2) as [EQ | IN].
+    apply or_introl, EQ.
+    apply or_intror, in_or_app, or_intror, IN.
+- unfold ovar_sub;
+  fold ovar_sub.
+  case (nat_eqb lambda' o) eqn:EQ1;
+  case (nat_eqb lambda' o0) eqn:EQ2;
+  try apply nat_eqb_eq in EQ1;
+  try apply nat_eqb_eq in EQ2;
+  subst;
+  destruct IN as [EQ | IN];
+  subst.
+  1,5 : apply or_introl, eq_refl.
+  1,3 : apply or_intror, or_intror, IN.
+  1,3 : apply or_intror, or_introl, eq_refl.
+  1 : destruct (IHphi o0 kappa' _ IN) as [EQ | IN'].
+      apply or_introl, EQ.
+      apply or_intror, or_intror, IN'.
+      destruct (IHphi lambda' kappa' _ IN) as [EQ | IN'].
+      apply or_introl, EQ.
+      apply or_intror, or_intror, IN'.
+- inversion IN.
+- apply (IHphi _ _ _ IN).
+- unfold ovar_sub;
+  fold ovar_sub.
+  case (nat_eqb lambda' o) eqn:EQ.
+  + apply nat_eqb_eq in EQ.
+    subst.
+    destruct IN as [EQ | IN].
+    apply or_introl, eq_sym, EQ.
+    destruct (IHphi o kappa' _ IN) as [EQ | IN'].
+    apply or_introl, EQ.
+    apply or_intror, or_intror, IN'.
+  + destruct IN as [EQ' | IN].
+    apply or_intror, or_introl, EQ'.
+    destruct (IHphi lambda' kappa' _ IN) as [EQ' | IN'].
+    apply or_introl, EQ'.
+    apply or_intror, or_intror, IN'. 
+Qed.
+
 Lemma vars_in_osub :
     forall {phi : formula} {lambda kappa eta : ovar},
         In eta (vars_in (ovar_sub phi lambda kappa)) ->
